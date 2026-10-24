@@ -74,6 +74,21 @@ const config = () =>
         log: {matter: 'error'},
         bridges: {default: {port, passcode: 20202021, discriminator: 3840}},
         devices: {
+            scene: {
+                name: 'Evening',
+                endpoints: [
+                    {
+                        deviceTypes: ['OnOffPlugInUnit'],
+                        options: {onOff: {momentary: 300}},
+                        mappings: [
+                            {
+                                attribute: 'OnOff.onOff',
+                                command: {topic: 'z/group/set', format: {true: '{"scene_recall":3}'}},
+                            },
+                        ],
+                    },
+                ],
+            },
             light: {
                 name: 'Light',
                 availability: {topic: 'z/light/availability', extract: 'state', online: 'online', offline: 'offline'},
@@ -431,6 +446,7 @@ describe('the bridge', () => {
                 'light',
                 'lock',
                 'motion',
+                'scene',
                 'sensor',
                 'stateCover',
                 'thermostat',
@@ -845,6 +861,26 @@ describe('sensors and power source', () => {
             expect(device('air').state.carbonDioxideConcentrationMeasurement!.measuredValue).toBe(812);
             expect(device('air').state.pm25ConcentrationMeasurement!.measuredValue).toBe(7.5);
         });
+    });
+});
+
+describe('a momentary on/off (a scene)', () => {
+    it('on publishes the recall and falls back to off; off publishes nothing', async () => {
+        const scene = device('scene');
+        published.length = 0;
+        await scene.endpoint.act((agent) => agent.get(OnOffServer).on());
+        await expectPublished('z/group/set', '{"scene_recall":3}');
+        expect(scene.state.onOff!.onOff).toBe(true);
+        await waitFor(() => scene.state.onOff!.onOff === false, 3000, 'back to off');
+        expect(published.filter((p) => p.topic === 'z/group/set')).toHaveLength(1);
+
+        // a second press while on restarts the time, an off in between only switches it off locally
+        await scene.endpoint.act((agent) => agent.get(OnOffServer).on());
+        await scene.endpoint.act((agent) => agent.get(OnOffServer).off());
+        expect(scene.state.onOff!.onOff).toBe(false);
+        await sleep(400);
+        expect(published.filter((p) => p.topic === 'z/group/set')).toHaveLength(2);
+        expect(logLines.filter((l) => l.includes('ERROR'))).toEqual([]);
     });
 });
 

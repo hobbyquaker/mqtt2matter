@@ -70,6 +70,7 @@ export const SUGGESTED: Record<string, Suggestion[]> = {
 
 /** the family whose options an endpoint shows, by the clusters it has */
 export const FAMILY_CLUSTERS: Record<string, string[]> = {
+    onOff: ['OnOff'],
     light: ['OnOff', 'LevelControl', 'ColorControl'],
     cover: ['WindowCovering'],
     climate: ['Thermostat'],

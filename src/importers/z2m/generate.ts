@@ -1,7 +1,7 @@
 /* zigbee2mqtt → the manual model. One `bridge/devices` entry becomes one device: its exposes decide the
    device types, clusters and mappings per zigbee2mqtt endpoint (`l1`, `l2`, … become child endpoints),
-   `action` enums become GenericSwitch children, `battery` a power source, and every device gets its
-   availability topic. A `bridge/groups` entry becomes one endpoint with the union of its members' light,
+   `action` enums become GenericSwitch children, `battery` a power source, a scene stored on the device or
+   the group a momentary outlet child that recalls it, and every device gets its availability topic. A `bridge/groups` entry becomes one endpoint with the union of its members' light,
    switch or cover features. What is generated is the *baseline*; `source.raw` keeps what is needed to
    regenerate it, so a user's edits can be carried over when zigbee2mqtt's description changes.
 
@@ -49,6 +49,13 @@ export interface RawDevice {
     model_id?: string;
     manufacturer?: string;
     definition: {vendor?: string; model?: string; description?: string; exposes: Expose[]} | null;
+    /** the scenes stored on the device's endpoints, by id (absent when there are none) */
+    scenes?: Scene[];
+}
+
+export interface Scene {
+    id: number;
+    name: string;
 }
 
 /** the union of a group's members, computed from their descriptions when the group is (re)generated */
@@ -70,6 +77,7 @@ export interface RawGroup {
     friendly_name: string;
     members: {ieee_address: string; endpoint: number}[];
     union: GroupUnion;
+    scenes?: Scene[];
 }
 
 export type Raw = RawDevice | RawGroup;
@@ -109,8 +117,40 @@ function text(value: unknown, fallback: string): string {
         : fallback;
 }
 
+function isScene(value: unknown): value is Scene {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        typeof (value as Scene).id === 'number' &&
+        typeof (value as Scene).name === 'string'
+    );
+}
+
+/** scenes by id, sorted; the first name of an id wins */
+function sceneList(lists: unknown[]): Scene[] {
+    const byId = new Map<number, Scene>();
+    for (const list of lists) {
+        for (const scene of Array.isArray(list) ? list : []) {
+            if (isScene(scene) && !byId.has(scene.id)) {
+                byId.set(scene.id, {id: scene.id, name: scene.name});
+            }
+        }
+    }
+    return [...byId.values()].sort((a, b) => a.id - b.id);
+}
+
+/** the scenes zigbee2mqtt lists on a device's endpoints (`endpoints.<n>.scenes`) */
+export function deviceScenes(device: BridgeDevice): Scene[] {
+    const endpoints = device.endpoints;
+    if (typeof endpoints !== 'object' || endpoints === null) {
+        return [];
+    }
+    return sceneList(Object.values(endpoints).map((ep) => (ep as {scenes?: unknown} | null)?.scenes));
+}
+
 export function rawDevice(device: BridgeDevice, baseTopic: string): RawDevice {
     const definition = device.definition ?? null;
+    const scenes = deviceScenes(device);
     return {
         kind: 'device',
         base_topic: baseTopic,
@@ -129,6 +169,7 @@ export function rawDevice(device: BridgeDevice, baseTopic: string): RawDevice {
                       ...(definition.description === undefined ? {} : {description: definition.description}),
                       exposes: (definition.exposes ?? []).map(trimExpose),
                   },
+        ...(scenes.length === 0 ? {} : {scenes}),
     };
 }
 
@@ -148,7 +189,14 @@ interface Draft {
     coalesce: number;
     /** one `/get` per endpoint: on the first gettable feature */
     hasGet: boolean;
+    /** a scene trigger: never the device's own endpoint while there is anything else */
+    scene?: boolean;
+    /** the Descriptor tag's label when siblings share the type (default: the id) */
+    label?: string;
 }
+
+/** ms a scene's outlet stays on after a recall */
+export const SCENE_MOMENTARY = 1000;
 
 /** the order device types take on an endpoint: the first is the endpoint's own type */
 const TYPE_ORDER = [
@@ -905,6 +953,21 @@ class Builder {
         }
     }
 
+    /** one momentary outlet per scene: on recalls it (`{"scene_recall": id}` on the set topic) */
+    scenes(scenes: readonly Scene[]): void {
+        for (const scene of scenes) {
+            const draft = this.draft('', `scene_${scene.id}`);
+            draft.scene = true;
+            draft.label = scene.name === '' ? `Scene ${scene.id}` : scene.name;
+            this.addType(draft, 'OnOffPlugInUnit');
+            draft.options.onOff = {momentary: SCENE_MOMENTARY};
+            draft.mappings.push({
+                attribute: 'OnOff.onOff',
+                command: {topic: this.setTopic, format: {true: JSON.stringify({scene_recall: scene.id})}},
+            });
+        }
+    }
+
     walk(exposes: Expose[], model: string | undefined): void {
         for (const expose of exposes) {
             switch (expose.type) {
@@ -948,11 +1011,12 @@ class Builder {
         const power = drafts.find((d) => d.id === 'power');
         const real = drafts.filter((d) => d !== power);
         const isButton = (d: Draft): boolean => d.types[0] === 'GenericSwitch';
-        // the device itself: the device's own endpoint, else the first child that is no button, else (a remote)
-        // its unnamed button, else the first button
+        const isFunction = (d: Draft): boolean => !isButton(d) && d.scene !== true;
+        // the device itself: the device's own endpoint, else the first child that is no button or scene, else
+        // (a remote) its unnamed button, else the first button, else the first scene
         let main =
-            real.find((d) => d.z2mEndpoint === '' && !isButton(d)) ??
-            real.find((d) => !isButton(d)) ??
+            real.find((d) => d.z2mEndpoint === '' && isFunction(d)) ??
+            real.find((d) => isFunction(d)) ??
             real.find((d) => d.id === 'button') ??
             real[0];
         if (main === undefined) {
@@ -980,7 +1044,16 @@ class Builder {
                     tag++;
                     draft.features.Descriptor = ['TagList'];
                     endpoint.attributes = {
-                        Descriptor: {tagList: [{mfgCode: null, namespaceId: NUMBER_NAMESPACE, tag, label: draft.id}]},
+                        Descriptor: {
+                            tagList: [
+                                {
+                                    mfgCode: null,
+                                    namespaceId: NUMBER_NAMESPACE,
+                                    tag,
+                                    label: (draft.label ?? draft.id).slice(0, 64),
+                                },
+                            ],
+                        },
                     };
                 }
             }
@@ -1042,6 +1115,7 @@ export function generateDevice(raw: RawDevice): Generated | undefined {
     const exposes = raw.definition?.exposes ?? [];
     const builder = new Builder(raw.base_topic, raw.friendly_name, hasBatteryExpose(exposes));
     builder.walk(exposes, raw.definition?.model);
+    builder.scenes(raw.scenes ?? []);
     const endpoints = builder.endpoints();
     if (endpoints === undefined) {
         return undefined;
@@ -1126,6 +1200,7 @@ export function rawGroup(group: BridgeGroup, devices: ReadonlyMap<string, Bridge
         friendly_name: group.friendly_name,
         members: group.members.map((m) => ({ieee_address: m.ieee_address, endpoint: m.endpoint})),
         union: groupUnion(group, devices),
+        ...(sceneList([group.scenes]).length === 0 ? {} : {scenes: sceneList([group.scenes])}),
     };
 }
 
@@ -1196,11 +1271,12 @@ function unionExposes(union: GroupUnion): Expose[] {
     return [];
 }
 
-export function groupUnsupportedReason(union: GroupUnion): string | undefined {
+export function groupUnsupportedReason(union: GroupUnion, scenes: readonly Scene[] = []): string | undefined {
     if (union.members === 0) {
         return 'no members';
     }
-    if (union.kind === undefined) {
+    // a group of other members still recalls its scenes
+    if (union.kind === undefined && scenes.length === 0) {
         return 'the members are neither lights, switches nor covers';
     }
     return undefined;
@@ -1209,6 +1285,7 @@ export function groupUnsupportedReason(union: GroupUnion): string | undefined {
 export function generateGroup(raw: RawGroup): Generated | undefined {
     const builder = new Builder(raw.base_topic, raw.friendly_name, false);
     builder.walk(unionExposes(raw.union), undefined);
+    builder.scenes(raw.scenes ?? []);
     const endpoints = builder.endpoints();
     if (endpoints === undefined) {
         return undefined;

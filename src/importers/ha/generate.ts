@@ -217,7 +217,14 @@ interface Draft {
     attributes: Record<string, Record<string, unknown>>;
     options: OptionsInput;
     coalesce: number;
+    /** a scene trigger: never the device's own endpoint while there is anything else */
+    scene?: boolean;
+    /** the Descriptor tag's label when siblings share the type (default: the id) */
+    label?: string;
 }
+
+/** ms a scene's outlet stays on after it was activated */
+export const SCENE_MOMENTARY = 1000;
 
 /** the order device types take on an endpoint and the order entities take as the device's own endpoint */
 const TYPE_ORDER = [
@@ -539,6 +546,23 @@ class Builder {
             `{% set value = ${JSON.stringify(on)} if value else ${JSON.stringify(off)} %}`,
         );
         this.bind(draft, {attribute: 'OnOff.onOff'}, status, command);
+    }
+
+    /** a scene: a momentary outlet; on activates it (`payload_on` to the command topic), off does nothing */
+    scene(entity: RawEntity): void {
+        const command = this.command(entity, 'command_topic', undefined, {
+            payload: text(entity.config.payload_on, 'ON'),
+        });
+        if (command === undefined) {
+            this.skip(entity, 'no command_topic');
+            return;
+        }
+        const draft = this.draft(entity.id, entity);
+        draft.scene = true;
+        draft.label = entityName(entity);
+        this.addType(draft, 'OnOffPlugInUnit');
+        draft.options.onOff = {momentary: SCENE_MOMENTARY};
+        this.bind(draft, {attribute: 'OnOff.onOff'}, undefined, command);
     }
 
     switch(entity: RawEntity): void {
@@ -1605,7 +1629,7 @@ class Builder {
                     this.skip(entity, 'not representable in Matter (unmapped by default)');
                     break;
                 case 'scene':
-                    this.skip(entity, 'scenes are not mapped yet');
+                    this.scene(entity);
                     break;
                 default:
                     this.skip(entity, `the ${entity.component} component has no Matter equivalent`);
@@ -1622,7 +1646,11 @@ class Builder {
     endpoints(area: string | undefined): EndpointInput[] | undefined {
         const real = [...this.drafts.values()].filter((d) => d.types.length > 0 && d.mappings.length > 0);
         const isButton = (d: Draft): boolean => d.types[0] === 'GenericSwitch';
-        let main = real.find((d) => d.primary) ?? real.find((d) => !isButton(d)) ?? real[0];
+        let main =
+            real.find((d) => d.primary) ??
+            real.find((d) => !isButton(d) && d.scene !== true) ??
+            real.find((d) => !isButton(d)) ??
+            real[0];
         if (main === undefined) {
             if (this.power !== undefined && this.power.mappings.length > 0) {
                 main = this.power;
@@ -1656,7 +1684,12 @@ class Builder {
                 // children sharing their device type with a sibling carry a number tag: Matter's disambiguation rule
                 if ((typeCount.get(draft.types[0] ?? '') ?? 0) > 1) {
                     tag++;
-                    tags.push({mfgCode: null, namespaceId: NUMBER_NAMESPACE, tag, label: draft.id.slice(0, 64)});
+                    tags.push({
+                        mfgCode: null,
+                        namespaceId: NUMBER_NAMESPACE,
+                        tag,
+                        label: (draft.label ?? draft.id).slice(0, 64),
+                    });
                 }
             } else if (area !== undefined) {
                 const found = areaTag(area);

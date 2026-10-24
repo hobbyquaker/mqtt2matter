@@ -52,7 +52,6 @@ describe('the corpus', () => {
             ['z2m:group:4', 'no members'],
             ['z2m:group:5', 'no members'],
             ['z2m:group:6', 'no members'],
-            ['z2m:group:10', 'the members are neither lights, switches nor covers'],
         ]);
     });
 
@@ -72,7 +71,7 @@ describe('the corpus', () => {
 
     it('every baseline passes the strict matter.js dry run', async () => {
         const {devices: adopted} = z2m.adopt({}, discovery);
-        expect(Object.keys(adopted)).toHaveLength(37);
+        expect(Object.keys(adopted)).toHaveLength(38);
         const result = await checkConfig(parseConfig({log: {matter: 'error'}, devices: adopted}));
         expect(formatCheck(result).filter((l) => l.startsWith('ERROR'))).toEqual([]);
         expect(result.ok).toBe(true);
@@ -822,6 +821,56 @@ describe('hand-written descriptions', () => {
         expect(d.endpoints[0]!.id).toBeUndefined();
         expect(z2m.endpointId('left side')).toBe('left_side');
         expect(z2m.endpointId('_x')).toBe('e_x');
+    });
+});
+
+describe('scenes', () => {
+    it("a device's scenes become momentary outlets that recall them; the device keeps its own endpoint", () => {
+        const d = baseline('z2m:0x54ef44100086d51f');
+        expect(d.source?.raw).toMatchObject({
+            scenes: [
+                {id: 0, name: 'OFF'},
+                {id: 1, name: 'ON'},
+            ],
+        });
+        expect(d.endpoints[0]!.deviceTypes[0]).toBe('OnOffPlugInUnit');
+        expect(d.endpoints[0]!.options?.onOff).toBeUndefined();
+        const scenes = d.endpoints.filter((e) => e.id?.startsWith('scene_') === true);
+        expect(scenes.map((e) => e.id)).toEqual(['scene_0', 'scene_1']);
+        expect(scenes[1]).toMatchObject({
+            deviceTypes: ['OnOffPlugInUnit'],
+            options: {onOff: {momentary: 1000}},
+            mappings: [
+                {
+                    attribute: 'OnOff.onOff',
+                    command: {topic: 'zigbee2mqtt/Aqara switch T1/set', format: {true: '{"scene_recall":1}'}},
+                },
+            ],
+            attributes: {Descriptor: {tagList: [{namespaceId: 7, label: 'ON'}]}},
+        });
+    });
+
+    it("a group's scenes: a group of thermostats still recalls its scene", () => {
+        const g = baseline('z2m:group:10');
+        expect(types(g)).toEqual({main: ['OnOffPlugInUnit']});
+        expect(g.endpoints[0]).toMatchObject({
+            options: {onOff: {momentary: 1000}},
+            mappings: [
+                {
+                    attribute: 'OnOff.onOff',
+                    command: {topic: 'zigbee2mqtt/Thermostats/set', format: {true: '{"scene_recall":0}'}},
+                },
+            ],
+        });
+        // a light group with scenes: the lights stay the device, the scenes are children
+        const lights = groups.find((group) => group.id === 7)!;
+        const withScenes = z2m.discover({devices, groups: [{...lights, scenes: [{id: 3, name: 'Evening'}]}]});
+        const lightGroup = withScenes.items.find((i) => i.key === 'z2m:group:7')!.baseline!;
+        expect(lightGroup.endpoints.map((e) => e.id ?? 'main')).toEqual(['main', 'scene_3']);
+    });
+
+    it('a device without scenes keeps its raw description as it was (no re-sync for everyone)', () => {
+        expect(baseline('z2m:0xa4c138071003495f').source?.raw).not.toHaveProperty('scenes');
     });
 });
 

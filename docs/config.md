@@ -284,6 +284,12 @@ The cover family owns `WindowCovering.motion`: `opening`, `closing`, `stopped` (
 
 ### Families and their options
 
+**onOff** (`OnOff`)
+
+| Option      | Default | Meaning                                                                                                                                                                              |
+| ----------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `momentary` | `0`     | ms; a stateless trigger (a scene, a button behind an outlet): on publishes the command and the endpoint falls back to off after this long, off publishes nothing; `0` = plain on/off |
+
 **light** (`OnOff`, `LevelControl`, `ColorControl`)
 
 | Option                   | Default      | Meaning                                                                                                              |

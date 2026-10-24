@@ -332,10 +332,50 @@ describe("zigbee2mqtt's own discovery (native preferred)", () => {
         );
     });
 
-    it('a group with a scene: the scene is listed for later', () => {
+    it('a group with a scene: the scene is a momentary outlet that activates it', () => {
         const key = 'ha:zigbee2mqtt_1000000000000000000000000000001_2';
-        expect(types(baseline(key))).toEqual({main: ['ExtendedColorLight']});
-        expect(item(key).unmapped).toContain('scene "color1": scenes are not mapped yet');
+        const device = baseline(key);
+        expect(types(device)).toEqual({main: ['ExtendedColorLight'], scene_1: ['OnOffPlugInUnit']});
+        expect(device.endpoints[1]).toMatchObject({
+            id: 'scene_1',
+            options: {onOff: {momentary: 1000}},
+            mappings: [
+                {
+                    attribute: 'OnOff.onOff',
+                    command: {topic: 'zigbee2mqtt/light_garden_group/set', payload: '{ "scene_recall": 1 }'},
+                },
+            ],
+        });
+        expect(device.endpoints[1]!.mappings![0]).not.toHaveProperty('status');
+        expect(item(key).unmapped.join()).not.toContain('scene');
+    });
+
+    it('a device of nothing but scenes: the first scene is the device, the others are tagged with their names', () => {
+        const source = new ha.HaSource();
+        for (const [n, name] of [
+            [1, 'Evening'],
+            [2, 'Movie'],
+        ] as const) {
+            source.handle(
+                `homeassistant/scene/hub/scene_${n}/config`,
+                JSON.stringify({
+                    name,
+                    unique_id: `hub_scene_${n}`,
+                    command_topic: 'hub/scene/set',
+                    payload_on: String(n),
+                    device: {identifiers: ['hub-1'], name: 'Scene hub'},
+                }),
+            );
+        }
+        const device = source.discover().items[0]!.baseline!;
+        expect(device.endpoints.map((e) => [e.id ?? 'main', e.deviceTypes[0]])).toEqual([
+            ['main', 'OnOffPlugInUnit'],
+            ['scene_2', 'OnOffPlugInUnit'],
+        ]);
+        expect(device.endpoints[1]!.attributes?.Descriptor).toEqual({
+            tagList: [{mfgCode: null, namespaceId: 7, tag: 1, label: 'Movie'}],
+        });
+        expect(device.endpoints[1]!.mappings![0]!.command).toEqual({topic: 'hub/scene/set', payload: '2'});
     });
 });
 

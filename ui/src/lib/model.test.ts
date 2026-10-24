@@ -28,7 +28,7 @@ describe('the model helpers', () => {
     });
 
     it('names the families by the clusters', () => {
-        expect(familiesFor(['OnOff', 'LevelControl', 'PowerSource'])).toEqual(['light', 'powerSource']);
+        expect(familiesFor(['OnOff', 'LevelControl', 'PowerSource'])).toEqual(['onOff', 'light', 'powerSource']);
         expect(familiesFor(['TemperatureMeasurement'])).toEqual([]);
     });
 

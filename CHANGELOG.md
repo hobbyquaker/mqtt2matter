@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Scenes: zigbee2mqtt's scenes on devices and groups and Home Assistant discovery's `scene` entities become
+  momentary outlets — one child endpoint per scene whose "on" recalls it and that falls back to off a second
+  later (`options.onOff.momentary`, usable for any stateless trigger). Every controller can show and automate an
+  outlet, and Alexa can "turn on" it by voice; Matter's own Scenes Management cluster is not used, because its
+  scenes are stored by each controller per fabric, and none of the common controllers (Apple Home, Google Home,
+  Alexa, Home Assistant) is known to offer them for a bridged device. A zigbee2mqtt group of thermostats or other members is adopted for its
+  scenes alone.
+
 - A login for the UI and the API, `server.auth`: `password` (one password, kept as an scrypt hash; a session cookie)
   or `proxy` (a reverse proxy such as nginx with authentik sets the user in a header, `X-Remote-User` by default,
   with an optional logout URL). The event stream is covered too. The mode is set on the Configuration page and

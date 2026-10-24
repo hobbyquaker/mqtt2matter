@@ -73,14 +73,14 @@ describe('importZ2m', () => {
             }),
         );
         const out = await run([path, '--timeout', '10']);
-        expect(out.at(-1)).toMatch(/^written .*a\.json: 38 devices$/);
-        expect(out).toContain('37 new, 0 updated, 0 unchanged, 0 orphaned, 0 invalid, 8 unsupported');
+        expect(out.at(-1)).toMatch(/^written .*a\.json: 39 devices$/);
+        expect(out).toContain('38 new, 0 updated, 0 unchanged, 0 orphaned, 0 invalid, 7 unsupported');
         expect(
             out.some((l) =>
                 l.startsWith('+ new         z2m:0xa4c138071003495f  Gledopto RGBCTT light I  main: ExtendedColorLight'),
             ),
         ).toBe(true);
-        expect(out.some((l) => l.startsWith('? unsupported z2m:group:10  Thermostats  the members are neither'))).toBe(
+        expect(out.some((l) => l.startsWith('+ new         z2m:group:10  Thermostats  main: OnOffPlugInUnit'))).toBe(
             true,
         );
         expect(out.some((l) => l.startsWith('ERROR'))).toBe(false);
@@ -91,7 +91,7 @@ describe('importZ2m', () => {
         };
         expect(written.mqtt).toEqual({url: broker.url});
         expect(written.log).toEqual({level: 'warn'});
-        expect(Object.keys(written.devices)).toHaveLength(38);
+        expect(Object.keys(written.devices)).toHaveLength(39);
         expect(written.devices.mine).toEqual({name: 'Mine', endpoints: [{deviceTypes: ['OnOffLight']}]});
         expect(written.devices['z2m:0x00158d000945f2b1']!.source).toMatchObject({
             kind: 'z2m',
@@ -100,7 +100,7 @@ describe('importZ2m', () => {
 
         // the second run: nothing changes
         const again = await run([path, '--timeout', '10']);
-        expect(again).toContain('0 new, 0 updated, 37 unchanged, 0 orphaned, 0 invalid, 8 unsupported');
+        expect(again).toContain('0 new, 0 updated, 38 unchanged, 0 orphaned, 0 invalid, 7 unsupported');
         expect(JSON.parse(await readFile(path, 'utf8'))).toEqual(written);
     }, 30_000);
 

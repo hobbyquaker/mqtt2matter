@@ -294,6 +294,7 @@
 
     function optionKeys(family: string): string[] {
         const known: Record<string, string[]> = {
+            onOff: ['momentary'],
             light: ['onCommandType', 'transition', 'minMireds', 'maxMireds'],
             cover: ['echoFilter', 'reportTimeout', 'tolerance'],
             climate: ['minHeat', 'maxHeat', 'minCool', 'maxCool', 'deadband'],
@@ -305,6 +306,7 @@
     }
 
     const OPTION_DEFAULTS: Record<string, Record<string, unknown>> = {
+        onOff: {momentary: 0},
         light: {onCommandType: 'last', transition: true, minMireds: 153, maxMireds: 500},
         cover: {echoFilter: false, reportTimeout: 30, tolerance: 100},
         climate: {minHeat: 7, maxHeat: 30, minCool: 16, maxCool: 32, deadband: 2},

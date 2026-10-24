@@ -4,6 +4,15 @@
 
 import {z} from 'zod';
 
+export const OnOffOptionsSchema = z
+    .object({
+        /** ms: a stateless trigger (a scene, a Home Assistant button): `on` publishes the command and the endpoint
+         *  falls back to off after this long; `off` publishes nothing. 0 = an ordinary on/off */
+        momentary: z.number().int().min(0).max(60_000).default(0),
+    })
+    .strict();
+export type OnOffOptions = z.infer<typeof OnOffOptionsSchema>;
+
 export const LightOptionsSchema = z
     .object({
         /** HA's `on_command_type`: `first` publishes on, then the level; `last` the level, then on; `brightness`
@@ -83,6 +92,7 @@ export type PowerSourceOptions = z.infer<typeof PowerSourceOptionsSchema>;
 
 export const OptionsSchema = z
     .object({
+        onOff: OnOffOptionsSchema.prefault({}),
         light: LightOptionsSchema.prefault({}),
         cover: CoverOptionsSchema.prefault({}),
         climate: ClimateOptionsSchema.prefault({}),

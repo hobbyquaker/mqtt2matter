@@ -47,14 +47,11 @@ describe('adopt', () => {
         const manual: DeviceInput = {name: 'Mine', endpoints: [{deviceTypes: ['OnOffLight']}]};
         const discovery = z2m.discover({devices: corpusDevices(), groups: corpusGroups()});
         const {devices, report} = z2m.adopt({manual}, discovery);
-        expect(Object.keys(devices)).toHaveLength(38);
+        expect(Object.keys(devices)).toHaveLength(39);
         expect(Object.keys(devices)[0]).toBe('manual');
         expect(devices.manual).toBe(manual);
-        expect(statuses(report)).toEqual({new: 37, unsupported: 8});
-        expect(entry(report, 'z2m:group:10')).toMatchObject({
-            status: 'unsupported',
-            notes: ['the members are neither lights, switches nor covers'],
-        });
+        expect(statuses(report)).toEqual({new: 38, unsupported: 7});
+        expect(entry(report, 'z2m:group:1')).toMatchObject({status: 'unsupported', notes: ['no members']});
         expect(entry(report, LIGHT).unmapped).toEqual(['color_temp_startup', 'effect', 'linkquality']);
     });
 
@@ -64,14 +61,14 @@ describe('adopt', () => {
         expect(Object.keys(first.devices)).toEqual([LIGHT, LIGHTS_GROUP]);
         const second = z2m.adopt(first.devices, discovery, {keys: []});
         expect(second.devices).toEqual(first.devices);
-        expect(statuses(second.report)).toEqual({unchanged: 2, new: 35, unsupported: 8});
+        expect(statuses(second.report)).toEqual({unchanged: 2, new: 36, unsupported: 7});
     });
 
     it('a full re-sync of an untouched config is a no-op', () => {
         const devices = adoptedCorpus();
         const again = z2m.adopt(clone(devices), z2m.discover({devices: corpusDevices(), groups: corpusGroups()}));
         expect(again.devices).toEqual(devices);
-        expect(statuses(again.report)).toEqual({unchanged: 37, unsupported: 8});
+        expect(statuses(again.report)).toEqual({unchanged: 38, unsupported: 7});
         expect(again.report.every((e) => e.conflicts.length === 0 && e.edits === 0)).toBe(true);
     });
 });
@@ -132,7 +129,7 @@ describe('re-sync', () => {
         expect(result.source!.version).not.toBe(light.source!.version);
         expect((result.source!.raw as z2m.RawDevice).friendly_name).toBe('Kitchen');
         // the other devices did not move
-        expect(statuses(report)).toEqual({updated: 1, unchanged: 36, unsupported: 8});
+        expect(statuses(report)).toEqual({updated: 1, unchanged: 37, unsupported: 7});
     });
 
     it('a definition change regenerates the baseline; an edit on what disappeared is reported, not applied', () => {
@@ -286,7 +283,7 @@ describe('diff', () => {
         const without = corpusDevices().filter((d) => d.ieee_address !== '0x00158d00091e7bd6');
         const report = z2m.diff(z2m.discover({devices: without, groups: corpusGroups()}), devices);
         expect(devices).toEqual(before);
-        expect(statuses(report)).toEqual({unchanged: 36, orphaned: 1, unsupported: 8});
+        expect(statuses(report)).toEqual({unchanged: 37, orphaned: 1, unsupported: 7});
         expect(entry(report, CONTACT).device!.source!.orphaned).toBe(true);
     });
 

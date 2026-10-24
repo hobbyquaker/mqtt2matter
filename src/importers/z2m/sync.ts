@@ -87,7 +87,7 @@ export function discover(input: DiscoverInput): Discovery {
     for (const group of groups ?? []) {
         const raw = rawGroup(group, byIeee, baseTopic);
         const base = {key: groupKey(group.id), kind: 'group' as const, name: group.friendly_name};
-        const reason = groupUnsupportedReason(raw.union);
+        const reason = groupUnsupportedReason(raw.union, raw.scenes);
         const generated = reason === undefined ? generateGroup(raw) : undefined;
         if (generated === undefined) {
             items.push({...base, supported: false, reason: reason ?? 'nothing to map', unmapped: []});
