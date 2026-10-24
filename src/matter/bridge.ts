@@ -19,7 +19,19 @@ import type {AttributeRef} from '../model/attribute.ts';
 import {COMPOSITE_ATTRIBUTES, cluster as clusterInfo} from '../model/catalog.ts';
 import {type DeviceConfig, type EndpointConfig, mappingTarget} from '../model/schema.ts';
 import {type BuiltEndpoint, buildEndpoint} from './device-types.ts';
-import {childEndpointId, deviceEndpointId, label32, randomDiscriminator, randomPasscode, uniqueId} from './ids.ts';
+import {
+    BRIDGE_PRODUCT_LABEL,
+    bridgedInformation,
+    childEndpointId,
+    deviceEndpointId,
+    HARDWARE_VERSION,
+    label32,
+    randomDiscriminator,
+    randomPasscode,
+    softwareVersionNumber,
+    uniqueId,
+    VENDOR_NAME,
+} from './ids.ts';
 
 /** the messages of an aggregate error's causes, matter.js style (`errors`, `cause`), flattened */
 export function nestedErrors(error: unknown, depth = 0): string[] {
@@ -389,16 +401,18 @@ export class Bridge {
                 deviceType: AggregatorEndpoint.deviceType,
             },
             basicInformation: {
-                vendorName: 'mqtt2matter',
+                vendorName: VENDOR_NAME,
                 vendorId: VendorId(vendorId),
                 nodeLabel: name,
-                productName: 'mqtt2matter',
-                productLabel: name,
+                productName: VENDOR_NAME,
+                productLabel: BRIDGE_PRODUCT_LABEL,
                 productId,
                 serialNumber: label32(`mqtt2matter-${this.id}`, this.id),
                 uniqueId: uniqueId('bridge', this.id),
-                softwareVersionString: softwareVersion,
-                hardwareVersionString: '1',
+                softwareVersion: softwareVersionNumber(softwareVersion),
+                softwareVersionString: softwareVersion.slice(0, 64),
+                hardwareVersion: HARDWARE_VERSION,
+                hardwareVersionString: String(HARDWARE_VERSION),
             },
         });
         this.node = node;
@@ -482,17 +496,13 @@ export class Bridge {
                 id: deviceEndpointId(key),
                 parts,
                 ...mainBuilt.defaults,
-                bridgedDeviceBasicInformation: {
-                    nodeLabel: label32(device.name, key),
-                    vendorName: label32(device.vendor, 'mqtt2matter'),
-                    productName: label32(device.model, primaryType),
-                    productLabel: label32(device.model, primaryType),
-                    serialNumber: label32(device.serial, key),
-                    uniqueId: uniqueId(this.id, key),
-                    softwareVersionString: this.options.softwareVersion,
-                    hardwareVersionString: '1',
-                    reachable: true,
-                },
+                bridgedDeviceBasicInformation: bridgedInformation(
+                    this.id,
+                    key,
+                    device,
+                    primaryType,
+                    this.options.softwareVersion,
+                ),
             });
             mainEntry = {config: main, built: mainBuilt, endpoint};
         } catch (error) {

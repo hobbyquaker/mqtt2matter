@@ -21,7 +21,15 @@ import {type Issue, validateDevice} from '../model/validate.ts';
 import {nestedErrors} from './bridge.ts';
 import {MATTER_LEVELS} from './node-manager.ts';
 import {buildEndpoint} from './device-types.ts';
-import {childEndpointId, deviceEndpointId, label32, uniqueId} from './ids.ts';
+import {
+    BRIDGE_PRODUCT_LABEL,
+    bridgedInformation,
+    childEndpointId,
+    deviceEndpointId,
+    HARDWARE_VERSION,
+    uniqueId,
+    VENDOR_NAME,
+} from './ids.ts';
 
 export interface CheckResult {
     /** device key → the issues, static and from the dry run */
@@ -55,14 +63,16 @@ export async function checkConfig(config: Config): Promise<CheckResult> {
         commissioning: {passcode: 20202021, discriminator: 3840},
         productDescription: {name: 'check', deviceType: AggregatorEndpoint.deviceType},
         basicInformation: {
-            vendorName: 'mqtt2matter',
+            vendorName: VENDOR_NAME,
             vendorId: VendorId(config.vendorId),
             nodeLabel: 'check',
-            productName: 'mqtt2matter',
-            productLabel: 'check',
+            productName: VENDOR_NAME,
+            productLabel: BRIDGE_PRODUCT_LABEL,
             productId: config.productId,
             serialNumber: 'check',
             uniqueId: uniqueId('check', 'check'),
+            softwareVersion: 1,
+            hardwareVersion: HARDWARE_VERSION,
         },
     });
     try {
@@ -87,15 +97,13 @@ export async function checkConfig(config: Config): Promise<CheckResult> {
                             id: deviceEndpointId(key),
                             parts,
                             ...built.defaults,
-                            bridgedDeviceBasicInformation: {
-                                nodeLabel: label32(device.name, key),
-                                vendorName: label32(device.vendor, 'mqtt2matter'),
-                                productName: label32(device.model, main.deviceTypes[0] ?? 'device'),
-                                productLabel: label32(device.model, main.deviceTypes[0] ?? 'device'),
-                                serialNumber: label32(device.serial, key),
-                                uniqueId: uniqueId('check', key),
-                                reachable: true,
-                            },
+                            bridgedDeviceBasicInformation: bridgedInformation(
+                                'check',
+                                key,
+                                device,
+                                main.deviceTypes[0] ?? 'device',
+                                '0.0.0',
+                            ),
                         });
                         await aggregator.add(endpoint);
                         const verdict = conformance.validate([endpoint, ...parts]);

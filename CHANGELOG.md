@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Controllers see the bridge's real version: BasicInformation carries the package version as `softwareVersion`
+  (major·1 000 000 + minor·1 000 + patch) and `softwareVersionString`, hardware version 1, and a product label
+  without the vendor name; the bridged devices' BridgedDeviceBasicInformation the same (a model that starts with
+  the vendor's name loses it in the label). matter.js no longer warns about development values at start.
+
 - Restart and update from the UI (Configuration → Version), under the service `--install` sets up: the restart
   exits with code 75, on which the unit restarts the service; the update checks npm for a newer `mqtt2matter`
   ("not published" until it is there) and hands the version to a root oneshot (`mqtt2matter-update.path` →
