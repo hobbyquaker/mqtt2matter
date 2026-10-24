@@ -1,0 +1,56 @@
+{
+  "mqtt": {
+    "url": "mqtt://localhost:1883"
+  },
+  "storage": "./data",
+  "log": {
+    "level": "info",
+    "matter": "warn"
+  },
+  "bridges": {
+    "default": {
+      "port": 5540
+    }
+  },
+  "devices": {
+    "living-room-plug": {
+      "name": "Living room plug",
+      "vendor": "Tasmota",
+      "model": "Sonoff S26",
+      "endpoints": [
+        {
+          "deviceTypes": ["OnOffPlugInUnit"],
+          "bindings": [
+            {
+              "attribute": "OnOff.onOff",
+              "status": {
+                "topic": "stat/s26/RESULT",
+                "extract": "$.POWER",
+                "map": {"ON": true, "OFF": false}
+              },
+              "command": {
+                "topic": "cmnd/s26/POWER",
+                "format": {"true": "ON", "false": "OFF"}
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "hallway-light": {
+      "name": "Hallway light",
+      "endpoints": [
+        {
+          "deviceTypes": ["OnOffLight"],
+          "bindings": [
+            {
+              "attribute": "OnOff.onOff",
+              "status": {"topic": "home/hallway/light/state", "type": "boolean"},
+              "command": {"topic": "home/hallway/light/set", "qos": 1}
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
