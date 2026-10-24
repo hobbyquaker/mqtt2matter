@@ -1,0 +1,28 @@
+{
+  "id": "tasmota/relay",
+  "name": "Tasmota relay",
+  "description": "One relay of a Tasmota device as a plug-in unit: POWER over stat/cmnd, availability from LWT.",
+  "vendor": "Tasmota",
+  "format": 1,
+  "variables": {
+    "topic": {"label": "Tasmota topic", "description": "The device's MQTT topic (Configuration → MQTT → Topic)"},
+    "name": {"label": "Name", "default": "Relay"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Tasmota",
+    "availability": {"topic": "tele/%topic%/LWT", "online": "Online", "offline": "Offline"},
+    "endpoints": [
+      {
+        "deviceTypes": ["OnOffPlugInUnit"],
+        "bindings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {"topic": "stat/%topic%/RESULT", "extract": "$.POWER", "map": {"ON": true, "OFF": false}},
+            "command": {"topic": "cmnd/%topic%/POWER", "format": {"true": "ON", "false": "OFF"}}
+          }
+        ]
+      }
+    ]
+  }
+}
