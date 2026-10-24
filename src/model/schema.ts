@@ -279,9 +279,15 @@ export const DeviceSchema = z
         path: ['endpoints'],
     });
 export type DeviceConfig = z.infer<typeof DeviceSchema>;
+/** a device as written in the file — no defaults filled in; what importers generate and the UI edits */
+export type DeviceInput = z.input<typeof DeviceSchema>;
+export type EndpointInput = z.input<typeof EndpointSchema>;
+export type BindingInput = z.input<typeof BindingSchema>;
+export type SourceInput = z.input<typeof SourceSchema>;
 
 export const DevicesSchema = z.record(
     z.string().regex(DEVICE_KEY_PATTERN, 'a device key is 1–64 characters of A–Z a–z 0–9 : . _ -'),
     DeviceSchema,
 );
 export type Devices = z.infer<typeof DevicesSchema>;
+export type DevicesInput = z.input<typeof DevicesSchema>;
