@@ -22,11 +22,11 @@ commissioning windows; keep it on a trusted network or behind a reverse proxy th
 
 ## Status and configuration
 
-| Route             | Answer                                                                                                                                                                                                                                                                      |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/status` | `{version, uptime (s), running, configPath, mqtt: {url, connected}, bridges: [bridge…], devices: n, importers: ["z2m", …]}`                                                                                                                                                 |
-| `GET /api/config` | `{path, settings, overridden, effective}` — `settings` is the file's top level without `devices` (what the editor saves back), `overridden` the paths the environment sets (`["mqtt.url"]`), `effective` the running values with the MQTT password masked                   |
-| `PUT /api/config` | body: the `settings` object (`mqtt`, `storage`, `log`, `vendorId`, `productId`, `bridges`, `server`, `presets`); validated as a whole; `409` when a path the environment owns would change; answers `{saved: true, restartNeeded: true}` — settings apply at the next start |
+| Route             | Answer                                                                                                                                                                                                                                                                                   |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/status` | `{version, uptime (s), running, configPath, mqtt: {url, connected}, bridges: [bridge…], devices: n, importers: ["z2m", …]}`                                                                                                                                                              |
+| `GET /api/config` | `{path, settings, overridden, effective}` — `settings` is the file's top level without `devices` (what the editor saves back), `overridden` the paths the environment sets (`["mqtt.url"]`), `effective` the running values with the MQTT password masked                                |
+| `PUT /api/config` | body: the `settings` object (`mqtt`, `storage`, `log`, `vendorId`, `productId`, `bridges`, `server`, `presets`, `importers`); validated as a whole; `409` when a path the environment owns would change; answers `{saved: true, restartNeeded: true}` — settings apply at the next start |
 
 ## Devices
 
@@ -72,16 +72,18 @@ commissioning windows; keep it on a trusted network or behind a reverse proxy th
 
 ## Adopt
 
-Importers (`src/importers/`, phases 2 and 4) describe devices from a source; the server compares them
-with the configured devices (`source.kind` and `source.key`).
+The importers ([importers.md](importers.md)) describe devices from a source; the server subscribes their topics
+(`zigbee2mqtt/bridge/devices`, `…/groups`), hands them every message, and asks them for the report over the
+devices as they stand in the file. The server moves results into the file and the running bridge; the logic —
+baseline, the user's edits, conflicts, orphaning — is the importer's.
 
-| Route                              | Answer                                                                                                                                                                                                                                                                                                                                                                                                          |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/adopt`                   | `{importers: [kind…], entries: [{kind, sourceKey, name, vendor, model, state, deviceKey, changes?}]}` — `state` is `new` (not configured; `deviceKey` is the key it would get), `adopted` (configured and equal), `changed` (the source would change it; `changes: [{path, before, after}]`), `orphaned` (configured, gone from the source — marked `source.orphaned` in the file, never removed by the bridge) |
-| `POST /api/adopt/resync`           | every importer reads its source again; answers like `GET`                                                                                                                                                                                                                                                                                                                                                       |
-| `POST /api/adopt/:kind/:sourceKey` | body `{key?}`: a `new` entry is adopted under `key` (default: `deviceKey`); a `changed` one is replaced by the source's version (its key, bridge and `enabled` are kept, the user's edits are not); answers the device like `GET /api/devices/:key`                                                                                                                                                             |
+| Route                        | Answer                                                                                                                                                                                                                                                                                                                                                |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/adopt`             | `{importers: [kind…], entries: [SyncEntry…]}` — the importer's `diff` over the file's devices; each entry is `{importer, key, kind: "device" \| "group", name, status, conflicts: [{path, user, before, now, applied}], edits, unmapped, notes}` with `status` one of `new`, `unchanged`, `updated`, `restored`, `orphaned`, `invalid`, `unsupported` |
+| `POST /api/adopt/resync`     | runs `adopt` with every importer over the file (`resync: true`, `orphan: true`, no new keys): updated and restored devices take the new baseline with the user's edits reapplied, missing ones are marked `source.orphaned`; every device that changed is written and rebuilt. Answers `{importers, entries, written: [key…]}`                        |
+| `POST /api/adopt/:kind/:key` | adopts one entry: a `new` one is added, an `updated` or `restored` one re-synced; nothing else is touched (`orphan: false`). `409` for an `unsupported` or `invalid` entry, `404` for an unknown one. Answers the device like `GET /api/devices/:key` plus `entry`                                                                                    |
 
-Removing an orphaned device is `DELETE /api/devices/:key`.
+An orphaned device is never removed by the bridge: removing it is `DELETE /api/devices/:key`.
 
 ## Import and export
 

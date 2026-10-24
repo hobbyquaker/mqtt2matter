@@ -15,9 +15,8 @@ import {WebSocket} from 'ws';
 import {App} from '../src/app.ts';
 import {parseConfig} from '../src/config/load.ts';
 import {createLogger} from '../src/log.ts';
-import type {DeviceConfig} from '../src/model/schema.ts';
 import {ConfigStore} from '../src/server/config-store.ts';
-import type {DiscoveredDevice, Importer} from '../src/server/importers.ts';
+import {Z2mImporter} from '../src/server/importers.ts';
 import {LogBuffer} from '../src/server/log-buffer.ts';
 import {Server} from '../src/server/server.ts';
 import {startBroker, type Broker} from './helpers/broker.ts';
@@ -31,68 +30,9 @@ let base: string;
 let observer: MqttClient;
 const received: {topic: string; payload: string}[] = [];
 
-/** a test double of an importer: what it discovers is set by the test */
-class FakeImporter implements Importer {
-    readonly kind = 'z2m' as const;
-    devices: DiscoveredDevice[] = [];
-    resyncs = 0;
-    private readonly listeners = new Set<() => void>();
-
-    discovered(): readonly DiscoveredDevice[] {
-        return this.devices;
-    }
-
-    async resync(): Promise<void> {
-        this.resyncs++;
-        await Promise.resolve();
-    }
-
-    onChange(listener: () => void): () => void {
-        this.listeners.add(listener);
-        return () => {
-            this.listeners.delete(listener);
-        };
-    }
-
-    set(devices: DiscoveredDevice[]): void {
-        this.devices = devices;
-        for (const listener of this.listeners) {
-            listener();
-        }
-    }
-}
-
-const importer = new FakeImporter();
-
-function discovered(key: string, name: string, topic: string): DiscoveredDevice {
-    const device: DeviceConfig = parseConfig({
-        devices: {
-            x: {
-                name,
-                vendor: 'IKEA',
-                model: 'TRADFRI bulb',
-                source: {kind: 'z2m', key, version: '2.0.0'},
-                endpoints: [
-                    {
-                        deviceTypes: ['OnOffLight'],
-                        bindings: [
-                            {
-                                attribute: 'OnOff.onOff',
-                                status: {topic: `zigbee2mqtt/${topic}`, extract: 'state', map: {ON: true, OFF: false}},
-                                command: {
-                                    topic: `zigbee2mqtt/${topic}/set`,
-                                    format: {true: 'ON', false: 'OFF'},
-                                    wrap: 'state',
-                                },
-                            },
-                        ],
-                    },
-                ],
-            },
-        },
-    }).devices.x!;
-    return {key, name, vendor: 'IKEA', model: 'TRADFRI bulb', device};
-}
+const importer = new Z2mImporter('zigbee2mqtt');
+const LIGHT = 'z2m:0xa4c138071003495f';
+const fixture = join(import.meta.dirname, 'fixtures', 'z2m', 'bridge-devices.json');
 
 async function api(method: string, path: string, body?: unknown): Promise<{status: number; json: any}> {
     const response = await fetch(`${base}${path}`, {
@@ -458,62 +398,71 @@ describe('the web server', () => {
         expect((await api('DELETE', '/api/bridges/default/fabrics/7')).status).toBe(404);
     });
 
-    it('adopts discovered devices, shows diffs on re-sync and marks orphans without removing them', async () => {
-        importer.set([discovered('0x1', 'Bulb one', 'bulb_one'), discovered('0x2', 'Bulb two', 'bulb_two')]);
+    it('adopts zigbee2mqtt devices, re-syncs them and marks orphans without removing them', async () => {
+        const corpus = JSON.parse(await readFile(fixture, 'utf8')) as {ieee_address?: string; friendly_name?: string}[];
+        const entryOf = async (key: string): Promise<any> =>
+            (await api('GET', '/api/adopt')).json.entries.find((e: any) => e.key === key);
+        await observer.publishAsync('zigbee2mqtt/bridge/devices', JSON.stringify(corpus), {retain: true});
+        await waitFor(async () => (await entryOf(LIGHT)) !== undefined, 10_000, 'discovery');
         let list = await api('GET', '/api/adopt');
-        expect(list.json.entries.map((e: any) => [e.sourceKey, e.state, e.deviceKey])).toEqual([
-            ['0x1', 'new', '0x1'],
-            ['0x2', 'new', '0x2'],
-        ]);
-
-        const adopted = await api('POST', '/api/adopt/z2m/0x1', {key: 'bulb-one'});
-        expect(adopted.status).toBe(200);
-        expect(adopted.json.key).toBe('bulb-one');
-        expect(adopted.json.device.source).toEqual({kind: 'z2m', key: '0x1', version: '2.0.0', orphaned: false});
-        expect(adopted.json.built).toBe(true);
-        expect((await api('POST', '/api/adopt/z2m/0x2', {key: 'bulb-one'})).status).toBe(409);
-
-        // the source changes: the entry shows the diff, adopting again takes it
-        importer.set([discovered('0x1', 'Bulb one', 'bulb_one_renamed'), discovered('0x2', 'Bulb two', 'bulb_two')]);
-        list = await api('GET', '/api/adopt');
-        const changed = list.json.entries.find((e: any) => e.sourceKey === '0x1');
-        expect(changed.state).toBe('changed');
-        expect(changed.changes).toEqual([
-            {
-                path: 'endpoints[0].bindings[0].status.topic',
-                before: 'zigbee2mqtt/bulb_one',
-                after: 'zigbee2mqtt/bulb_one_renamed',
-            },
-            {
-                path: 'endpoints[0].bindings[0].command.topic',
-                before: 'zigbee2mqtt/bulb_one/set',
-                after: 'zigbee2mqtt/bulb_one_renamed/set',
-            },
-        ]);
-        const updated = await api('POST', '/api/adopt/z2m/0x1', {});
-        expect(updated.json.device.endpoints[0].bindings[0].status.topic).toBe('zigbee2mqtt/bulb_one_renamed');
-        list = await api('GET', '/api/adopt');
-        expect(list.json.entries.find((e: any) => e.sourceKey === '0x1').state).toBe('adopted');
-
-        // the source forgets the device: orphaned, still configured, still built
-        importer.set([discovered('0x2', 'Bulb two', 'bulb_two')]);
-        const resynced = await api('POST', '/api/adopt/resync');
-        expect(importer.resyncs).toBe(1);
-        expect(resynced.json.entries.find((e: any) => e.sourceKey === '0x1')).toMatchObject({
-            state: 'orphaned',
-            deviceKey: 'bulb-one',
+        expect(list.json.importers).toEqual(['z2m']);
+        expect(await entryOf(LIGHT)).toMatchObject({
+            status: 'new',
+            importer: 'z2m',
+            kind: 'device',
+            name: 'Gledopto RGBCTT light I',
+            conflicts: [],
         });
-        const device = await api('GET', '/api/devices/bulb-one');
+        const unsupported = list.json.entries.find((e: any) => e.status === 'unsupported');
+        expect(unsupported.notes.length).toBeGreaterThan(0);
+
+        const adopted = await api('POST', `/api/adopt/z2m/${encodeURIComponent(LIGHT)}`, {});
+        expect(adopted.status).toBe(200);
+        expect(adopted.json.key).toBe(LIGHT);
+        expect(adopted.json.device.source).toMatchObject({kind: 'z2m', key: '0xa4c138071003495f'});
+        expect(adopted.json.built).toBe(true);
+        expect(adopted.json.entry.status).toBe('new');
+        expect((await api('GET', '/api/devices')).json.map((d: any) => d.key)).toContain(LIGHT);
+        expect((await entryOf(LIGHT)).status).toBe('unchanged');
+        expect((await api('POST', `/api/adopt/z2m/${encodeURIComponent(unsupported.key)}`, {})).status).toBe(409);
+        expect((await api('POST', '/api/adopt/z2m/nope', {})).status).toBe(404);
+        expect((await api('POST', '/api/adopt/ha-discovery/x', {})).status).toBe(404);
+
+        // zigbee2mqtt renames the light: the entry is updated, adopting again takes the new name and topics
+        const renamed = corpus.map((d) =>
+            d.ieee_address === '0xa4c138071003495f' ? {...d, friendly_name: 'Gledopto renamed'} : d,
+        );
+        await observer.publishAsync('zigbee2mqtt/bridge/devices', JSON.stringify(renamed), {retain: true});
+        await waitFor(async () => (await entryOf(LIGHT))?.status === 'updated', 10_000, 'updated');
+        const updated = await api('POST', `/api/adopt/z2m/${encodeURIComponent(LIGHT)}`, {});
+        expect(updated.json.device.name).toBe('Gledopto renamed');
+        expect(updated.json.device.endpoints[0].bindings[0].status.topic).toBe('zigbee2mqtt/Gledopto renamed');
+        expect((await entryOf(LIGHT)).status).toBe('unchanged');
+
+        // the light disappears from zigbee2mqtt: orphaned on re-sync, still configured, still built
+        const without = corpus.filter((d) => d.ieee_address !== '0xa4c138071003495f');
+        await observer.publishAsync('zigbee2mqtt/bridge/devices', JSON.stringify(without), {retain: true});
+        await waitFor(async () => (await entryOf(LIGHT))?.status === 'orphaned', 10_000, 'orphaned');
+        const resynced = await api('POST', '/api/adopt/resync');
+        expect(resynced.json.written).toEqual([LIGHT]);
+        const device = await api('GET', `/api/devices/${encodeURIComponent(LIGHT)}`);
         expect(device.json.device.source.orphaned).toBe(true);
         expect(device.json.built).toBe(true);
         const file = JSON.parse(await readFile(join(dir, 'mqtt2matter.json'), 'utf8'));
-        expect(file.devices['bulb-one'].source.orphaned).toBe(true);
+        expect(file.devices[LIGHT].source.orphaned).toBe(true);
+
+        // back again: restored by the next re-sync
+        await observer.publishAsync('zigbee2mqtt/bridge/devices', JSON.stringify(corpus), {retain: true});
+        await waitFor(async () => (await entryOf(LIGHT))?.status === 'restored', 10_000, 'restored');
+        await api('POST', '/api/adopt/resync');
+        expect((await api('GET', `/api/devices/${encodeURIComponent(LIGHT)}`)).json.device.source.orphaned).toBeFalsy();
 
         // removal is a click
-        expect((await api('DELETE', '/api/devices/bulb-one')).status).toBe(204);
-        expect((await api('GET', '/api/devices/bulb-one')).status).toBe(404);
-        expect((await api('DELETE', '/api/devices/bulb-one')).status).toBe(404);
-    }, 30_000);
+        expect((await api('DELETE', `/api/devices/${encodeURIComponent(LIGHT)}`)).status).toBe(204);
+        expect((await entryOf(LIGHT)).status).toBe('new');
+        list = await api('GET', '/api/adopt');
+        expect(list.json.entries.length).toBeGreaterThan(30);
+    }, 60_000);
 
     it('exports and imports', async () => {
         const all = await fetch(`${base}/api/export`);

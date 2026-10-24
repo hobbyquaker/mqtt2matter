@@ -1,12 +1,9 @@
-/* The server's pure parts: the compact file form round-trips, the adopt comparison, the log buffer,
-   the router. */
+/* The server's pure parts: the compact file form round-trips, the log buffer, the preview stages. */
 
 import {describe, expect, it} from 'vitest';
 
-import {parseConfig} from '../src/config/load.ts';
 import {DeviceSchema} from '../src/model/schema.ts';
 import {compactDevice} from '../src/server/compact.ts';
-import {adoptEntries, deviceKeyFor, diff} from '../src/server/importers.ts';
 import {LogBuffer, parseLogLine} from '../src/server/log-buffer.ts';
 import {previewStatus} from '../src/server/preview.ts';
 
@@ -85,75 +82,6 @@ describe('compactDevice', () => {
             availability: {mode: 'all', topics: [{topic: 'a'}, {topic: 'b', online: 'up', offline: 'down'}]},
             endpoints: [{deviceTypes: ['OnOffLight']}],
         });
-    });
-});
-
-describe('adopt', () => {
-    const generated = (key: string, topic: string) =>
-        parseConfig({
-            devices: {
-                x: {
-                    name: key,
-                    source: {kind: 'z2m', key},
-                    endpoints: [
-                        {
-                            deviceTypes: ['ContactSensor'],
-                            bindings: [
-                                {
-                                    attribute: 'BooleanState.stateValue',
-                                    status: {topic, extract: 'contact', type: 'boolean'},
-                                },
-                            ],
-                        },
-                    ],
-                },
-            },
-        }).devices.x!;
-
-    it('diffs JSON by path', () => {
-        expect(diff({a: 1, b: [1, 2], c: {d: 'x'}}, {a: 1, b: [1, 3], c: {d: 'y', e: 1}})).toEqual([
-            {path: 'b[1]', before: 2, after: 3},
-            {path: 'c.d', before: 'x', after: 'y'},
-            {path: 'c.e', before: undefined, after: 1},
-        ]);
-        expect(diff([1, 2], [1])).toEqual([{path: '', before: [1, 2], after: [1]}]);
-    });
-
-    it('derives device keys the pattern allows, without collisions', () => {
-        expect(deviceKeyFor('Living room/lamp', new Set())).toBe('Living_room_lamp');
-        expect(deviceKeyFor('0x00124b0022f1a2b3', new Set(['0x00124b0022f1a2b3']))).toBe('0x00124b0022f1a2b3_2');
-        expect(deviceKeyFor('ßß', new Set())).toBe('device');
-        expect(deviceKeyFor('a'.repeat(80), new Set(['a'.repeat(64)]))).toBe(`${'a'.repeat(62)}_2`);
-    });
-
-    it('classifies discovered devices against the configured ones', () => {
-        const importer = {
-            kind: 'z2m' as const,
-            discovered: () => [
-                {key: 'new', name: 'New', device: generated('new', 'z/new')},
-                {key: 'same', name: 'Same', device: generated('same', 'z/same')},
-                {key: 'moved', name: 'Moved', device: generated('moved', 'z/moved2')},
-            ],
-            resync: () => Promise.resolve(),
-            onChange: () => () => undefined,
-        };
-        const devices = {
-            same: {...generated('same', 'z/same'), bridge: 'b', enabled: false},
-            moved: generated('moved', 'z/moved'),
-            gone: generated('gone', 'z/gone'),
-            manual: parseConfig({devices: {m: {name: 'Manual', endpoints: [{deviceTypes: ['OnOffLight']}]}}}).devices
-                .m!,
-        };
-        const entries = adoptEntries(devices, [importer]);
-        expect(entries.map((e) => [e.sourceKey, e.state, e.deviceKey])).toEqual([
-            ['new', 'new', 'new'],
-            ['same', 'adopted', 'same'],
-            ['moved', 'changed', 'moved'],
-            ['gone', 'orphaned', 'gone'],
-        ]);
-        expect(entries[2]?.changes).toEqual([
-            {path: 'endpoints[0].bindings[0].status.topic', before: 'z/moved', after: 'z/moved2'},
-        ]);
     });
 });
 

@@ -15,14 +15,14 @@ import type {Logger} from '../log.ts';
 import type {DeviceHandle} from '../matter/bridge.ts';
 import {checkConfig} from '../matter/check.ts';
 import {applyPreset} from '../model/presets.ts';
-import {DeviceSchema, type DeviceConfig} from '../model/schema.ts';
+import {DeviceSchema, type DeviceConfig, type DevicesInput} from '../model/schema.ts';
 import {type Issue, validateDevice} from '../model/validate.ts';
 import {catalogJson, clusterJson} from './catalog.ts';
 import {compactDevice} from './compact.ts';
 import type {ConfigStore} from './config-store.ts';
 import {EventHub} from './events.ts';
 import {HttpError, type Request, Router, sendJson, serveStatic} from './http.ts';
-import {type AdoptEntry, type Importer, adoptEntries, adoptedDevice} from './importers.ts';
+import type {Importer, SyncEntry} from './importers.ts';
 import type {LogBuffer} from './log-buffer.ts';
 import {loadPresets} from './presets.ts';
 import {previewCommand, previewStatus} from './preview.ts';
@@ -170,6 +170,16 @@ export class Server {
                 this.log.warn(`subscribing ${topic} for the UI failed: ${String(error)}`);
             }
         }
+        for (const importer of this.importers()) {
+            for (const topic of importer.topics) {
+                try {
+                    await this.app.mqtt.subscribe(topic);
+                } catch (error) {
+                    this.log.warn(`subscribing ${topic} for ${importer.kind} failed: ${String(error)}`);
+                }
+            }
+            importer.load(this.app.mqtt.cache);
+        }
         const onMessage = (topic: string, payload: Buffer, retain: boolean): void => {
             this.hub.broadcast({
                 type: 'mqtt',
@@ -178,6 +188,11 @@ export class Server {
                 retain,
                 ts: Date.now(),
             });
+            for (const importer of this.importers()) {
+                if (importer.handle(topic, payload)) {
+                    this.hub.broadcast({type: 'discovered'});
+                }
+            }
         };
         this.app.mqtt.on('message', onMessage);
         this.unsubscribe.push(() => {
@@ -200,13 +215,6 @@ export class Server {
                 this.hub.broadcast({type: 'log', entry});
             }),
         );
-        for (const importer of this.options.importers ?? []) {
-            this.unsubscribe.push(
-                importer.onChange(() => {
-                    this.hub.broadcast({type: 'discovered'});
-                }),
-            );
-        }
         for (const [key, handle] of this.app.nodes.handles()) {
             this.observe(key, handle);
         }
@@ -457,21 +465,36 @@ export class Server {
         return this.options.importers ?? [];
     }
 
-    private async adoptList(): Promise<AdoptEntry[]> {
-        const entries = adoptEntries(this.app.config.devices, this.importers());
-        // an orphan is marked in the file, so the mark survives a restart without the source
-        for (const entry of entries) {
-            const device = this.app.config.devices[entry.deviceKey];
-            if (device === undefined || entry.state === 'new') {
+    private importer(kind: string): Importer {
+        const importer = this.importers().find((i) => i.kind === kind);
+        if (importer === undefined) {
+            throw new HttpError(404, `no importer ${kind}`);
+        }
+        return importer;
+    }
+
+    /** the importers' reports over the file's devices, each entry tagged with its importer */
+    private adoptReport(): (SyncEntry & {importer: string})[] {
+        const devices = this.store.rawDevices as DevicesInput;
+        return this.importers().flatMap((importer) =>
+            importer.diff(devices).map((entry) => ({...entry, importer: importer.kind})),
+        );
+    }
+
+    /** write the devices an adoption changed into the file and the bridge; returns the keys written */
+    private async applyAdoption(before: DevicesInput, after: DevicesInput, only?: string): Promise<string[]> {
+        const written: string[] = [];
+        for (const [key, device] of Object.entries(after)) {
+            if (only !== undefined && key !== only) {
                 continue;
             }
-            const orphaned = entry.state === 'orphaned';
-            if ((device.source.orphaned === true) !== orphaned) {
-                device.source = {...device.source, orphaned};
-                await this.store.saveDevice(entry.deviceKey, compactDevice(device));
+            if (JSON.stringify(before[key]) === JSON.stringify(device)) {
+                continue;
             }
+            await this.saveDevice(key, device);
+            written.push(key);
         }
-        return entries;
+        return written;
     }
 
     // ── the routes ─────────────────────────────────────────────────────────────────────────────────
@@ -506,6 +529,7 @@ export class Server {
                 bridges: this.app.config.bridges,
                 server: this.app.config.server,
                 presets: this.app.config.presets,
+                importers: this.app.config.importers,
             },
         }));
         r.add('PUT', '/api/config', async (request) => {
@@ -666,45 +690,33 @@ export class Server {
             this.hub.broadcast({type: 'bridges'});
         });
 
-        r.add('GET', '/api/adopt', async () => ({
+        r.add('GET', '/api/adopt', () => ({
             importers: this.importers().map((i) => i.kind),
-            entries: await this.adoptList(),
+            entries: this.adoptReport(),
         }));
         r.add('POST', '/api/adopt/resync', async () => {
+            const written: string[] = [];
             for (const importer of this.importers()) {
-                await importer.resync();
+                const before = structuredClone(this.store.rawDevices) as DevicesInput;
+                const {devices} = importer.adopt(before, {keys: [], resync: true, orphan: true});
+                written.push(...(await this.applyAdoption(before, devices)));
             }
-            return {importers: this.importers().map((i) => i.kind), entries: await this.adoptList()};
+            return {importers: this.importers().map((i) => i.kind), entries: this.adoptReport(), written};
         });
-        r.add('POST', '/api/adopt/:kind/:sourceKey', async (request) => {
-            const kind = request.params.kind ?? '';
-            const sourceKey = request.params.sourceKey ?? '';
-            const importer = this.importers().find((i) => i.kind === kind);
-            if (importer === undefined) {
-                throw new HttpError(404, `no importer ${kind}`);
+        r.add('POST', '/api/adopt/:kind/:key', async (request) => {
+            const importer = this.importer(request.params.kind ?? '');
+            const key = request.params.key ?? '';
+            const before = structuredClone(this.store.rawDevices) as DevicesInput;
+            const {devices, report} = importer.adopt(before, {keys: [key], resync: true, orphan: false});
+            const entry = report.find((e) => e.key === key);
+            if (entry === undefined) {
+                throw new HttpError(404, `${importer.kind} does not know ${key}`);
             }
-            const found = importer.discovered().find((d) => d.key === sourceKey);
-            if (found === undefined) {
-                throw new HttpError(404, `${kind} does not know ${sourceKey}`);
+            if (entry.status === 'unsupported' || entry.status === 'invalid') {
+                throw new HttpError(409, `${key} cannot be adopted: ${entry.notes.join('; ')}`);
             }
-            const entries = adoptEntries(this.app.config.devices, [importer]);
-            const entry = entries.find((e) => e.sourceKey === sourceKey);
-            const wanted = body(request).key;
-            const key =
-                entry?.state === 'new' && typeof wanted === 'string' && wanted !== '' ? wanted : entry?.deviceKey;
-            if (key === undefined) {
-                throw new HttpError(409, `${sourceKey} cannot be adopted`);
-            }
-            const existing = this.app.config.devices[key];
-            const device = adoptedDevice(found, importer.kind);
-            if (existing !== undefined && entry?.state !== 'new') {
-                // a re-sync keeps what the user owns: the key, the bridge, enabled
-                device.bridge = existing.bridge;
-                device.enabled = existing.enabled;
-            } else if (existing !== undefined) {
-                throw new HttpError(409, `device key ${key} is taken`);
-            }
-            return await this.saveDevice(key, device);
+            await this.applyAdoption(before, devices, key);
+            return {...(this.deviceJson(key) as object), entry};
         });
 
         r.add('GET', '/api/export', (request, response) => {

@@ -34,6 +34,7 @@ export const SETTINGS_KEYS = [
     'bridges',
     'server',
     'presets',
+    'importers',
 ] as const;
 
 export class ConfigStore {
