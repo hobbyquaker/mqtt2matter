@@ -32,6 +32,11 @@ Assistant, Google Home or Alexa like any Matter bridge; the devices appear as br
 [docs/config.md](docs/config.md) describes the configuration, [docs/architecture.md](docs/architecture.md)
 the module layout and its rules.
 
+## Looking for the other direction?
+
+To bridge real Matter devices to MQTT, use [she](https://github.com/hobbyquaker/she) (smart home engine): it
+has a built-in Matter controller and MQTT.
+
 ## Develop
 
 ```sh
