@@ -6,3 +6,8 @@ Licensed under the Apache License, Version 2.0 (see LICENSE).
 This product builds on matter.js (https://github.com/matter-js/matter.js, Apache-2.0) and
 MQTT.js (https://github.com/mqttjs/MQTT.js, MIT) as dependencies; it contains no copied code
 from either, nor from matterbridge or its plugins.
+
+The test fixtures test/fixtures/z2m/bridge-devices.json and bridge-groups.json are copied
+unchanged from matterbridge-zigbee2mqtt (https://github.com/Luligu/matterbridge-zigbee2mqtt,
+src/mock/, commit c72dd312d0899e930aec220e67b8959f10221eb0), Copyright 2023-2025 Luca Liguori,
+licensed under the Apache License, Version 2.0. They are used as a test corpus only.

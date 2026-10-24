@@ -3,4 +3,5 @@
 export {App, VERSION, type AppOptions} from './app.ts';
 export * from './config/index.ts';
 export * from './model/index.ts';
+export * from './importers/index.ts';
 export {createLogger, silentLogger, type Logger, type LogLevel} from './log.ts';
