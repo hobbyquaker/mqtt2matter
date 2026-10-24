@@ -16,10 +16,11 @@ import {App} from '../src/app.ts';
 import {parseConfig} from '../src/config/load.ts';
 import {createLogger} from '../src/log.ts';
 import {ConfigStore} from '../src/server/config-store.ts';
-import {Z2mImporter} from '../src/server/importers.ts';
+import {HaImporter, Z2mImporter} from '../src/server/importers.ts';
 import {LogBuffer} from '../src/server/log-buffer.ts';
 import {Server} from '../src/server/server.ts';
 import {startBroker, type Broker} from './helpers/broker.ts';
+import {corpusMessages} from './helpers/ha-corpus.ts';
 import {freeUdpPort, waitFor} from './helpers/util.ts';
 
 let broker: Broker;
@@ -31,6 +32,7 @@ let observer: MqttClient;
 const received: {topic: string; payload: string}[] = [];
 
 const importer = new Z2mImporter('zigbee2mqtt');
+const haImporter = new HaImporter('homeassistant');
 const LIGHT = 'z2m:0xa4c138071003495f';
 const fixture = join(import.meta.dirname, 'fixtures', 'z2m', 'bridge-devices.json');
 
@@ -111,7 +113,7 @@ beforeAll(async () => {
         host: '127.0.0.1',
         port: 0,
         uiDir: join(dir, 'no-ui'),
-        importers: [importer],
+        importers: [importer, haImporter],
         topics: ['#'],
     });
     await server.listen();
@@ -139,7 +141,7 @@ describe('the web server', () => {
         expect(status.json.running).toBe(true);
         expect(status.json.mqtt.connected).toBe(true);
         expect(status.json.bridges[0].id).toBe('default');
-        expect(status.json.importers).toEqual(['z2m']);
+        expect(status.json.importers).toEqual(['z2m', 'ha-discovery']);
 
         const config = await api('GET', '/api/config');
         expect(config.json.settings.mqtt.url).toBe(broker.url);
@@ -405,7 +407,7 @@ describe('the web server', () => {
         await observer.publishAsync('zigbee2mqtt/bridge/devices', JSON.stringify(corpus), {retain: true});
         await waitFor(async () => (await entryOf(LIGHT)) !== undefined, 10_000, 'discovery');
         let list = await api('GET', '/api/adopt');
-        expect(list.json.importers).toEqual(['z2m']);
+        expect(list.json.importers).toEqual(['z2m', 'ha-discovery']);
         expect(await entryOf(LIGHT)).toMatchObject({
             status: 'new',
             importer: 'z2m',
@@ -427,6 +429,7 @@ describe('the web server', () => {
         expect((await api('POST', `/api/adopt/z2m/${encodeURIComponent(unsupported.key)}`, {})).status).toBe(409);
         expect((await api('POST', '/api/adopt/z2m/nope', {})).status).toBe(404);
         expect((await api('POST', '/api/adopt/ha-discovery/x', {})).status).toBe(404);
+        expect((await api('POST', '/api/adopt/nope/x', {})).status).toBe(404);
 
         // zigbee2mqtt renames the light: the entry is updated, adopting again takes the new name and topics
         const renamed = corpus.map((d) =>
@@ -462,6 +465,51 @@ describe('the web server', () => {
         expect((await entryOf(LIGHT)).status).toBe('new');
         list = await api('GET', '/api/adopt');
         expect(list.json.entries.length).toBeGreaterThan(30);
+    }, 60_000);
+
+    it('adopts a Home Assistant discovery device, shows its area, orphans it on an empty payload', async () => {
+        const KEY = 'ha:aa0000000002';
+        const entryOf = async (key: string): Promise<any> =>
+            (await api('GET', '/api/adopt')).json.entries.find((e: any) => e.key === key);
+        const topics = [
+            'homeassistant/switch/usb-relay-02/relay/config',
+            'homeassistant/binary_sensor/usb-relay-02/button/config',
+        ];
+        const messages = corpusMessages('esphome').filter((m) => topics.includes(m.topic));
+        expect(messages).toHaveLength(2);
+        for (const message of messages) {
+            await observer.publishAsync(message.topic, message.payload, {retain: true});
+        }
+        await waitFor(async () => (await entryOf(KEY)) !== undefined, 10_000, 'discovery');
+        expect(await entryOf(KEY)).toMatchObject({
+            status: 'new',
+            importer: 'ha-discovery',
+            kind: 'device',
+            name: 'Fairy lights',
+            area: 'Küche',
+            unmapped: [
+                'binary_sensor "button": no device_class; a binary sensor without one has no Matter sensor type',
+            ],
+        });
+        const adopted = await api('POST', `/api/adopt/ha-discovery/${encodeURIComponent(KEY)}`, {});
+        expect(adopted.status).toBe(200);
+        expect(adopted.json.device.source).toMatchObject({kind: 'ha-discovery', key: 'aa0000000002'});
+        expect(adopted.json.device.endpoints[0].attributes.Descriptor.tagList[0]).toMatchObject({
+            namespaceId: 16,
+            tag: 47,
+        });
+        expect(adopted.json.built).toBe(true);
+        expect((await entryOf(KEY)).status).toBe('unchanged');
+
+        // the device withdraws its discovery: orphaned on re-sync, never removed
+        for (const topic of topics) {
+            await observer.publishAsync(topic, '', {retain: true});
+        }
+        await waitFor(async () => (await entryOf(KEY))?.status === 'orphaned', 10_000, 'orphaned');
+        const resynced = await api('POST', '/api/adopt/resync');
+        expect(resynced.json.written).toEqual([KEY]);
+        expect((await api('GET', `/api/devices/${encodeURIComponent(KEY)}`)).json.device.source.orphaned).toBe(true);
+        expect((await api('DELETE', `/api/devices/${encodeURIComponent(KEY)}`)).status).toBe(204);
     }, 60_000);
 
     it('exports and imports', async () => {

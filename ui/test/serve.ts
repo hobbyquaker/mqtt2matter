@@ -15,10 +15,11 @@ import {App} from '../../src/app.ts';
 import {parseConfig} from '../../src/config/load.ts';
 import {createLogger} from '../../src/log.ts';
 import {ConfigStore} from '../../src/server/config-store.ts';
-import {Z2mImporter} from '../../src/server/importers.ts';
+import {HaImporter, Z2mImporter} from '../../src/server/importers.ts';
 import {LogBuffer} from '../../src/server/log-buffer.ts';
 import {Server} from '../../src/server/server.ts';
 import {startBroker} from '../../test/helpers/broker.ts';
+import {corpusMessages} from '../../test/helpers/ha-corpus.ts';
 import {freeUdpPort} from '../../test/helpers/util.ts';
 
 async function main(): Promise<void> {
@@ -119,7 +120,7 @@ async function main(): Promise<void> {
         version: '0.0.0-ui-test',
         host: '127.0.0.1',
         port: 0,
-        importers: [importer],
+        importers: [importer, new HaImporter('homeassistant', log.child('ha'))],
         topics: ['#'],
     });
     await server.listen();
@@ -148,6 +149,12 @@ async function main(): Promise<void> {
         '{"state":"ON","brightness":200,"color_temp":300}',
         {retain: true},
     );
+    // Home Assistant discovery of a few devices (the corpus of test/fixtures/ha), retained like a broker holds it
+    for (const file of ['esphome', 'tasmota', 'zigbee2mqtt']) {
+        for (const message of corpusMessages(file)) {
+            await client.publishAsync(message.topic, message.payload, {retain: true});
+        }
+    }
     let tick = 0;
     const ticker = setInterval(() => {
         tick++;

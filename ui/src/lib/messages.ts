@@ -236,9 +236,17 @@ export const MESSAGES: Record<string, Message> = {
         'Kein Importer ist eingerichtet. Entdeckte Geräte aus Zigbee2MQTT und Home-Assistant-Discovery erscheinen hier.',
         'No importer is configured. Discovered devices from Zigbee2MQTT and Home Assistant discovery appear here.',
     ),
-    'Nothing discovered yet. Zigbee2MQTT publishes its devices on <base>/bridge/devices; the bridge subscribes it.': m(
-        'Noch nichts entdeckt. Zigbee2MQTT veröffentlicht seine Geräte auf <base>/bridge/devices; die Bridge abonniert es.',
-        'Nothing discovered yet. Zigbee2MQTT publishes its devices on <base>/bridge/devices; the bridge subscribes it.',
+    'Nothing discovered yet. Zigbee2MQTT publishes its devices on <base>/bridge/devices, Home Assistant discovery under <prefix>/; the bridge subscribes both.':
+        m(
+            'Noch nichts entdeckt. Zigbee2MQTT veröffentlicht seine Geräte auf <base>/bridge/devices, Home-Assistant-Discovery unter <prefix>/; die Bridge abonniert beides.',
+            'Nothing discovered yet. Zigbee2MQTT publishes its devices on <base>/bridge/devices, Home Assistant discovery under <prefix>/; the bridge subscribes both.',
+        ),
+    Area: m('Bereich', 'Area'),
+    Native: m('Nativ', 'Native'),
+    'native: {source}': m('nativ: {source}', 'native: {source}'),
+    'Also described natively by {source} as {key}; the native description is preferred.': m(
+        'Auch nativ von {source} als {key} beschrieben; die native Beschreibung ist vorzuziehen.',
+        'Also described natively by {source} as {key}; the native description is preferred.',
     ),
     new: m('neu', 'new'),
     changed: m('geändert', 'changed'),

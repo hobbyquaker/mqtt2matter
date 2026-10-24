@@ -62,6 +62,14 @@ export const ImportersConfigSchema = z
             })
             .strict()
             .prefault({}),
+        ha: z
+            .object({
+                /** watch Home Assistant MQTT discovery under the prefix and offer its devices on the adopt page */
+                enabled: z.boolean().default(true),
+                prefix: z.string().min(1).default('homeassistant'),
+            })
+            .strict()
+            .prefault({}),
     })
     .strict();
 export type ImportersConfig = z.infer<typeof ImportersConfigSchema>;

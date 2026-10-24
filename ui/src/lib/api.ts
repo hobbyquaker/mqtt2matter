@@ -245,6 +245,10 @@ export interface AdoptEntry {
     edits: number;
     unmapped: string[];
     notes: string[];
+    /** the area the source suggests (Home Assistant's suggested_area) */
+    area?: string;
+    /** another importer describes the same device natively (its key): native preferred */
+    native?: string;
 }
 
 export interface LogEntry {

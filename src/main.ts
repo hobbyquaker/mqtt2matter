@@ -8,7 +8,7 @@ import {parseInstallArgs, runInstall, systemHost} from './commands/install.ts';
 import {ConfigError, loadConfig} from './config/load.ts';
 import {createLogger, describeError} from './log.ts';
 import {checkConfig, formatCheck} from './matter/check.ts';
-import {ConfigStore, type Importer, LogBuffer, Server, Z2mImporter} from './server/index.ts';
+import {ConfigStore, HaImporter, type Importer, LogBuffer, Server, Z2mImporter} from './server/index.ts';
 
 async function main(): Promise<void> {
     const arg = process.argv[2];
@@ -64,6 +64,9 @@ async function main(): Promise<void> {
         const importers: Importer[] = [];
         if (config.importers.z2m.enabled) {
             importers.push(new Z2mImporter(config.importers.z2m.baseTopic, log.child('z2m')));
+        }
+        if (config.importers.ha.enabled) {
+            importers.push(new HaImporter(config.importers.ha.prefix, log.child('ha')));
         }
         server = new Server({
             app,

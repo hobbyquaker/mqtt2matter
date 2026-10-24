@@ -4,14 +4,12 @@
    user's edits, conflicts, orphaning — is the importer's (docs/importers.md); the server only moves the
    results into the file and the running bridge. */
 
-import {z2m} from '../importers/index.ts';
+import {type AdoptOptions, type AdoptResult, ha, type SyncEntry, z2m} from '../importers/index.ts';
 import type {Logger} from '../log.ts';
 import type {DevicesInput} from '../model/schema.ts';
 import type {TopicCache} from '../mqtt/topic-cache.ts';
 
-export type SyncEntry = z2m.SyncEntry;
-export type AdoptOptions = z2m.AdoptOptions;
-export type AdoptResult = z2m.AdoptResult;
+export type {AdoptOptions, AdoptResult, SyncEntry};
 
 export interface Importer {
     readonly kind: 'z2m' | 'ha-discovery';
@@ -66,5 +64,44 @@ export class Z2mImporter implements Importer {
 
     adopt(devices: DevicesInput, options: AdoptOptions = {}): AdoptResult {
         return z2m.adopt(devices, this.source.discover(), options);
+    }
+}
+
+export class HaImporter implements Importer {
+    readonly kind = 'ha-discovery' as const;
+    readonly source: ha.HaSource;
+    private readonly log: Logger | undefined;
+
+    constructor(prefix = 'homeassistant', log?: Logger) {
+        this.source = new ha.HaSource(prefix);
+        this.log = log;
+    }
+
+    get topics(): readonly string[] {
+        return this.source.topics;
+    }
+
+    handle(topic: string, payload: Buffer): boolean {
+        try {
+            return this.source.handle(topic, payload) !== undefined;
+        } catch (error) {
+            this.log?.warn(`${topic}: ${error instanceof Error ? error.message : String(error)}`);
+            return false;
+        }
+    }
+
+    load(cache: TopicCache): void {
+        const failed = this.source.load(cache);
+        for (const topic of failed) {
+            this.log?.warn(`${topic}: the retained discovery payload does not parse`);
+        }
+    }
+
+    diff(devices: DevicesInput): SyncEntry[] {
+        return ha.diff(this.source.discover(), devices);
+    }
+
+    adopt(devices: DevicesInput, options: AdoptOptions = {}): AdoptResult {
+        return ha.adopt(devices, this.source.discover(), options);
     }
 }

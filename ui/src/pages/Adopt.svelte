@@ -25,7 +25,7 @@
         const needle = filter.trim().toLowerCase();
         return entries
             .filter((e) => showUnsupported || e.status !== 'unsupported')
-            .filter((e) => needle === '' || `${e.name} ${e.key} ${e.notes.join(' ')}`.toLowerCase().includes(needle))
+            .filter((e) => needle === '' || `${e.name} ${e.key} ${e.area ?? ''} ${e.notes.join(' ')}`.toLowerCase().includes(needle))
             .sort((a, b) => ORDER[a.status] - ORDER[b.status] || a.name.localeCompare(b.name));
     });
     const counts = $derived.by(() => {
@@ -108,8 +108,13 @@
         }
     }
 
+    /** a device another importer describes natively is left to that importer */
+    function nativeElsewhere(entry: AdoptEntry): boolean {
+        return entry.native !== undefined && importers.some((kind) => entry.native?.startsWith(`${kind}:`) === true);
+    }
+
     async function adoptAllNew(): Promise<void> {
-        const fresh = entries.filter((e) => e.status === 'new');
+        const fresh = entries.filter((e) => e.status === 'new' && !nativeElsewhere(e));
         if (!(await dialogs.confirm(t('Adopt {count} new devices?', {count: fresh.length}), {confirm: t('Adopt')}))) {
             return;
         }
@@ -194,11 +199,16 @@
         {#if loaded && importers.length === 0}
             <div class="ui-empty">{t('No importer is configured. Discovered devices from Zigbee2MQTT and Home Assistant discovery appear here.')}</div>
         {:else if loaded && entries.length === 0}
-            <div class="ui-empty">{t('Nothing discovered yet. Zigbee2MQTT publishes its devices on <base>/bridge/devices; the bridge subscribes it.')}</div>
+            <div class="ui-empty">
+                {t(
+                    'Nothing discovered yet. Zigbee2MQTT publishes its devices on <base>/bridge/devices, Home Assistant discovery under <prefix>/; the bridge subscribes both.',
+                )}
+            </div>
         {:else}
             <table class="ui-table" data-testid="adopt-table">
                 <thead>
-                    <tr><th>{t('State')}</th><th>{t('Name')}</th><th>{t('Source')}</th><th>{t('Key')}</th><th>{t('Notes')}</th><th></th></tr>
+                    <tr><th>{t('State')}</th><th>{t('Name')}</th><th>{t('Source')}</th><th>{t('Area')}</th><th>{t('Key')}</th><th>{t('Notes')}</th><th></th></tr
+                    >
                 </thead>
                 <tbody>
                     {#each shown as entry (`${entry.importer}/${entry.key}`)}
@@ -207,7 +217,16 @@
                             <td
                                 >{entry.name}{#if entry.kind === 'group'}<span class="ui-badge group">{t('group')}</span>{/if}</td
                             >
-                            <td>{kindLabel(entry.importer)}</td>
+                            <td
+                                >{kindLabel(entry.importer)}{#if entry.native !== undefined}<span
+                                        class="ui-badge native"
+                                        title={t('Also described natively by {source} as {key}; the native description is preferred.', {
+                                            source: kindLabel(entry.native.split(':')[0] ?? ''),
+                                            key: entry.native,
+                                        })}>{t('native: {source}', {source: kindLabel(entry.native.split(':')[0] ?? '')})}</span
+                                    >{/if}</td
+                            >
+                            <td data-testid="adopt-area">{entry.area ?? ''}</td>
                             <td><code>{entry.key}</code></td>
                             <td class="notes">
                                 {#if entry.conflicts.length > 0}<span class="ui-badge ui-badge-warn"
@@ -255,6 +274,19 @@
             <dd>{statusLabel(detailsOf.status)}</dd>
             <dt>{t('Key')}</dt>
             <dd><code>{detailsOf.key}</code></dd>
+            {#if detailsOf.area !== undefined}
+                <dt>{t('Area')}</dt>
+                <dd>{detailsOf.area}</dd>
+            {/if}
+            {#if detailsOf.native !== undefined}
+                <dt>{t('Native')}</dt>
+                <dd>
+                    {t('Also described natively by {source} as {key}; the native description is preferred.', {
+                        source: kindLabel(detailsOf.native.split(':')[0] ?? ''),
+                        key: detailsOf.native,
+                    })}
+                </dd>
+            {/if}
             {#if detailsOf.notes.length > 0}
                 <dt>{t('Notes')}</dt>
                 <dd>{detailsOf.notes.join('; ')}</dd>
@@ -307,7 +339,8 @@
         white-space: normal;
     }
 
-    .group {
+    .group,
+    .native {
         margin-left: 4px;
     }
 
