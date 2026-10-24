@@ -1,0 +1,612 @@
+/*
+ * The theme: one file for light and dark. The tokens and the base controls are copied from the
+ * maintainer's UI kit (flat surfaces, neutral greys, one accent, hairline separators, no gradient,
+ * a control that marks its state with colour rather than with a weight that changes its width);
+ * nothing here is a package dependency.
+ *
+ * Light is the default on bare `:root`. Dark is defined twice — under `prefers-color-scheme`
+ * (guarded so an explicit light choice wins) and under `[data-theme='dark']` — so the manual switch
+ * works in both directions. Every colour in the app comes from a token here.
+ */
+
+:root {
+    color-scheme: light;
+
+    --ui-bg: #ffffff;
+    --ui-bg-sunken: #f8f8f8;
+    --ui-header-bg: #f3f3f3;
+    --ui-control-bg: #f0f0f0;
+    --ui-control-bg-hover: #e4e4e4;
+    --ui-input-bg: #ffffff;
+    --ui-row-hover: #f0f4f8;
+    --ui-row-selected: #cfe4f7;
+    --ui-backdrop: rgba(0, 0, 0, 0.35);
+    --ui-shadow-menu: 0 4px 12px rgb(0 0 0 / 18%);
+    --ui-shadow-toast: 0 2px 10px rgb(0 0 0 / 16%);
+
+    --ui-border: #cecece;
+    --ui-border-muted: #e6e6e6;
+    --ui-border-strong: #b0b0b0;
+
+    --ui-fg: #3b3b3b;
+    --ui-fg-muted: #6d6d6d;
+    --ui-fg-faint: #9a9a9a;
+    --ui-link: #0070c1;
+
+    --ui-accent: #0070c1;
+    --ui-accent-bg: #e2eefa;
+    --ui-accent-fg: #ffffff;
+    --ui-ok: #008000;
+    --ui-warn: #a06800;
+    --ui-error: #cd3131;
+    --ui-focus: #0070c1;
+
+    --ui-font: system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    --ui-font-mono: ui-monospace, 'Cascadia Mono', Consolas, Menlo, Monaco, monospace;
+    --ui-font-size: 13px;
+    --ui-font-size-grid: 12px;
+    --ui-font-size-small: 11px;
+    --ui-row-height: 30px;
+    --ui-header-height: 36px;
+    --ui-radius: 3px;
+
+    --ui-form-label-width: 170px;
+    --ui-form-column-gap: 10px;
+    --ui-form-row-gap: 6px;
+    --ui-form-section-gap: 14px;
+    --ui-field-narrow: 90px;
+    --ui-field-medium: 150px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+        color-scheme: dark;
+
+        --ui-bg: #1e1e1e;
+        --ui-bg-sunken: #191919;
+        --ui-header-bg: #252526;
+        --ui-control-bg: #333333;
+        --ui-control-bg-hover: #3f3f3f;
+        --ui-input-bg: #3c3c3c;
+        --ui-row-hover: #2a2d2e;
+        --ui-row-selected: #264f78;
+        --ui-backdrop: rgba(0, 0, 0, 0.6);
+        --ui-shadow-menu: 0 4px 14px rgb(0 0 0 / 60%);
+        --ui-shadow-toast: 0 2px 12px rgb(0 0 0 / 55%);
+
+        --ui-border: #3c3c3c;
+        --ui-border-muted: #303030;
+        --ui-border-strong: #565656;
+
+        --ui-fg: #cccccc;
+        --ui-fg-muted: #8a8a8a;
+        --ui-fg-faint: #6a6a6a;
+        --ui-link: #569cd6;
+
+        --ui-accent: #569cd6;
+        --ui-accent-bg: #253b52;
+        --ui-accent-fg: #1e1e1e;
+        --ui-ok: #4ec9b0;
+        --ui-warn: #cca700;
+        --ui-error: #f48771;
+        --ui-focus: #569cd6;
+    }
+}
+
+:root[data-theme='dark'] {
+    color-scheme: dark;
+
+    --ui-bg: #1e1e1e;
+    --ui-bg-sunken: #191919;
+    --ui-header-bg: #252526;
+    --ui-control-bg: #333333;
+    --ui-control-bg-hover: #3f3f3f;
+    --ui-input-bg: #3c3c3c;
+    --ui-row-hover: #2a2d2e;
+    --ui-row-selected: #264f78;
+    --ui-backdrop: rgba(0, 0, 0, 0.6);
+    --ui-shadow-menu: 0 4px 14px rgb(0 0 0 / 60%);
+    --ui-shadow-toast: 0 2px 12px rgb(0 0 0 / 55%);
+
+    --ui-border: #3c3c3c;
+    --ui-border-muted: #303030;
+    --ui-border-strong: #565656;
+
+    --ui-fg: #cccccc;
+    --ui-fg-muted: #8a8a8a;
+    --ui-fg-faint: #6a6a6a;
+    --ui-link: #569cd6;
+
+    --ui-accent: #569cd6;
+    --ui-accent-bg: #253b52;
+    --ui-accent-fg: #1e1e1e;
+    --ui-ok: #4ec9b0;
+    --ui-warn: #cca700;
+    --ui-error: #f48771;
+    --ui-focus: #569cd6;
+}
+
+html,
+body,
+#app {
+    height: 100%;
+    min-height: 0;
+}
+
+#app {
+    overflow: hidden;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    font-family: var(--ui-font);
+    font-size: var(--ui-font-size);
+    line-height: 1.4;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+/* thin scrollbars: a data grid has a lot of them */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ui-border-strong) transparent;
+}
+
+:focus-visible {
+    outline: 2px solid var(--ui-focus);
+    outline-offset: -1px;
+}
+
+a {
+    color: var(--ui-link);
+}
+
+code,
+.ui-mono {
+    font-family: var(--ui-font-mono);
+    font-size: var(--ui-font-size-grid);
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+}
+
+/* ── the plain form controls of the toolbars and dialogs ───────────────────────────────────── */
+
+.ui-input,
+.ui-select,
+.ui-textarea {
+    min-height: 24px;
+    padding: 2px 6px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-input-bg);
+    color: var(--ui-fg);
+    width: 100%;
+    min-width: 0;
+}
+
+.ui-textarea {
+    font-family: var(--ui-font-mono);
+    font-size: var(--ui-font-size-grid);
+    resize: vertical;
+}
+
+.ui-input:focus-visible,
+.ui-select:focus-visible,
+.ui-textarea:focus-visible {
+    border-color: var(--ui-accent);
+}
+
+.ui-input:disabled,
+.ui-select:disabled,
+.ui-textarea:disabled {
+    opacity: 0.55;
+}
+
+.ui-input.ui-invalid,
+.ui-select.ui-invalid {
+    border-color: var(--ui-error);
+}
+
+.ui-input::placeholder,
+.ui-textarea::placeholder {
+    color: var(--ui-fg-faint);
+}
+
+.ui-button {
+    min-height: 24px;
+    padding: 3px 10px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-control-bg);
+    color: var(--ui-fg);
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.ui-button:hover:not(:disabled) {
+    background: var(--ui-control-bg-hover);
+}
+
+.ui-button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+/* the main action: in the accent colour */
+.ui-button-primary {
+    background: var(--ui-accent);
+    border-color: var(--ui-accent);
+    color: var(--ui-accent-fg);
+}
+
+.ui-button-primary:hover:not(:disabled) {
+    background: var(--ui-accent);
+    filter: brightness(1.1);
+}
+
+.ui-button-danger {
+    color: var(--ui-error);
+}
+
+/* the icon buttons of the toolbars: no frame until the pointer is on them */
+.ui-icon-button {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--ui-radius);
+    background: none;
+    color: var(--ui-fg-muted);
+    cursor: pointer;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ui-icon-button:hover:not(:disabled) {
+    background: var(--ui-control-bg-hover);
+    color: var(--ui-fg);
+}
+
+.ui-icon-button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+/* ── layout ────────────────────────────────────────────────────────────────────────────────── */
+
+.ui-page {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    overflow: hidden;
+}
+
+.ui-page-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+}
+
+.ui-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.ui-toolbar-trailing {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ui-fg-muted);
+}
+
+.ui-muted {
+    color: var(--ui-fg-muted);
+}
+
+.ui-faint {
+    color: var(--ui-fg-faint);
+}
+
+.ui-error-text {
+    color: var(--ui-error);
+}
+
+.ui-warn-text {
+    color: var(--ui-warn);
+}
+
+.ui-ok-text {
+    color: var(--ui-ok);
+}
+
+.ui-small {
+    font-size: var(--ui-font-size-small);
+}
+
+.ui-empty {
+    color: var(--ui-fg-muted);
+    padding: 20px;
+    text-align: center;
+}
+
+h1,
+h2,
+h3 {
+    font-size: inherit;
+    font-weight: 600;
+    margin: 0;
+}
+
+.ui-section {
+    border: 1px solid var(--ui-border-muted);
+    border-radius: var(--ui-radius);
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ui-form-row-gap);
+}
+
+.ui-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.ui-section-title .ui-toolbar-trailing {
+    font-weight: normal;
+}
+
+/* ── tables: no zebra, a hairline between rows, a flat header ──────────────────────────────── */
+
+.ui-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--ui-font-size-grid);
+}
+
+.ui-table th,
+.ui-table td {
+    text-align: left;
+    padding: 0 8px;
+    height: var(--ui-row-height);
+    border-bottom: 1px solid var(--ui-border-muted);
+    vertical-align: middle;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ui-table th {
+    position: sticky;
+    top: 0;
+    background: var(--ui-header-bg);
+    color: var(--ui-fg-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--ui-border);
+    z-index: 1;
+}
+
+.ui-table tbody tr:hover {
+    background: var(--ui-row-hover);
+}
+
+.ui-table tbody tr.ui-row-selected {
+    background: var(--ui-row-selected);
+}
+
+.ui-table tr.ui-row-link {
+    cursor: pointer;
+}
+
+.ui-table td.ui-actions {
+    text-align: right;
+    width: 1%;
+}
+
+/* ── pills and dots ────────────────────────────────────────────────────────────────────────── */
+
+.ui-badge {
+    display: inline-block;
+    padding: 0 6px;
+    border: 1px solid var(--ui-border);
+    border-radius: 999px;
+    font-size: 10px;
+    line-height: 15px;
+    color: var(--ui-fg-muted);
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.ui-badge-accent {
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+}
+
+.ui-badge-warn {
+    border-color: var(--ui-warn);
+    color: var(--ui-warn);
+}
+
+.ui-badge-error {
+    border-color: var(--ui-error);
+    color: var(--ui-error);
+}
+
+.ui-badge-ok {
+    border-color: var(--ui-ok);
+    color: var(--ui-ok);
+}
+
+.ui-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--ui-fg-faint);
+    vertical-align: middle;
+    margin-right: 5px;
+}
+
+.ui-dot-ok {
+    background: var(--ui-ok);
+}
+
+.ui-dot-warn {
+    background: var(--ui-warn);
+}
+
+.ui-dot-error {
+    background: var(--ui-error);
+}
+
+/* ── forms: a label column and a field column ──────────────────────────────────────────────── */
+
+.ui-form {
+    display: grid;
+    grid-template-columns: var(--ui-form-label-width) minmax(0, 1fr);
+    column-gap: var(--ui-form-column-gap);
+    row-gap: var(--ui-form-row-gap);
+    align-items: center;
+}
+
+.ui-form-label {
+    color: var(--ui-fg-muted);
+    text-align: right;
+    padding-right: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ui-form-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.ui-form-help {
+    grid-column: 2;
+    color: var(--ui-fg-faint);
+    font-size: var(--ui-font-size-small);
+    margin-top: -4px;
+}
+
+.ui-form-full {
+    grid-column: 1 / -1;
+}
+
+.ui-field-narrow {
+    width: var(--ui-field-narrow);
+    flex: 0 0 auto;
+}
+
+.ui-field-medium {
+    width: var(--ui-field-medium);
+    flex: 0 0 auto;
+}
+
+/* ── the checkbox: the native control in the accent colour, with its label as one click target ─ */
+
+.ui-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.ui-check input[type='checkbox'] {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    accent-color: var(--ui-accent);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.ui-check input[type='checkbox']:disabled {
+    cursor: default;
+}
+
+.ui-check.ui-disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+/* ── key/value lists ───────────────────────────────────────────────────────────────────────── */
+
+.ui-kv {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 12px;
+    row-gap: 3px;
+    margin: 0;
+}
+
+.ui-kv dt {
+    color: var(--ui-fg-muted);
+    white-space: nowrap;
+}
+
+.ui-kv dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+/* ── the split view of the editors ─────────────────────────────────────────────────────────── */
+
+.ui-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+    min-height: 0;
+}
+
+@media (max-width: 900px) {
+    .ui-split {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+pre.ui-pre {
+    margin: 0;
+    padding: 6px 8px;
+    background: var(--ui-bg-sunken);
+    border: 1px solid var(--ui-border-muted);
+    border-radius: var(--ui-radius);
+    font-family: var(--ui-font-mono);
+    font-size: var(--ui-font-size-grid);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 240px;
+    overflow: auto;
+}
