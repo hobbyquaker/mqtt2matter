@@ -19,7 +19,7 @@ export interface NodeManagerOptions {
     log: Logger;
 }
 
-const MATTER_LEVELS: Record<Config['log']['matter'], MatterLogLevel> = {
+export const MATTER_LEVELS: Record<Config['log']['matter'], MatterLogLevel> = {
     debug: MatterLogLevel.DEBUG,
     info: MatterLogLevel.INFO,
     notice: MatterLogLevel.NOTICE,

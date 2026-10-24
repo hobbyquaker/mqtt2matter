@@ -6,9 +6,10 @@
 import {createRequire} from 'node:module';
 
 import type {Config} from './config/schema.ts';
-import {BindingRuntime} from './engine/runtime.ts';
+import {BindingRuntime, type Codec} from './engine/runtime.ts';
 import {type Logger, silentLogger} from './log.ts';
 import {NodeManager} from './matter/node-manager.ts';
+import {validateDevices} from './model/validate.ts';
 import {MqttClient} from './mqtt/client.ts';
 
 const pkg = createRequire(import.meta.url)('../package.json') as {version: string};
@@ -19,6 +20,8 @@ export interface AppOptions {
     log?: Logger;
     /** ms to wait for the first MQTT connection; default 30 s */
     mqttConnectTimeout?: number;
+    /** the codec modules the config names, loaded by `loadCodecs` */
+    codecs?: ReadonlyMap<string, Codec>;
 }
 
 export class App {
@@ -48,11 +51,20 @@ export class App {
                 },
             },
             this.log.child('bindings'),
+            {codecs: options.codecs ?? new Map()},
         );
         this.mqtt.on('message', (topic, payload) => {
             this.runtime.handleMessage(topic, payload).catch((error: unknown) => {
                 this.log.error(`handling ${topic} failed`, error);
             });
+        });
+        this.mqtt.on('connect', () => {
+            if (this.started) {
+                // a reconnect: ask the devices that need asking for their state again
+                this.runtime.publishGets().catch((error: unknown) => {
+                    this.log.error('publishing the get requests failed', error);
+                });
+            }
         });
     }
 
@@ -61,6 +73,16 @@ export class App {
             return;
         }
         this.started = true;
+        for (const [key, result] of validateDevices(this.config.devices)) {
+            for (const issue of result.issues) {
+                this.log[issue.level === 'error' ? 'error' : 'warn'](`${key} ${issue.path}: ${issue.message}`);
+            }
+            const device = this.config.devices[key];
+            if (!result.ok && device?.enabled === true) {
+                this.log.error(`${key}: not built, the configuration has errors`);
+                device.enabled = false;
+            }
+        }
         await this.mqtt.connect();
         await this.nodes.prepare();
         await this.nodes.start();
@@ -70,14 +92,19 @@ export class App {
             if (handle === undefined) {
                 continue;
             }
-            const targets = new Map([[device.endpoints[0]?.id ?? 'main', handle]]);
-            this.runtime.bind(key, device, targets);
+            this.runtime.bind(key, device, handle.targets());
         }
+        const subscriptions: Promise<void>[] = [];
         this.runtime.onTopic((topic) => {
-            this.mqtt.subscribe(topic).catch((error: unknown) => {
-                this.log.error(`subscribing ${topic} failed`, error);
-            });
+            subscriptions.push(
+                this.mqtt.subscribe(topic).catch((error: unknown) => {
+                    this.log.error(`subscribing ${topic} failed`, error);
+                }),
+            );
         });
+        // the status topics are subscribed before anything is asked to report
+        await Promise.all(subscriptions);
+        await this.runtime.publishGets();
         for (const info of this.nodes.info()) {
             const codes = info.pairingCodes;
             if (codes === undefined) {
@@ -98,6 +125,8 @@ export class App {
             return;
         }
         this.started = false;
+        await this.runtime.flush();
+        this.runtime.close();
         await this.nodes.stop();
         await this.mqtt.close();
     }
