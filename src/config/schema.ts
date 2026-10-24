@@ -23,7 +23,7 @@ export const BridgeConfigSchema = z
         /** the name controllers show for the bridge; default: `mqtt2matter <id>` */
         name: z.string().min(1).max(32).optional(),
         port: z.number().int().min(1).max(65535).default(5540),
-        /** fixed passcode and discriminator; default: random on first start, then persisted by matter.js */
+        /** fixed passcode and discriminator; default: random on first start, then kept in storage/commissioning.json */
         passcode: z.number().int().min(1).max(99999998).optional(),
         discriminator: z.number().int().min(0).max(4095).optional(),
         /** devices this bridge takes before the next one is used; 0 = unlimited (multi-bridge is 1.1) */

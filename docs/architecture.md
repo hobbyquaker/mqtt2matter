@@ -92,7 +92,8 @@ storage, never online, and reports what matter.js refuses plus the `DeviceTypeCo
 - `BridgedDeviceBasicInformation.uniqueId` is a hash of the bridge id and the device key.
 - Each bridge is a `ServerNode` with its own id, storage directory (under `storage`), port, passcode and
   discriminator; the mDNS service is shared process-wide. Passcode and discriminator are random on the
-  first start unless configured, and persisted by matter.js.
+  first start unless configured, and persisted in `storage/commissioning.json` (matter.js keeps none), so
+  the pairing code survives restarts.
 - `storage/shards.json` maps device keys to bridge ids: written once, never rebalanced. 1.0 runs one
   bridge; the map exists so the multi-bridge split (1.1) moves no device between nodes.
 

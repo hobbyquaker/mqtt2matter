@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The pairing code no longer changes at every start of a bridge that is not commissioned yet: passcode and
+  discriminator are generated once per bridge and kept in `commissioning.json` in the storage directory, so a
+  code or QR code noted down stays valid across restarts, updates and deploys. Configured values still win. An
+  existing installation gets its code fixed at the first start of this version.
+
 - Controllers see the bridge's real version: BasicInformation carries the package version as `softwareVersion`
   (major·1 000 000 + minor·1 000 + patch) and `softwareVersionString`, hardware version 1, and a product label
   without the vendor name; the bridged devices' BridgedDeviceBasicInformation the same (a model that starts with

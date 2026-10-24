@@ -18,6 +18,7 @@ import type {Logger} from '../log.ts';
 import type {AttributeRef} from '../model/attribute.ts';
 import {COMPOSITE_ATTRIBUTES, cluster as clusterInfo} from '../model/catalog.ts';
 import {type DeviceConfig, type EndpointConfig, mappingTarget} from '../model/schema.ts';
+import type {CommissioningValues} from './commissioning.ts';
 import {type BuiltEndpoint, buildEndpoint} from './device-types.ts';
 import {
     BRIDGE_PRODUCT_LABEL,
@@ -26,8 +27,6 @@ import {
     deviceEndpointId,
     HARDWARE_VERSION,
     label32,
-    randomDiscriminator,
-    randomPasscode,
     softwareVersionNumber,
     uniqueId,
     VENDOR_NAME,
@@ -63,6 +62,8 @@ export interface BridgeOptions {
     vendorId: number;
     productId: number;
     softwareVersion: string;
+    /** passcode and discriminator: configured, or generated once and persisted (`CommissioningStore`) */
+    commissioning: CommissioningValues;
     log: Logger;
 }
 
@@ -393,8 +394,8 @@ export class Bridge {
             id: this.id,
             network: {port: config.port},
             commissioning: {
-                passcode: config.passcode ?? randomPasscode(),
-                discriminator: config.discriminator ?? randomDiscriminator(),
+                passcode: this.options.commissioning.passcode,
+                discriminator: this.options.commissioning.discriminator,
             },
             productDescription: {
                 name,

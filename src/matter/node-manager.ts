@@ -11,6 +11,7 @@ import type {Config} from '../config/schema.ts';
 import type {Logger} from '../log.ts';
 import type {DeviceConfig} from '../model/schema.ts';
 import {Bridge, type BridgeInfo, type DeviceHandle} from './bridge.ts';
+import {CommissioningStore} from './commissioning.ts';
 import {ShardMap} from './shards.ts';
 
 export interface NodeManagerOptions {
@@ -91,6 +92,7 @@ export class NodeManager {
         await mkdir(this.storagePath, {recursive: true});
         prepareEnvironment(this.storagePath, config.log.matter);
         this.shards = await ShardMap.load(join(this.storagePath, 'shards.json'));
+        const commissioning = await CommissioningStore.load(join(this.storagePath, 'commissioning.json'));
         let index = 0;
         for (const [id, bridgeConfig] of Object.entries(config.bridges)) {
             this.bridges.set(
@@ -101,11 +103,16 @@ export class NodeManager {
                     vendorId: config.vendorId,
                     productId: (config.productId + index) & 0xffff,
                     softwareVersion,
+                    commissioning: commissioning.resolve(id, {
+                        passcode: bridgeConfig.passcode,
+                        discriminator: bridgeConfig.discriminator,
+                    }),
                     log: this.log.child(id),
                 }),
             );
             index++;
         }
+        await commissioning.save();
         for (const [key, device] of Object.entries(config.devices)) {
             await this.place(key, device);
         }

@@ -37,7 +37,7 @@ written in the new form at the next save from the UI (`POST /api/import` takes t
 | ------------------------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `mqtt.url`                                        | `mqtt://localhost:1883` | `mqtt://`, `mqtts://`, `ws://`, `wss://` as mqtt.js takes it                                                    |
 | `mqtt.username`, `mqtt.password`, `mqtt.clientId` | —                       | credentials; a random client id when unset                                                                      |
-| `storage`                                         | `./data`                | matter.js storage (fabrics, endpoint numbers) and `shards.json`                                                 |
+| `storage`                                         | `./data`                | matter.js storage (fabrics, endpoint numbers), `shards.json` and `commissioning.json`                           |
 | `log.level`                                       | `info`                  | `debug`, `info`, `warn`, `error`                                                                                |
 | `log.matter`                                      | `warn`                  | matter.js' own log level                                                                                        |
 | `vendorId`                                        | `0xFFF1`                | the Matter test vendor id                                                                                       |
@@ -92,7 +92,10 @@ the next start. A mode the environment sets is not editable there.
 | `maxDevices`    | `0` (unlimited)    | devices this bridge takes before the next one is used (multi-bridge, 1.1) |
 
 The bridge id (`default`) is the matter.js node id and its storage directory: 1–32 characters of
-`A–Z a–z 0–9 _ -`. Pairing codes are logged at start while the bridge is not commissioned.
+`A–Z a–z 0–9 _ -`. Pairing codes are logged at start while the bridge is not commissioned. A passcode or
+discriminator that is not configured is generated at the bridge's first start and kept in
+`<storage>/commissioning.json`, so the pairing code stays the same across restarts; delete the bridge's entry
+there for a new one.
 
 ## Devices
 
