@@ -59,7 +59,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test --config ui/playwright.config.ts",
     "start": "node dist/main.js",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "deploy": "bash deploy.sh"
   },
   "dependencies": {
     "@huggingface/jinja": "0.5.10",
