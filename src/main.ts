@@ -6,6 +6,7 @@ import {importZ2m, parseImportArgs} from './commands/import-z2m.ts';
 import {ConfigError, loadConfig} from './config/load.ts';
 import {createLogger, describeError} from './log.ts';
 import {checkConfig, formatCheck} from './matter/check.ts';
+import {ConfigStore, LogBuffer, Server} from './server/index.ts';
 
 async function main(): Promise<void> {
     const arg = process.argv[2];
@@ -39,10 +40,29 @@ async function main(): Promise<void> {
         console.log(VERSION);
         return;
     }
-    const {config, path, fromFile} = await loadConfig();
-    const log = createLogger(config.log.level);
+    const {config, path, fromFile, raw, overridden} = await loadConfig();
+    const logBuffer = new LogBuffer();
+    const log = createLogger(config.log.level, (line) => {
+        console.error(line);
+        logBuffer.push(line);
+    });
     log.info(`mqtt2matter ${VERSION}, ${fromFile ? `configuration ${path}` : `no ${path}, defaults`}`);
     const app = new App(config, {log});
+    let server: Server | undefined;
+    if (config.server.enabled) {
+        server = new Server({
+            app,
+            store: new ConfigStore({path, raw, config, overridden}),
+            log: log.child('server'),
+            logBuffer,
+            version: VERSION,
+            host: config.server.host,
+            port: config.server.port,
+            topics: config.server.topics,
+        });
+        // the UI is reachable before the broker and the bridges are up, so a wrong setting can be fixed there
+        await server.listen();
+    }
     let stopping = false;
     const stop = (signal: string): void => {
         if (stopping) {
@@ -50,13 +70,15 @@ async function main(): Promise<void> {
         }
         stopping = true;
         log.info(`${signal}, stopping`);
-        app.stop().then(
-            () => process.exit(0),
-            (error: unknown) => {
-                log.error('stop failed', error);
-                process.exit(1);
-            },
-        );
+        Promise.resolve(server?.close())
+            .then(() => app.stop())
+            .then(
+                () => process.exit(0),
+                (error: unknown) => {
+                    log.error('stop failed', error);
+                    process.exit(1);
+                },
+            );
     };
     process.on('SIGINT', () => {
         stop('SIGINT');
@@ -65,6 +87,7 @@ async function main(): Promise<void> {
         stop('SIGTERM');
     });
     await app.start();
+    await server?.start();
 }
 
 main().catch((error: unknown) => {
