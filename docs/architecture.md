@@ -15,7 +15,9 @@ src/
   mqtt/        the broker connection and the topic cache (last payload per topic)
   matter/      the node manager (n ≥ 1 bridges), one bridge = ServerNode + aggregator, the model-driven endpoint
                builder, the strict dry run, ids, the shard map
-  importers/   (phase 2, 4) foreign descriptions → model devices: zigbee2mqtt, Home Assistant discovery
+  importers/   foreign descriptions → model devices: patch.ts (baseline + edits), z2m/ (zigbee2mqtt; the
+               Home Assistant discovery importer is phase 4) — docs/importers.md
+  commands/    the command line's subcommands beyond start and --check (`--import-z2m`)
   server/      (phase 3) REST + WebSocket for the UI; the contract is docs/api.md
   ui/          (phase 3) the Svelte 5 app
   app.ts       wiring and lifecycle
@@ -46,7 +48,8 @@ Enforced by `no-restricted-imports` in `eslint.config.js` per folder:
 
 - `importers/` depend on `model/` and `mqtt/` only — never on `matter/`, `families/`, `engine/`, `config/`,
   `server/`. An importer writes `config.devices` entries with `source` metadata; the runtime does not know
-  where a device came from.
+  where a device came from. `commands/` wires an importer to the configuration file and the broker for the
+  command line; the server does the same for the UI.
 - `families/` depend on `engine/` outputs, `model/` and matter.js — never on an importer, config loading,
   `mqtt/` or the server.
 - `engine/` and `model/` are pure: no matter.js node, no MQTT, no files. They use `@matter/model` (the data

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Phase 2, the Zigbee2MQTT importer: `mqtt2matter --import-z2m` reads the retained `bridge/devices` and
+  `bridge/groups` and writes every supported device and group into the configuration as ordinary devices —
+  exposes to device types and bindings per zigbee2mqtt endpoint (child endpoints with number tags), `action`
+  enums to GenericSwitch buttons, battery to a power source, availability, groups as the union of their
+  members; a re-sync regenerates the baseline and carries the user's edits over (keyed by endpoint and
+  binding target), reports conflicts instead of resolving them, and marks devices that left zigbee2mqtt as
+  orphaned without removing them. The same functions (`discover`, `diff`, `adopt`, `orphaned`) are the API
+  for the UI; `docs/importers.md` describes the mapping and the API. Test corpus: matterbridge-zigbee2mqtt's
+  35-device mock (Apache-2.0, see NOTICE).
 - Phase 1, the manual model complete: every device type matter.js ships (plus `PowerSource`), several per
   endpoint, child endpoints, cluster features and attribute defaults from the Matter data model — no table of
   device types; bindings for attributes, commands (`invoke`) and the switch event channel; the payload engine
