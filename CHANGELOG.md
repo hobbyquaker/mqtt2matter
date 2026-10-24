@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Phase 3, the web UI and its server: `server.port` (8282) serves a Svelte 5 app and the REST + WebSocket
+  API of `docs/api.md` — devices (list with source, reachability, bridge and endpoint number; created by hand
+  from a device type with its mandatory clusters suggested, duplicated, enabled, deleted; saved and rebuilt
+  without a restart, the endpoint number stays), the binding editor (attribute picker from the Matter data
+  model, topic picker from the live topic tree with JSON keys as paths, every step of both halves with a live
+  preview in both directions, test-publish), presets, adopt (the zigbee2mqtt importer's report: new,
+  updated, restored, orphaned, invalid, unsupported; conflicts and unmapped exposes; re-sync; orphans are
+  removed only by a click), bridges (QR code and manual pairing code, fabrics, the commissioning window), the
+  live MQTT view with a publish form, the log, the strict dry run as a page and per device, import/export and
+  the settings. German and English, light and dark, the look of the maintainer's other UIs (tokens and
+  controls copied, no dependency). `importers.z2m` makes the bridge watch zigbee2mqtt's bridge topics while it
+  runs. The UI has no login: keep it on a trusted network or behind a reverse proxy.
 - Phase 2, the Zigbee2MQTT importer: `mqtt2matter --import-z2m` reads the retained `bridge/devices` and
   `bridge/groups` and writes every supported device and group into the configuration as ordinary devices —
   exposes to device types and bindings per zigbee2mqtt endpoint (child endpoints with number tags), `action`

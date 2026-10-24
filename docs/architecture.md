@@ -18,11 +18,14 @@ src/
   importers/   foreign descriptions → model devices: patch.ts (baseline + edits), z2m/ (zigbee2mqtt; the
                Home Assistant discovery importer is phase 4) — docs/importers.md
   commands/    the command line's subcommands beyond start and --check (`--import-z2m`)
-  server/      (phase 3) REST + WebSocket for the UI; the contract is docs/api.md
-  ui/          (phase 3) the Svelte 5 app
-  app.ts       wiring and lifecycle
+  server/      node:http + ws: the REST API and the event stream of docs/api.md, the config file as the UI
+               edits it (compact, atomic writes), the catalogue as JSON, the preview of a binding's halves,
+               the importers as the server runs them, the built UI as static files
+  app.ts       wiring and lifecycle; devices are added and removed while it runs
   main.ts      the command line entry (`--check` is the dry run)
   log.ts       the leveled, scoped logger
+ui/            the Svelte 5 app (Vite, TypeScript strict, svelte-check): built into ui/dist, served by
+               src/server; it talks to the server through docs/api.md only
 ```
 
 ## Data flow
@@ -55,7 +58,8 @@ Enforced by `no-restricted-imports` in `eslint.config.js` per folder:
 - `engine/` and `model/` are pure: no matter.js node, no MQTT, no files. They use `@matter/model` (the data
   model) for lookups; the model's catalogue is the only place that reads it.
 - `mqtt/` knows nothing above it.
-- `ui/` talks to `server/` through the documented REST/WS contract only.
+- `server/` may use everything below it; `ui/` (outside `src/`, its own tsconfig, type-checked by svelte-check)
+  talks to `server/` through the documented REST/WS contract only — nothing from `src/` is imported there.
 
 ## The model-driven endpoint
 
@@ -108,3 +112,8 @@ colour logic, `lockDoor`).
   in-process aedes broker on an ephemeral port and a real matter.js `ServerNode` on a free UDP port, drive it
   through the node's own interaction API (`endpoint.act`) and, for attribute writes, emit the attribute's change
   with an online context. Nothing binds a fixed port.
+- `test/server.test.ts` runs the whole API against the real application (broker, node, the config file in a
+  temporary directory, the zigbee2mqtt importer with the test corpus); `ui/test/e2e/` are the Playwright
+  tests of the UI, against the same stack started by `ui/test/serve.ts` on an ephemeral port (the global
+  setup starts it and hands the address to the tests). The UI's own unit tests (`ui/src/**/*.test.ts`, run
+  with `ui/vitest.config.ts`) check among other things that every string has both languages.
