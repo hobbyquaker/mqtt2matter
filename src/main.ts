@@ -8,14 +8,76 @@ import {parseInstallArgs, runInstall, systemHost} from './commands/install.ts';
 import {ConfigError, loadConfig} from './config/load.ts';
 import {createLogger, describeError} from './log.ts';
 import {checkConfig, formatCheck} from './matter/check.ts';
-import {ConfigStore, HaImporter, type Importer, LogBuffer, Server, Z2mImporter} from './server/index.ts';
+import {
+    Auth,
+    ConfigStore,
+    HaImporter,
+    hashPassword,
+    type Importer,
+    LogBuffer,
+    Server,
+    Z2mImporter,
+} from './server/index.ts';
+
+/** one line from stdin; on a terminal without echo */
+async function readSecret(prompt: string): Promise<string> {
+    const stdin = process.stdin;
+    if (!stdin.isTTY) {
+        let text = '';
+        for await (const chunk of stdin) {
+            text += String(chunk);
+        }
+        return text.split(/\r?\n/)[0] ?? '';
+    }
+    process.stderr.write(prompt);
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.setEncoding('utf8');
+    return new Promise((resolve, reject) => {
+        let value = '';
+        const done = (result: string | undefined): void => {
+            stdin.setRawMode(false);
+            stdin.pause();
+            stdin.removeListener('data', onData);
+            process.stderr.write('\n');
+            if (result === undefined) {
+                reject(new Error('cancelled'));
+            } else {
+                resolve(result);
+            }
+        };
+        const onData = (key: string): void => {
+            for (const char of key) {
+                if (char === '\r' || char === '\n') {
+                    done(value);
+                    return;
+                }
+                if (char === '\u0003') {
+                    done(undefined);
+                    return;
+                }
+                value = char === '\u007f' ? value.slice(0, -1) : value + char;
+            }
+        };
+        stdin.on('data', onData);
+    });
+}
 
 async function main(): Promise<void> {
     const arg = process.argv[2];
     if (arg === '--help' || arg === '-h') {
         console.log(
-            `mqtt2matter ${VERSION}\nusage: mqtt2matter [config.json]\n       mqtt2matter --check [config.json]   validate the devices against the Matter model and matter.js (strict), no network\n       mqtt2matter --import-z2m [config.json] [--base-topic zigbee2mqtt] [--dry-run] [--no-groups] [--timeout 15]\n                                           adopt the devices and groups zigbee2mqtt describes into the file, re-sync the adopted ones\n       mqtt2matter --install [--mqtt-url mqtt://broker:1883] [--dry-run]\n                                           run as the systemd service mqtt2matter.service (needs root): configuration\n                                           /etc/mqtt2matter/mqtt2matter.json, storage /var/lib/mqtt2matter, user mqtt2matter\n       mqtt2matter --uninstall [--dry-run] remove the service; the configuration and the storage (the pairings) stay\n  the file defaults to $MQTT2MATTER_CONFIG, then ./mqtt2matter.json`,
+            `mqtt2matter ${VERSION}\nusage: mqtt2matter [config.json]\n       mqtt2matter --check [config.json]   validate the devices against the Matter model and matter.js (strict), no network\n       mqtt2matter --import-z2m [config.json] [--base-topic zigbee2mqtt] [--dry-run] [--no-groups] [--timeout 15]\n                                           adopt the devices and groups zigbee2mqtt describes into the file, re-sync the adopted ones\n       mqtt2matter --install [--mqtt-url mqtt://broker:1883] [--dry-run]\n                                           run as the systemd service mqtt2matter.service (needs root): configuration\n                                           /etc/mqtt2matter/mqtt2matter.json, storage /var/lib/mqtt2matter, user mqtt2matter\n       mqtt2matter --uninstall [--dry-run] remove the service; the configuration and the storage (the pairings) stay\n       mqtt2matter --hash-password         read a password (stdin) and print its hash for server.auth.password\n  the file defaults to $MQTT2MATTER_CONFIG, then ./mqtt2matter.json`,
         );
+        return;
+    }
+    if (arg === '--hash-password') {
+        const password = await readSecret('password: ');
+        if (password === '') {
+            console.error('an empty password');
+            process.exit(1);
+        }
+        console.log(await hashPassword(password));
         return;
     }
     if (arg === '--install' || arg === '--uninstall') {
@@ -67,6 +129,15 @@ async function main(): Promise<void> {
     const app = new App(config, {log});
     let server: Server | undefined;
     if (config.server.enabled) {
+        const {auth, plain} = await Auth.create(config.server.auth);
+        if (plain && !overridden.includes('server.auth.password')) {
+            log.warn('server.auth.password is a plain password; store its hash instead (mqtt2matter --hash-password)');
+        }
+        if (auth.mode === 'none' && config.server.host !== '127.0.0.1' && config.server.host !== '::1') {
+            log.info(
+                `the UI on port ${config.server.port} has no login (server.auth.mode none): keep it on a trusted network`,
+            );
+        }
         const importers: Importer[] = [];
         if (config.importers.z2m.enabled) {
             importers.push(new Z2mImporter(config.importers.z2m.baseTopic, log.child('z2m')));
@@ -84,6 +155,7 @@ async function main(): Promise<void> {
             port: config.server.port,
             topics: config.server.topics,
             importers,
+            auth,
         });
         // the UI is reachable before the broker and the bridges are up, so a wrong setting can be fixed there
         await server.listen();

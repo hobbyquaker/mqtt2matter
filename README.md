@@ -38,8 +38,12 @@ The bridge serves its UI on port 8282 (`server.port`): the device list, an edito
 mappings with a live preview of every conversion step in both directions and a topic picker over the broker's
 live topic tree, presets, the adopt page for devices Zigbee2MQTT describes, the bridges with their QR code
 and pairing code, the live MQTT traffic, the log, the strict dry run, import and export. German and English,
-light and dark. **It has no login** — keep it on a trusted network or behind a reverse proxy;
-`server.enabled: false` turns it off. [docs/api.md](docs/api.md) is the API it uses.
+light and dark. `server.enabled: false` turns it off; [docs/api.md](docs/api.md) is the API it uses.
+
+> **The UI has no login by default** (`server.auth.mode: "none"`), so an existing installation keeps working as it
+> is: whoever reaches port 8282 can change the bridge. Set a password on the Configuration page (Access), or let a
+> reverse proxy authenticate (`proxy` mode, the user in a header such as `X-Remote-User`) —
+> [docs/config.md](docs/config.md#access).
 
 ### Zigbee2MQTT
 

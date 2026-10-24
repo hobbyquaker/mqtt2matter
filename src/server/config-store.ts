@@ -133,11 +133,8 @@ export class ConfigStore {
         if (!result.success) {
             throw new HttpError(400, `the settings are invalid:\n${z.prettifyError(result.error)}`);
         }
-        const at = (source: Record<string, unknown>, path: string): unknown => {
-            const [a, b] = path.split('.');
-            const first = source[a ?? ''];
-            return b === undefined ? first : isRecord(first) ? first[b] : undefined;
-        };
+        const at = (source: Record<string, unknown>, path: string): unknown =>
+            path.split('.').reduce<unknown>((value, key) => (isRecord(value) ? value[key] : undefined), source);
         for (const path of this.overridden) {
             if (JSON.stringify(at(this.raw, path)) !== JSON.stringify(at(next, path))) {
                 throw new HttpError(409, `${path} is set by the environment and cannot be changed here`);

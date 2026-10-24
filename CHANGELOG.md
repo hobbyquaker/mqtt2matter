@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- A login for the UI and the API, `server.auth`: `password` (one password, kept as an scrypt hash; a session cookie)
+  or `proxy` (a reverse proxy such as nginx with authentik sets the user in a header, `X-Remote-User` by default,
+  with an optional logout URL). The event stream is covered too. The mode is set on the Configuration page and
+  applies at once; `mqtt2matter --hash-password` prints a hash for the file. **The default stays `none`**: an
+  existing installation keeps working without a login.
+
 - One Zigbee device is no longer adopted twice by accident, natively from zigbee2mqtt and a second time through
   zigbee2mqtt's Home Assistant discovery: the discovery entry is reported as a duplicate (`covered`) of the
   native description, and a zigbee2mqtt device whose discovery twin was adopted first is a duplicate of that

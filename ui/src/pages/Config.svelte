@@ -7,6 +7,7 @@
     import {download, isRecord, pretty, tryJson} from '../lib/format.ts';
     import {t} from '../lib/i18n.svelte.ts';
     import {notices} from '../lib/notices.svelte.ts';
+    import {session} from '../lib/session.svelte.ts';
 
     let view = $state<ConfigView | undefined>(undefined);
     let text = $state('');
@@ -25,10 +26,63 @@
         return Object.keys(devices).length > 0 ? devices : undefined;
     });
 
+    // access: who may use this UI
+    let accessMode = $state<'none' | 'password' | 'proxy'>('none');
+    let newPassword = $state('');
+    let repeatPassword = $state('');
+    let proxyHeader = $state('X-Remote-User');
+    let proxyLogoutUrl = $state('');
+    let savingAccess = $state(false);
+    const accessLocked = $derived(view?.overridden.some((path) => path.startsWith('server.auth')) ?? false);
+    const accessValid = $derived(accessMode !== 'password' || (newPassword === repeatPassword && (newPassword !== '' || session.state?.mode === 'password')));
+
+    function loadAccess(current: ConfigView): void {
+        const server = isRecord(current.effective.server) ? current.effective.server : {};
+        const auth = isRecord(server.auth) ? server.auth : {};
+        accessMode = auth.mode === 'password' || auth.mode === 'proxy' ? auth.mode : 'none';
+        proxyHeader = typeof auth.proxyHeader === 'string' ? auth.proxyHeader : 'X-Remote-User';
+        proxyLogoutUrl = typeof auth.proxyLogoutUrl === 'string' ? auth.proxyLogoutUrl : '';
+        newPassword = '';
+        repeatPassword = '';
+    }
+
+    async function saveAccess(): Promise<void> {
+        if (!accessValid) {
+            return;
+        }
+        const message = {
+            none: t('Open the UI to everyone who reaches its port?'),
+            password: t('Protect the UI with this password? Other open sessions end.'),
+            proxy: t('Trust the {header} header of the reverse proxy? Only the proxy may reach the port then, or anyone can send the header.', {
+                header: proxyHeader,
+            }),
+        }[accessMode];
+        if (!(await dialogs.confirm(message, {confirm: t('Save')}))) {
+            return;
+        }
+        savingAccess = true;
+        try {
+            await api.setAccess({
+                mode: accessMode,
+                ...(newPassword === '' ? {} : {password: newPassword}),
+                ...(accessMode === 'proxy' ? {proxyHeader} : {}),
+                ...(accessMode === 'proxy' && proxyLogoutUrl !== '' ? {proxyLogoutUrl} : {}),
+            });
+            notices.info(t('Access saved; it applies at once.'));
+            await session.load();
+            await load();
+        } catch (error) {
+            notices.error(errorMessage(error));
+        } finally {
+            savingAccess = false;
+        }
+    }
+
     async function load(): Promise<void> {
         try {
             view = await api.config();
             text = pretty(view.settings);
+            loadAccess(view);
         } catch (error) {
             notices.error(errorMessage(error));
         }
@@ -124,6 +178,66 @@
             </div>
         </section>
         <div class="stack">
+            <section class="ui-section" data-testid="access">
+                <div class="ui-section-title">{t('Access')}</div>
+                <p class="ui-muted">{t('Who may use this UI and its API. Without a login, keep the port on a trusted network.')}</p>
+                {#if accessLocked}
+                    <p class="ui-warn-text">{t('Set by the environment and not editable here: {paths}', {paths: 'server.auth'})}</p>
+                {/if}
+                <div class="ui-form">
+                    <label class="ui-form-label" for="access-mode">{t('Login')}</label>
+                    <div class="ui-form-field">
+                        <select id="access-mode" class="ui-select" bind:value={accessMode} disabled={accessLocked} data-testid="access-mode">
+                            <option value="none">{t('none')}</option>
+                            <option value="password">{t('password')}</option>
+                            <option value="proxy">{t('reverse proxy')}</option>
+                        </select>
+                    </div>
+                    {#if accessMode === 'password'}
+                        <label class="ui-form-label" for="access-password">{t('Password')}</label>
+                        <div class="ui-form-field">
+                            <input
+                                id="access-password"
+                                class="ui-input"
+                                type="password"
+                                autocomplete="new-password"
+                                placeholder={session.state?.mode === 'password' ? t('unchanged') : ''}
+                                bind:value={newPassword}
+                                data-testid="access-password"
+                            />
+                        </div>
+                        <label class="ui-form-label" for="access-repeat">{t('Repeat')}</label>
+                        <div class="ui-form-field">
+                            <input
+                                id="access-repeat"
+                                class="ui-input"
+                                type="password"
+                                autocomplete="new-password"
+                                bind:value={repeatPassword}
+                                data-testid="access-repeat"
+                            />
+                        </div>
+                        {#if newPassword !== repeatPassword}<div class="ui-form-help ui-error-text">{t('The passwords differ.')}</div>{/if}
+                    {:else if accessMode === 'proxy'}
+                        <label class="ui-form-label" for="access-header">{t('Header')}</label>
+                        <div class="ui-form-field"><input id="access-header" class="ui-input" bind:value={proxyHeader} /></div>
+                        <label class="ui-form-label" for="access-logout">{t('Logout URL')}</label>
+                        <div class="ui-form-field">
+                            <input id="access-logout" class="ui-input" bind:value={proxyLogoutUrl} placeholder="https://…" />
+                        </div>
+                        <div class="ui-form-help">{t('Optional: where "Log out" goes — the sign-out of the proxy.')}</div>
+                    {/if}
+                </div>
+                <div>
+                    <button
+                        type="button"
+                        class="ui-button ui-button-primary"
+                        disabled={accessLocked || !accessValid || savingAccess}
+                        onclick={saveAccess}
+                        data-testid="save-access">{t('Save')}</button
+                    >
+                </div>
+            </section>
             <section class="ui-section">
                 <div class="ui-section-title">{t('Export')}</div>
                 <p class="ui-muted">{t('The whole configuration file, as it is on disk. One device exports from the device list.')}</p>

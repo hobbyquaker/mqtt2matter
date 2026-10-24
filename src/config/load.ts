@@ -24,6 +24,10 @@ export const ENV = {
     MQTT2MATTER_MATTER_LOG_LEVEL: 'log.matter',
     MQTT2MATTER_SERVER_HOST: 'server.host',
     MQTT2MATTER_SERVER_PORT: 'server.port',
+    MQTT2MATTER_AUTH: 'server.auth.mode',
+    MQTT2MATTER_AUTH_PASSWORD: 'server.auth.password',
+    MQTT2MATTER_AUTH_PROXY_HEADER: 'server.auth.proxyHeader',
+    MQTT2MATTER_AUTH_PROXY_LOGOUT_URL: 'server.auth.proxyLogoutUrl',
 } as const;
 
 /** the environment paths whose values are numbers in the schema */

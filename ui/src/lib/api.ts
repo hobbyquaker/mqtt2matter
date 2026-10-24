@@ -275,6 +275,29 @@ export interface CheckResult {
     devices: Record<string, Issue[]>;
 }
 
+export interface AuthState {
+    mode: 'none' | 'password' | 'proxy';
+    authenticated: boolean;
+    /** proxy mode: the user the proxy named */
+    user?: string;
+    /** proxy mode: the proxy's sign-out */
+    logoutUrl?: string;
+}
+
+export interface AccessSettings {
+    mode: AuthState['mode'];
+    password?: string;
+    proxyHeader?: string;
+    proxyLogoutUrl?: string;
+}
+
+let unauthorized: () => void = () => undefined;
+
+/** what happens when the server answers 401 (the session ended): the shell shows the login */
+export function onUnauthorized(handler: () => void): void {
+    unauthorized = handler;
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
     let response: Response;
     try {
@@ -288,6 +311,9 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     const text = await response.text();
     const json: unknown = text === '' ? undefined : JSON.parse(text);
     if (!response.ok) {
+        if (response.status === 401 && !path.startsWith('/api/auth')) {
+            unauthorized();
+        }
         const error = json as {error?: string; details?: unknown} | undefined;
         throw new ApiError(
             response.status,
@@ -299,6 +325,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 }
 
 export const api = {
+    auth: () => request<AuthState>('GET', '/api/auth'),
+    login: (password: string) => request<AuthState>('POST', '/api/auth/login', {password}),
+    logout: () => request<AuthState>('POST', '/api/auth/logout', {}),
+    setAccess: (settings: AccessSettings) => request<AuthState>('PUT', '/api/auth', settings),
     status: () => request<Status>('GET', '/api/status'),
     config: () => request<ConfigView>('GET', '/api/config'),
     saveConfig: (settings: unknown) =>

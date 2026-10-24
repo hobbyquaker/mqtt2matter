@@ -40,6 +40,35 @@ export const LogConfigSchema = z
     })
     .strict();
 
+export const AuthConfigSchema = z
+    .object({
+        /** `none`: open to whoever reaches the port; `password`: a login; `proxy`: a reverse proxy's header */
+        mode: z.enum(['none', 'password', 'proxy']).default('none'),
+        /** password mode: an scrypt hash (`mqtt2matter --hash-password`, or set from the UI); a plain string
+            is hashed at start, with a warning */
+        password: z.string().min(1).optional(),
+        /** proxy mode: the header the proxy sets to the authenticated user */
+        proxyHeader: z
+            .string()
+            .regex(/^[A-Za-z0-9-]+$/, 'a header name')
+            .default('X-Remote-User'),
+        /** proxy mode: where the UI's logout goes (the proxy's sign-out) */
+        proxyLogoutUrl: z.url().optional(),
+        /** password mode: how long a login lasts */
+        sessionHours: z
+            .number()
+            .int()
+            .min(1)
+            .max(24 * 365)
+            .default(24 * 7),
+    })
+    .strict()
+    .refine((auth) => auth.mode !== 'password' || auth.password !== undefined, {
+        message: 'password mode needs a password',
+        path: ['password'],
+    });
+export type AuthConfig = z.infer<typeof AuthConfigSchema>;
+
 export const ServerConfigSchema = z
     .object({
         /** the web UI and its API; off for a headless bridge */
@@ -48,6 +77,8 @@ export const ServerConfigSchema = z
         port: z.number().int().min(0).max(65535).default(8282),
         /** the MQTT subscriptions for the UI's topic tree and live view, on top of the mappings' topics */
         topics: z.array(z.string().min(1)).default(['#']),
+        /** who may use the UI and the API; default: everyone who reaches the port */
+        auth: AuthConfigSchema.prefault({}),
     })
     .strict();
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;

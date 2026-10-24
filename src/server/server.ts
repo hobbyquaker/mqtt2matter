@@ -22,6 +22,8 @@ import {catalogJson, clusterJson} from './catalog.ts';
 import {compactDevice} from './compact.ts';
 import type {ConfigStore} from './config-store.ts';
 import {EventHub} from './events.ts';
+import {AuthConfigSchema} from '../config/schema.ts';
+import {Auth, hashPassword} from './auth.ts';
 import {HttpError, type Request, Router, sendJson, serveStatic} from './http.ts';
 import type {Importer, SyncEntry} from './importers.ts';
 import type {LogBuffer} from './log-buffer.ts';
@@ -40,6 +42,8 @@ export interface ServerOptions {
     /** the built UI; default: the package's `ui/dist` */
     uiDir?: string;
     importers?: readonly Importer[];
+    /** who may use the API and the event stream; default: everyone */
+    auth?: Auth;
     /** the MQTT subscriptions for the topic tree */
     topics?: readonly string[];
 }
@@ -89,6 +93,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** what answers without a login: the login itself, and what the UI needs to show it */
+const PUBLIC_PATHS: ReadonlySet<string> = new Set(['/api/auth', '/api/auth/login', '/api/auth/logout']);
+
 function body(request: Request): Record<string, unknown> {
     return isRecord(request.body) ? request.body : {};
 }
@@ -104,16 +111,22 @@ export class Server {
     private readonly observers = new Map<string, (() => void)[]>();
     private readonly unsubscribe: (() => void)[] = [];
     private readonly startedAt = Date.now();
+    private readonly auth: Auth;
 
     constructor(options: ServerOptions) {
         this.options = options;
         this.app = options.app;
         this.store = options.store;
         this.log = options.log;
+        this.auth = options.auth ?? Auth.open();
         this.hub = new EventHub(options.log.child('events'), () => ({type: 'hello', version: options.version}));
         this.http = createServer((request, response) => {
             const path = new URL(request.url ?? '/', 'http://localhost').pathname;
             if (path.startsWith('/api/')) {
+                if (!PUBLIC_PATHS.has(path) && !this.auth.check(request)) {
+                    sendJson(response, 401, {error: 'authentication required'});
+                    return;
+                }
                 this.router.dispatch(request, response).then(
                     (matched) => {
                         if (!matched) {
@@ -135,7 +148,9 @@ export class Server {
         });
         this.http.on('upgrade', (request, socket, head) => {
             const path = new URL(request.url ?? '/', 'http://localhost').pathname;
-            if (path === '/api/events') {
+            if (path === '/api/events' && !this.auth.check(request)) {
+                socket.end('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
+            } else if (path === '/api/events') {
                 this.hub.upgrade(request, socket, head);
             } else {
                 socket.destroy();
@@ -502,6 +517,85 @@ export class Server {
         return written;
     }
 
+    // ── authentication ─────────────────────────────────────────────────────────────────────────────
+
+    private authRoutes(): void {
+        const r = this.router;
+        r.add('GET', '/api/auth', (request) => this.auth.state(request.raw));
+        r.add('POST', '/api/auth/login', async (request, response) => {
+            if (this.auth.mode !== 'password') {
+                throw new HttpError(400, `there is no password login in ${this.auth.mode} mode`);
+            }
+            const address = request.raw.socket.remoteAddress ?? '';
+            if (this.auth.throttled(address)) {
+                throw new HttpError(429, 'too many failed logins; try again in a few minutes');
+            }
+            const password = body(request).password;
+            const token = typeof password === 'string' ? await this.auth.login(password, address) : undefined;
+            if (token === undefined) {
+                this.log.warn(`failed login from ${address}`);
+                throw new HttpError(401, 'wrong password');
+            }
+            response.setHeader('set-cookie', this.auth.cookie(request.raw, token));
+            return {mode: this.auth.mode, authenticated: true};
+        });
+        r.add('POST', '/api/auth/logout', (request, response) => {
+            this.auth.logout(request.raw);
+            response.setHeader('set-cookie', this.auth.cookie(request.raw, undefined));
+            return {mode: this.auth.mode, authenticated: this.auth.mode !== 'password' && this.auth.check(request.raw)};
+        });
+        // the access settings, applied at once and written to the file (behind the login like every other route)
+        r.add('PUT', '/api/auth', async (request, response) => {
+            const b = body(request);
+            const mode = b.mode;
+            if (mode !== 'none' && mode !== 'password' && mode !== 'proxy') {
+                throw new HttpError(400, 'mode is none, password or proxy');
+            }
+            const settings = this.store.rawSettings();
+            const server = isRecord(settings.server) ? {...settings.server} : {};
+            const current = isRecord(server.auth) ? server.auth : {};
+            const raw: Record<string, unknown> = {mode};
+            for (const key of ['proxyHeader', 'proxyLogoutUrl', 'sessionHours'] as const) {
+                const value = b[key] === undefined ? current[key] : b[key];
+                if (value !== undefined && value !== '' && value !== null) {
+                    raw[key] = value;
+                }
+            }
+            let hash = this.auth.passwordHash;
+            if (typeof b.password === 'string' && b.password !== '') {
+                hash = await hashPassword(b.password);
+            }
+            if (mode === 'password') {
+                if (hash === undefined) {
+                    throw new HttpError(400, 'password mode needs a password');
+                }
+                raw.password = hash;
+            }
+            const parsed = AuthConfigSchema.safeParse(raw);
+            if (!parsed.success) {
+                throw new HttpError(400, `the access settings are invalid: ${parsed.error.issues[0]?.message ?? ''}`);
+            }
+            // the request that switches to proxy mode must already come through the proxy
+            const header = parsed.data.proxyHeader;
+            if (mode === 'proxy' && request.raw.headers[header.toLowerCase()] === undefined) {
+                throw new HttpError(
+                    409,
+                    `this request does not carry ${header}: in proxy mode the UI would lock you out`,
+                );
+            }
+            server.auth = raw;
+            settings.server = server;
+            await this.store.saveSettings(settings);
+            this.auth.reconfigure(parsed.data, mode === 'password' ? hash : undefined);
+            this.log.info(`access: ${mode}`);
+            if (mode === 'password') {
+                // whoever set the password stays logged in
+                response.setHeader('set-cookie', this.auth.cookie(request.raw, this.auth.newSession()));
+            }
+            return {mode, authenticated: true};
+        });
+    }
+
     // ── the routes ─────────────────────────────────────────────────────────────────────────────────
 
     private routes(): void {
@@ -532,7 +626,10 @@ export class Server {
                 vendorId: this.app.config.vendorId,
                 productId: this.app.config.productId,
                 bridges: this.app.config.bridges,
-                server: this.app.config.server,
+                server: {
+                    ...this.app.config.server,
+                    auth: this.auth.view(),
+                },
                 presets: this.app.config.presets,
                 importers: this.app.config.importers,
             },
@@ -541,6 +638,8 @@ export class Server {
             await this.store.saveSettings(request.body);
             return {saved: true, restartNeeded: true};
         });
+
+        this.authRoutes();
 
         r.add('GET', '/api/devices', () => this.listDevices());
         r.add('GET', '/api/devices/:key', (request) => this.deviceJson(request.params.key ?? ''));

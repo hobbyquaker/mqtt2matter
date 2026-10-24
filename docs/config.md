@@ -14,18 +14,22 @@ written in the new form at the next save from the UI (`POST /api/import` takes t
 
 ## Environment
 
-| Variable                       | Overrides       |
-| ------------------------------ | --------------- |
-| `MQTT2MATTER_CONFIG`           | the file path   |
-| `MQTT2MATTER_MQTT_URL`         | `mqtt.url`      |
-| `MQTT2MATTER_MQTT_USERNAME`    | `mqtt.username` |
-| `MQTT2MATTER_MQTT_PASSWORD`    | `mqtt.password` |
-| `MQTT2MATTER_MQTT_CLIENT_ID`   | `mqtt.clientId` |
-| `MQTT2MATTER_STORAGE`          | `storage`       |
-| `MQTT2MATTER_LOG_LEVEL`        | `log.level`     |
-| `MQTT2MATTER_MATTER_LOG_LEVEL` | `log.matter`    |
-| `MQTT2MATTER_SERVER_HOST`      | `server.host`   |
-| `MQTT2MATTER_SERVER_PORT`      | `server.port`   |
+| Variable                            | Overrides                                                                     |
+| ----------------------------------- | ----------------------------------------------------------------------------- |
+| `MQTT2MATTER_CONFIG`                | the file path                                                                 |
+| `MQTT2MATTER_MQTT_URL`              | `mqtt.url`                                                                    |
+| `MQTT2MATTER_MQTT_USERNAME`         | `mqtt.username`                                                               |
+| `MQTT2MATTER_MQTT_PASSWORD`         | `mqtt.password`                                                               |
+| `MQTT2MATTER_MQTT_CLIENT_ID`        | `mqtt.clientId`                                                               |
+| `MQTT2MATTER_STORAGE`               | `storage`                                                                     |
+| `MQTT2MATTER_LOG_LEVEL`             | `log.level`                                                                   |
+| `MQTT2MATTER_MATTER_LOG_LEVEL`      | `log.matter`                                                                  |
+| `MQTT2MATTER_SERVER_HOST`           | `server.host`                                                                 |
+| `MQTT2MATTER_SERVER_PORT`           | `server.port`                                                                 |
+| `MQTT2MATTER_AUTH`                  | `server.auth.mode`                                                            |
+| `MQTT2MATTER_AUTH_PASSWORD`         | `server.auth.password` (a hash, or the plain password: it is hashed at start) |
+| `MQTT2MATTER_AUTH_PROXY_HEADER`     | `server.auth.proxyHeader`                                                     |
+| `MQTT2MATTER_AUTH_PROXY_LOGOUT_URL` | `server.auth.proxyLogoutUrl`                                                  |
 
 ## Top level
 
@@ -41,13 +45,37 @@ written in the new form at the next save from the UI (`POST /api/import` takes t
 | `bridges`                                         | `{"default": {}}`       | one entry per Matter bridge, see below; at least one                                                            |
 | `devices`                                         | `{}`                    | one entry per device, keyed by the **device key**                                                               |
 | `server.enabled`                                  | `true`                  | the web UI and its API (`docs/api.md`); `false` for headless                                                    |
-| `server.host`, `server.port`                      | `0.0.0.0`, `8282`       | where the UI listens; it has no login — keep it on a trusted network or behind a reverse proxy                  |
+| `server.host`, `server.port`                      | `0.0.0.0`, `8282`       | where the UI listens                                                                                            |
 | `server.topics`                                   | `["#"]`                 | MQTT subscriptions for the UI's topic tree and live view, on top of the mappings' topics                        |
+| `server.auth.mode`                                | `none`                  | who may use the UI and the API: `none` (everyone who reaches the port), `password`, `proxy` — see below         |
+| `server.auth.password`                            | —                       | `password` mode: the password's hash (`mqtt2matter --hash-password`, or set on the UI's Configuration page)     |
+| `server.auth.proxyHeader`                         | `X-Remote-User`         | `proxy` mode: the header the reverse proxy sets to the authenticated user                                       |
+| `server.auth.proxyLogoutUrl`                      | —                       | `proxy` mode: where the UI's "Log out" goes (the proxy's sign-out)                                              |
+| `server.auth.sessionHours`                        | `168`                   | `password` mode: how long a login lasts                                                                         |
 | `presets`                                         | `[]`                    | directories with the user's preset files (`*.json`), on top of the shipped ones                                 |
 | `importers.z2m.enabled`                           | `true`                  | watch zigbee2mqtt's `bridge/devices` and `bridge/groups` for the UI's adopt page ([importers.md](importers.md)) |
 | `importers.z2m.baseTopic`                         | `zigbee2mqtt`           | zigbee2mqtt's base topic                                                                                        |
 | `importers.ha.enabled`                            | `true`                  | watch Home Assistant MQTT discovery (`<prefix>/#`) for the UI's adopt page ([importers.md](importers.md))       |
 | `importers.ha.prefix`                             | `homeassistant`         | the discovery prefix                                                                                            |
+
+## Access
+
+**The default is `none`: no login.** Whoever reaches `server.port` can edit the devices, publish to the broker
+and open commissioning windows — keep the port on a trusted network, or choose a mode:
+
+- `password`: one password. The UI shows a login; a login is a session cookie (HttpOnly, SameSite=Strict, `Secure`
+  behind a proxy that sends `X-Forwarded-Proto: https`) that lasts `sessionHours` or until the logout or the next
+  start. The file holds an scrypt hash, written by the UI's Configuration page (Access) or printed by
+  `mqtt2matter --hash-password` (it reads the password from stdin); a plain password in the file or in
+  `MQTT2MATTER_AUTH_PASSWORD` works too and is hashed at start. Ten failed logins from one address within
+  15 minutes are refused for the rest of that window.
+- `proxy`: a reverse proxy (nginx with authentik, Authelia, oauth2-proxy, …) authenticates and sets
+  `proxyHeader` to the user; a request without it is refused, the user is shown in the UI. **Only the proxy may
+  reach the port** — set `server.host` to `127.0.0.1` (or firewall the port) — or anyone can send the header.
+  The UI switches to proxy mode only through a request that already carries the header.
+
+The Configuration page's Access section changes the mode at once, without a restart; the other settings apply at
+the next start. A mode the environment sets is not editable there.
 
 ## Bridges
 

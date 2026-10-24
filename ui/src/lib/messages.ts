@@ -397,4 +397,47 @@ export const MESSAGES: Record<string, Message> = {
     ),
     '{count} devices imported': m('{count} Geräte importiert', '{count} devices imported'),
     'replace every device': m('jedes Gerät ersetzen', 'replace every device'),
+
+    // access
+    'The bridge does not answer.': m('Die Bridge antwortet nicht.', 'The bridge does not answer.'),
+    'Try again': m('Erneut versuchen', 'Try again'),
+    Password: m('Passwort', 'Password'),
+    'Log in': m('Anmelden', 'Log in'),
+    'Log out': m('Abmelden', 'Log out'),
+    'This request was not authenticated by the reverse proxy. Open the UI through the proxy.': m(
+        'Diese Anfrage wurde nicht vom Reverse-Proxy authentifiziert. Öffne die Oberfläche über den Proxy.',
+        'This request was not authenticated by the reverse proxy. Open the UI through the proxy.',
+    ),
+    Access: m('Zugang', 'Access'),
+    'Who may use this UI and its API. Without a login, keep the port on a trusted network.': m(
+        'Wer diese Oberfläche und ihre API benutzen darf. Ohne Anmeldung gehört der Port in ein vertrauenswürdiges Netz.',
+        'Who may use this UI and its API. Without a login, keep the port on a trusted network.',
+    ),
+    Login: m('Anmeldung', 'Login'),
+    none: m('keine', 'none'),
+    password: m('Passwort', 'password'),
+    'reverse proxy': m('Reverse-Proxy', 'reverse proxy'),
+    unchanged: m('unverändert', 'unchanged'),
+    Repeat: m('Wiederholen', 'Repeat'),
+    'The passwords differ.': m('Die Passwörter sind verschieden.', 'The passwords differ.'),
+    Header: m('Header', 'Header'),
+    'Logout URL': m('Abmelde-URL', 'Logout URL'),
+    'Optional: where "Log out" goes — the sign-out of the proxy.': m(
+        'Optional: wohin „Abmelden“ führt — die Abmeldung des Proxys.',
+        'Optional: where "Log out" goes — the sign-out of the proxy.',
+    ),
+    'Open the UI to everyone who reaches its port?': m(
+        'Die Oberfläche für jeden öffnen, der ihren Port erreicht?',
+        'Open the UI to everyone who reaches its port?',
+    ),
+    'Protect the UI with this password? Other open sessions end.': m(
+        'Die Oberfläche mit diesem Passwort schützen? Andere offene Sitzungen enden.',
+        'Protect the UI with this password? Other open sessions end.',
+    ),
+    'Trust the {header} header of the reverse proxy? Only the proxy may reach the port then, or anyone can send the header.':
+        m(
+            'Dem Header {header} des Reverse-Proxys vertrauen? Dann darf nur der Proxy den Port erreichen, sonst kann jeder den Header schicken.',
+            'Trust the {header} header of the reverse proxy? Only the proxy may reach the port then, or anyone can send the header.',
+        ),
+    'Access saved; it applies at once.': m('Zugang gespeichert; er gilt sofort.', 'Access saved; it applies at once.'),
 };

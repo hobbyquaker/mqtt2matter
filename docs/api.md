@@ -5,8 +5,18 @@ The web UI talks to the bridge through this API and nothing else; it is the cont
 on `server.host:server.port` (`0.0.0.0:8282` by default, see [config.md](config.md)) and serves the built
 UI for every other path.
 
-**There is no authentication.** The API edits the configuration, publishes to the broker and opens
-commissioning windows; keep it on a trusted network or behind a reverse proxy that adds a login.
+**Access** is `server.auth` ([config.md](config.md#access)): with `none` (the default) every route is open;
+with `password` or `proxy` every route but the three under `/api/auth` answers `401` without a session cookie or
+the proxy's header, and the WebSocket upgrade of `/api/events` is refused with `401`.
+
+## Authentication
+
+| Route                   | Answer                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/auth`         | open; `{mode, authenticated, user?, logoutUrl?}` — `user` and `logoutUrl` in proxy mode                                                                                                                                                                                                                                                                                |
+| `POST /api/auth/login`  | open; `{password}` → `{mode, authenticated: true}` and the session cookie `mqtt2matter_session`; `401` for a wrong password, `429` after ten failures from the address within 15 minutes, `400` outside password mode                                                                                                                                                  |
+| `POST /api/auth/logout` | open; ends the session and clears the cookie                                                                                                                                                                                                                                                                                                                           |
+| `PUT /api/auth`         | `{mode, password?, proxyHeader?, proxyLogoutUrl?}`: the access settings, written to the file (the password as its hash) and applied at once; every session ends, the caller gets a new one in password mode. `400` for password mode without a password (none set before), `409` for proxy mode on a request without the header, or when the environment sets the mode |
 
 ## Conventions
 
