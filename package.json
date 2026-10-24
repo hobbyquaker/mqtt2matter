@@ -57,6 +57,7 @@
     "prepack": "npm run build"
   },
   "dependencies": {
+    "@huggingface/jinja": "0.5.10",
     "@matter/main": "0.18.0",
     "mqtt": "^5.16.1",
     "zod": "^4.6.7"
