@@ -1,22 +1,31 @@
-/* zigbee2mqtt's `action` enum → buttons with press kinds. A device's actions are strings like `single`,
+/* Action names → buttons with press kinds, shared by the importers: zigbee2mqtt's `action` enum and Home
+   Assistant's `event_types` and device trigger types. A device's actions are strings like `single`,
    `double`, `hold`, `release` (one button), `single_l1` / `single_l2` (a button per endpoint),
    `brightness_up_click` / `brightness_up_hold` / `arrow_left_click` (IKEA and Philips remotes: a button
    per prefix), `on` / `off` / `toggle` / `open` / `close` / `stop` (remotes whose actions name the button
    only: one single-press button each), `shake` / `tap` / `flip90` (the cube: gestures as buttons).
    Continuous actions — `brightness_move_up`, `brightness_stop`, `hue_move`, `rotate_left`, `scene_1` — are
-   no presses and are left out. Each button becomes one GenericSwitch endpoint. */
+   no presses and are left out. Each button becomes one GenericSwitch endpoint. Home Assistant's
+   `button_short_press` / `button_double_press` / `button_long_release` (device triggers) and ESPHome's
+   `double_press` / `long_press` (event types) are read through the same table. */
 
 const KINDS: Record<string, string> = {
     single: 'single',
     click: 'single',
     press: 'single',
     short: 'single',
+    short_press: 'single',
+    single_press: 'single',
     double: 'double',
     double_click: 'double',
+    double_press: 'double',
     triple: 'triple',
     triple_click: 'triple',
+    triple_press: 'triple',
     quadruple: 'quadruple',
+    quadruple_press: 'quadruple',
     quintuple: 'quintuple',
+    quintuple_press: 'quintuple',
     many: 'quintuple',
     hold: 'long',
     long: 'long',
@@ -25,6 +34,7 @@ const KINDS: Record<string, string> = {
     release: 'longRelease',
     hold_release: 'longRelease',
     long_release: 'longRelease',
+    short_release: 'release',
 };
 
 /** longest first, so `long_release` wins over `release` */

@@ -22,7 +22,8 @@ import type {
     StatusHalfSchema,
 } from '../../model/index.ts';
 
-import {multiPressMax, parseActions} from './actions.ts';
+import {multiPressMax, parseActions} from '../actions.ts';
+import type {Generated} from '../sync.ts';
 import {type BridgeDevice, type BridgeGroup, type Expose, canGet, canRead, canSet} from './types.ts';
 
 export const SOURCE_KIND = 'z2m';
@@ -73,11 +74,8 @@ export interface RawGroup {
 
 export type Raw = RawDevice | RawGroup;
 
-export interface Generated {
-    device: DeviceInput;
-    /** exposes (property names) and action values that have no Matter equivalent */
-    unmapped: string[];
-}
+/** the device plus the exposes (property names) and action values that have no Matter equivalent */
+export type {Generated};
 
 const MAX_LABEL = 32;
 const label = (text: string | undefined): string | undefined =>
