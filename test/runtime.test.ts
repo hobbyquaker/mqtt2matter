@@ -121,6 +121,26 @@ describe('BindingRuntime: status in', () => {
         expect(targets.get('l1')!.sets).toEqual([{key: 'OnOff.onOff', value: true}]);
     });
 
+    it('applies the messages of one topic in arrival order, even when they arrive back to back', async () => {
+        const {runtime, main} = setup({
+            name: 'd',
+            endpoints: [
+                {
+                    deviceTypes: ['DimmableLight'],
+                    bindings: [
+                        {attribute: 'OnOff.onOff', status: {topic: 's', extract: 'state', map: {ON: true}}},
+                        {attribute: 'LevelControl.currentLevel', status: {topic: 's', extract: 'level'}},
+                    ],
+                },
+            ],
+        });
+        // the MQTT client emits both before the first is through: the second must not overtake the first
+        const first = runtime.handleMessage('s', Buffer.from('{"state":"ON","level":100}'));
+        const second = runtime.handleMessage('s', Buffer.from('{"level":150}'));
+        await Promise.all([first, second]);
+        expect(main.sets.map((s) => s.value)).toEqual([true, 100, 150]);
+    });
+
     it('announces new topics to listeners and forgets devices', () => {
         const {runtime} = setup({
             name: 'd',

@@ -112,6 +112,8 @@ export class BindingRuntime {
     private readonly devices = new Map<string, DeviceState>();
     private readonly gets: {topic: string; payload: string}[] = [];
     private readonly pending = new Map<string, PendingPublish>();
+    /** per topic: the tail of the messages still being applied */
+    private readonly inbound = new Map<string, Promise<void>>();
     private readonly publisher: Publisher;
     private readonly log: Logger;
     private readonly codecs: ReadonlyMap<string, Codec>;
@@ -326,8 +328,26 @@ export class BindingRuntime {
         }
     }
 
-    /** an MQTT message: every binding on that topic decodes it and sets its attribute */
-    async handleMessage(topic: string, payload: Buffer): Promise<void> {
+    /**
+     * an MQTT message: every binding on that topic decodes it and sets its attribute. The messages of one topic
+     * are applied one after the other in arrival order: the client emits them without waiting, and a message
+     * whose first binding is still being set would otherwise let the next message's later binding overtake it
+     * and leave the older value standing. Different topics run independently, as MQTT orders per topic only.
+     */
+    handleMessage(topic: string, payload: Buffer): Promise<void> {
+        const previous = this.inbound.get(topic) ?? Promise.resolve();
+        const done = previous.then(() => this.applyMessage(topic, payload));
+        const tail = done.catch(() => undefined);
+        this.inbound.set(topic, tail);
+        void tail.then(() => {
+            if (this.inbound.get(topic) === tail) {
+                this.inbound.delete(topic);
+            }
+        });
+        return done;
+    }
+
+    private async applyMessage(topic: string, payload: Buffer): Promise<void> {
         const text = payload.toString('utf8');
         const availability = this.availabilityTopics.get(topic);
         if (availability !== undefined) {
