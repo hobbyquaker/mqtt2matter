@@ -11,6 +11,9 @@ The test fixtures test/fixtures/z2m/bridge-devices.json and bridge-groups.json a
 unchanged from matterbridge-zigbee2mqtt (https://github.com/Luligu/matterbridge-zigbee2mqtt,
 src/mock/, commit c72dd312d0899e930aec220e67b8959f10221eb0), Copyright 2023-2025 Luca Liguori,
 licensed under the Apache License, Version 2.0. They are used as a test corpus only.
+test/fixtures/z2m/starkvind.json is written by hand: an air purifier with numbered fan speeds in the
+shape zigbee2mqtt's bridge/devices documents, its values as the maintainer's own device reports them
+(see test/fixtures/ha/zigbee2mqtt.json); nothing is copied.
 
 The Home Assistant MQTT discovery test corpus in test/fixtures/ha/ is documented in
 test/fixtures/ha/README.md: captures of the maintainer's own devices (ESPHome, zigbee2mqtt's own

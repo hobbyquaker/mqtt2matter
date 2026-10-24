@@ -28,7 +28,8 @@ const BUTTON = 'z2m:0x00158d0008066798';
 const THERMO = 'z2m:0xa4c138f402dfba8a';
 const CLIMATE = 'z2m:0x00158d000945f2b1';
 const GROUP = 'z2m:group:7';
-const KEYS = [LIGHT, RELAY, COVER, BUTTON, THERMO, CLIMATE, GROUP];
+const FAN = 'z2m:0x00124b0000000003';
+const KEYS = [LIGHT, RELAY, COVER, BUTTON, THERMO, CLIMATE, GROUP, FAN];
 
 let broker: Broker;
 let storage: string;
@@ -70,7 +71,10 @@ beforeAll(async () => {
     observer.on('message', (topic, payload) => published.push({topic, payload: payload.toString()}));
 
     const discovery = z2m.discover({
-        devices: z2m.parseBridgeDevices(readFileSync(join(fixtures, 'bridge-devices.json'))),
+        devices: [
+            ...z2m.parseBridgeDevices(readFileSync(join(fixtures, 'bridge-devices.json'))),
+            ...z2m.parseBridgeDevices(readFileSync(join(fixtures, 'starkvind.json'))),
+        ],
         groups: z2m.parseBridgeGroups(readFileSync(join(fixtures, 'bridge-groups.json'))),
     });
     const {devices} = z2m.adopt({}, discovery, {keys: KEYS});
@@ -274,5 +278,37 @@ describe('thermostat and sensors', () => {
         await waitFor(() => climate.state.bridgedDeviceBasicInformation!.reachable === false, 5000, 'unreachable');
         await publish('zigbee2mqtt/Climate sensor/availability', 'online');
         await waitFor(() => climate.state.bridgedDeviceBasicInformation!.reachable === true, 5000, 'reachable');
+    });
+});
+
+describe('a fan with numbered speeds', () => {
+    it('every speed sets the percent and its third as the mode, without a warning', async () => {
+        const fan = device(FAN);
+        const steps: [string, number, number][] = [
+            // fan_mode, percentSetting, fanMode (Off 0, Low 1, Medium 2, High 3, Auto 5)
+            ['1', 11, 1],
+            ['3', 33, 1],
+            ['5', 56, 2],
+            ['6', 67, 2],
+            ['9', 100, 3],
+            ['off', 0, 0],
+        ];
+        for (const [mode, percent, fanMode] of steps) {
+            await publish(
+                'zigbee2mqtt/starkvind',
+                JSON.stringify({
+                    fan_state: mode === 'off' ? 'OFF' : 'ON',
+                    fan_mode: mode,
+                    fan_speed: 1,
+                    pm25: 3,
+                    air_quality: 'excellent',
+                }),
+            );
+            await settled(() => {
+                expect(fan.state.fanControl!.fanMode).toBe(fanMode);
+                expect(fan.state.fanControl!.percentSetting).toBe(percent);
+            });
+        }
+        expect(logLines.filter((l) => l.includes('starkvind'))).toEqual([]);
     });
 });

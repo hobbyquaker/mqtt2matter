@@ -517,8 +517,11 @@ describe('hand-written descriptions', () => {
                 template: "{{ 'off' if percent == 0 else ((percent * 5 / 100) | round(0, 'ceil') | int) }}",
             },
         });
+        // every step reads back as its third, so a reported step neither warns nor leaves the mode stale
         expect(mapping(generated.device, 'FanControl.fanMode')).toMatchObject({
-            status: {map: {off: 'Off', auto: 'Auto'}},
+            status: {
+                map: {off: 'Off', auto: 'Auto', '1': 'Low', '2': 'Low', '3': 'Medium', '4': 'Medium', '5': 'High'},
+            },
             command: {format: {Off: 'off', Auto: 'auto', Low: '2', Medium: '4', High: '5'}},
         });
         expect(mapping(generated.device, 'Pm25ConcentrationMeasurement.measuredValue').status).toMatchObject({

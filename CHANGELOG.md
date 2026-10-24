@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- zigbee2mqtt fans with numbered speeds (IKEA STARKVIND: `fan_mode` `1` … `9`) no longer log "not in the map" for
+  every report: the fan mode reads each speed as its third (`Low`, `Medium`, `High`), the same thirds a
+  controller's mode writes, so the mode also follows the speed instead of keeping the last named one. **An
+  adopted fan is listed as `updated` on the Adopt page**; adopting it again takes the new mapping and keeps the
+  user's own edits.
+
 - A stop by SIGTERM or SIGINT (`systemctl stop`, a deploy, Ctrl-C) closes the bridges' Matter storage before the
   process exits: matter.js' own signal handler no longer races the orderly stop, which found the nodes already
   closing and exited with their storage open ("Storage … was not closed before process exit"), risking writes in

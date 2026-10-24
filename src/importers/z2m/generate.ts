@@ -709,9 +709,17 @@ class Builder {
                     {template: `{{ 'off' if percent == 0 else ((percent * ${max} / 100) | round(0, 'ceil') | int) }}`},
                 );
                 if (format.Low === undefined && max >= 3) {
-                    format.Low = String(Math.ceil(max / 3));
-                    format.Medium = String(Math.ceil((2 * max) / 3));
+                    // the steps in thirds, both ways: a controller's Low/Medium/High writes the top step of its
+                    // third, and every reported step reads back as its third — so the mode follows the speed
+                    // instead of keeping the last named mode, and no step is "not in the map"
+                    const low = Math.ceil(max / 3);
+                    const medium = Math.ceil((2 * max) / 3);
+                    format.Low = String(low);
+                    format.Medium = String(medium);
                     format.High = String(max);
+                    for (const n of numeric) {
+                        map[String(n)] = n <= low ? 'Low' : n <= medium ? 'Medium' : 'High';
+                    }
                 }
             }
             if (Object.keys(map).length > 0) {

@@ -1,0 +1,185 @@
+[
+  {
+    "ieee_address": "0x00124b0000000003",
+    "friendly_name": "starkvind",
+    "type": "Router",
+    "power_source": "Mains (single phase)",
+    "manufacturer": "IKEA of Sweden",
+    "model_id": "STARKVIND Air purifier table",
+    "software_build_id": "1.1.001",
+    "supported": true,
+    "disabled": false,
+    "interview_completed": true,
+    "interviewing": false,
+    "endpoints": {
+      "1": {
+        "bindings": [],
+        "clusters": {
+          "input": [],
+          "output": []
+        },
+        "configured_reportings": [],
+        "scenes": []
+      }
+    },
+    "definition": {
+      "model": "E2006",
+      "vendor": "IKEA",
+      "description": "STARKVIND air purifier table",
+      "supports_ota": true,
+      "options": [],
+      "exposes": [
+        {
+          "type": "fan",
+          "features": [
+            {
+              "type": "binary",
+              "name": "state",
+              "label": "State",
+              "property": "fan_state",
+              "access": 7,
+              "value_on": "ON",
+              "value_off": "OFF",
+              "description": "On/off state of this fan"
+            },
+            {
+              "type": "enum",
+              "name": "mode",
+              "label": "Mode",
+              "property": "fan_mode",
+              "access": 7,
+              "values": [
+                "off",
+                "auto",
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9"
+              ],
+              "description": "Mode of this fan"
+            }
+          ]
+        },
+        {
+          "type": "numeric",
+          "name": "fan_speed",
+          "label": "Fan speed",
+          "property": "fan_speed",
+          "access": 5,
+          "value_min": 0,
+          "value_max": 9,
+          "description": "Current fan speed"
+        },
+        {
+          "type": "numeric",
+          "name": "pm25",
+          "label": "PM25",
+          "property": "pm25",
+          "access": 5,
+          "unit": "µg/m³",
+          "description": "Measured PM2.5 (particulate matter) concentration"
+        },
+        {
+          "type": "enum",
+          "name": "air_quality",
+          "label": "Air quality",
+          "property": "air_quality",
+          "access": 5,
+          "values": [
+            "excellent",
+            "good",
+            "moderate",
+            "poor",
+            "unhealthy",
+            "hazardous",
+            "out_of_range",
+            "unknown"
+          ],
+          "description": "Measured air quality"
+        },
+        {
+          "type": "binary",
+          "name": "led_enable",
+          "label": "Led enable",
+          "property": "led_enable",
+          "access": 7,
+          "value_on": true,
+          "value_off": false,
+          "category": "config",
+          "description": "Controls the LED"
+        },
+        {
+          "type": "binary",
+          "name": "child_lock",
+          "label": "Child lock",
+          "property": "child_lock",
+          "access": 7,
+          "value_on": "LOCK",
+          "value_off": "UNLOCK",
+          "category": "config",
+          "description": "Enables/disables physical input on the device"
+        },
+        {
+          "type": "binary",
+          "name": "replace_filter",
+          "label": "Replace filter",
+          "property": "replace_filter",
+          "access": 5,
+          "value_on": true,
+          "value_off": false,
+          "category": "diagnostic",
+          "description": "Filter is older than 6 months and needs replacing"
+        },
+        {
+          "type": "numeric",
+          "name": "filter_age",
+          "label": "Filter age",
+          "property": "filter_age",
+          "access": 5,
+          "unit": "minutes",
+          "category": "diagnostic",
+          "description": "Duration the filter has been used"
+        },
+        {
+          "type": "numeric",
+          "name": "device_age",
+          "label": "Device age",
+          "property": "device_age",
+          "access": 5,
+          "unit": "minutes",
+          "category": "diagnostic",
+          "description": "Duration the air purifier has been used"
+        },
+        {
+          "type": "enum",
+          "name": "identify",
+          "label": "Identify",
+          "property": "identify",
+          "access": 2,
+          "values": [
+            "identify"
+          ],
+          "category": "config",
+          "description": "Initiate device identification"
+        },
+        {
+          "type": "numeric",
+          "name": "linkquality",
+          "label": "Linkquality",
+          "property": "linkquality",
+          "access": 1,
+          "unit": "lqi",
+          "value_min": 0,
+          "value_max": 255,
+          "category": "diagnostic",
+          "description": "Link quality (signal strength)"
+        }
+      ]
+    }
+  }
+]
