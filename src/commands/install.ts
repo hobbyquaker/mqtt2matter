@@ -29,7 +29,8 @@ export const STATE_DIR = `/var/lib/${SERVICE}`;
 export const UPDATE_DIR = `${STATE_DIR}/update`;
 export const UPDATE_PATH_UNIT = `/etc/systemd/system/${SERVICE}-update.path`;
 export const UPDATE_SERVICE_UNIT = `/etc/systemd/system/${SERVICE}-update.service`;
-/** the exit code of a restart from the UI: the unit restarts the service on it (RestartForceExitStatus) */
+/** the exit code of a restart from the UI: the unit restarts the service on it (RestartForceExitStatus) and counts
+    it as a clean stop (SuccessExitStatus) */
 export const RESTART_EXIT_CODE = 75;
 
 export interface InstallArgs {
@@ -97,6 +98,8 @@ WorkingDirectory=${STATE_DIR}
 ExecStart=${execStart}
 Restart=on-failure
 RestartForceExitStatus=${RESTART_EXIT_CODE}
+# …and is a clean stop, not a failure, in the journal (the forced restart happens all the same)
+SuccessExitStatus=${RESTART_EXIT_CODE}
 RestartSec=5
 TimeoutStopSec=30
 SyslogIdentifier=${SERVICE}

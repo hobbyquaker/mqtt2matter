@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A restart from the UI is no longer logged by systemd as a failure (`status=75/TEMPFAIL`, "Failed with result
+  'exit-code'"): the unit counts exit code 75 as a clean stop (`SuccessExitStatus=75`) and still restarts on it.
+  `mqtt2matter --install` (or `deploy.sh`) once more writes the new unit.
+
 - zigbee2mqtt fans with numbered speeds (IKEA STARKVIND: `fan_mode` `1` … `9`) no longer log "not in the map" for
   every report: the fan mode reads each speed as its third (`Low`, `Medium`, `High`), the same thirds a
   controller's mode writes, so the mode also follows the speed instead of keeping the last named one. **An

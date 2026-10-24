@@ -104,8 +104,9 @@ say, or after an update that needs a new unit). `--install --dry-run` shows what
 `mqtt2matter --uninstall` removes the service and keeps the configuration and the storage.
 
 **Restart and update from the UI** (Configuration → Version) work under this service. A restart exits with code
-75, which the unit restarts on (`RestartForceExitStatus=75`). An update installs the registry's latest
-`mqtt2matter` the way it was installed, globally with npm — which the service user may not do: the UI only writes
+75, which the unit restarts on (`RestartForceExitStatus=75`) and counts as a clean stop
+(`SuccessExitStatus=75`). An update installs the registry's latest `mqtt2matter` the way it was installed,
+globally with npm — which the service user may not do: the UI only writes
 the version into `/var/lib/mqtt2matter/update/request`, and `--install` sets up `mqtt2matter-update.path`, which
 starts the root oneshot `mqtt2matter-update.service` (`mqtt2matter --apply-update`): it installs exactly
 `mqtt2matter@<that version>`, logs to `/var/lib/mqtt2matter/update/update.log` (shown in the UI) and restarts

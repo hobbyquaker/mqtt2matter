@@ -82,6 +82,8 @@ describe('the unit and the first configuration', () => {
     it('comes back after a restart from the UI and knows where an update request goes', () => {
         const unit = unitFile('/usr/bin/node /x/dist/main.js');
         expect(unit).toContain('RestartForceExitStatus=75\n');
+        // a restart is no failure in the journal; RestartForceExitStatus restarts it regardless
+        expect(unit).toContain('SuccessExitStatus=75\n');
         expect(unit).toContain('Environment=MQTT2MATTER_SUPERVISOR=systemd\n');
         expect(unit).toContain('Environment=MQTT2MATTER_UPDATE_DIR=/var/lib/mqtt2matter/update\n');
         expect(updatePathUnit()).toContain('PathExists=/var/lib/mqtt2matter/update/request\n');
