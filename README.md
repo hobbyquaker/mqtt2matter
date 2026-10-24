@@ -59,6 +59,45 @@ them. [docs/importers.md](docs/importers.md) has the mapping and the API.
 [docs/config.md](docs/config.md) describes the configuration, [docs/architecture.md](docs/architecture.md)
 the module layout and its rules.
 
+## Install on a Linux host
+
+mqtt2matter runs as the systemd service `mqtt2matter.service` under a system user of its own:
+
+| What               | Where                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------- |
+| the package        | `/usr/local/lib/node_modules/mqtt2matter`, the command `/usr/local/bin/mqtt2matter`   |
+| the configuration  | `/etc/mqtt2matter/mqtt2matter.json` (the UI edits it)                                 |
+| the Matter storage | `/var/lib/mqtt2matter` — the pairings; keep it, or every controller has to pair again |
+| the log            | `journalctl -u mqtt2matter -f` — the pairing code and QR payload are there            |
+
+From a checkout, `deploy.sh` does all of it over ssh: lint, typecheck and tests (`SKIP_TESTS=1` skips them),
+build, `npm pack`, copy the tarball and the lock file, install with `npm install --omit=dev`, link the
+command, restart the service. It checks the host's Node against `engines` before anything is copied.
+
+```sh
+INSTALL=1 MQTT_URL=mqtt://broker:1883 npm run deploy -- root@my-host   # the first time: also installs the service
+npm run deploy -- root@my-host                                         # later: update and restart
+```
+
+The host defaults to `mqtt2matter` (an ssh host name or a `Host` alias in `~/.ssh/config`). By hand, on the
+host: `npm install -g ./mqtt2matter-<version>.tgz`, then `sudo mqtt2matter --install --mqtt-url
+mqtt://broker:1883`. `--install` creates the user and the directories, writes the configuration only when there
+is none, writes the unit and enables and starts it; running it again rewrites the unit (after a Node update,
+say). `--install --dry-run` shows what it would write. `mqtt2matter --uninstall` removes the service and keeps
+the configuration and the storage.
+
+**The host needs:**
+
+- Node ≥ 22.13 with npm, installed system-wide (`/usr/bin` or `/usr/local/bin` — the unit runs with
+  `ProtectHome`, so a Node under `/root` or `/home`, as nvm installs it, does not start), systemd, and ssh as
+  root or with sudo for `deploy.sh`.
+- **The same layer-2 network as the Matter controllers**: Matter finds the bridge through mDNS (UDP 5353,
+  multicast `224.0.0.251` and `ff02::fb`) and talks to it over IPv6. In a container, that means a bridged
+  network interface (not NAT) with IPv6 enabled — link-local addresses at least, SLAAC when the network has
+  it — and multicast passed through.
+- No firewall on UDP 5353 (mDNS), UDP 5540 (`bridges.<id>.port`, one port per bridge) and TCP 8282 (the UI,
+  `server.port`), or rules that let them in.
+
 ## Looking for the other direction?
 
 To bridge real Matter devices to MQTT, use [she](https://github.com/hobbyquaker/she) (smart home engine): it

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Running as a service: `mqtt2matter --install` sets up `mqtt2matter.service` (a system user of its own, the
+  configuration in `/etc/mqtt2matter/mqtt2matter.json`, the Matter storage in `/var/lib/mqtt2matter`),
+  `--uninstall` removes it and keeps both; `deploy.sh` (`npm run deploy -- <host>`) tests, builds, packs and
+  installs a checkout on a host over ssh and restarts the service. The README lists what the host's network
+  needs for Matter.
+- Status messages that arrive back to back on one topic are applied in order: a message whose attributes
+  were still being set could be overtaken by the next one, and the older value stayed.
 - Phase 3, the web UI and its server: `server.port` (8282) serves a Svelte 5 app and the REST + WebSocket
   API of `docs/api.md` — devices (list with source, reachability, bridge and endpoint number; created by hand
   from a device type with its mandatory clusters suggested, duplicated, enabled, deleted; saved and rebuilt
