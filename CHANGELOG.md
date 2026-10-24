@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- A stop by SIGTERM or SIGINT (`systemctl stop`, a deploy, Ctrl-C) closes the bridges' Matter storage before the
+  process exits: matter.js' own signal handler no longer races the orderly stop, which found the nodes already
+  closing and exited with their storage open ("Storage … was not closed before process exit"), risking writes in
+  flight such as fabrics and endpoint numbers. A stop that hangs is cut off after 20 seconds.
+
 - The pairing code no longer changes at every start of a bridge that is not commissioned yet: passcode and
   discriminator are generated once per bridge and kept in `commissioning.json` in the storage directory, so a
   code or QR code noted down stays valid across restarts, updates and deploys. Configured values still win. An

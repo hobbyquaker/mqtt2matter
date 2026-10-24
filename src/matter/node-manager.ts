@@ -44,6 +44,9 @@ export function prepareEnvironment(storagePath: string, matterLogLevel: Config['
         return;
     }
     Environment.default.vars.set('storage.path', storagePath);
+    // the application owns SIGINT and SIGTERM: matter.js' own handler would cancel the nodes behind the back of
+    // the orderly stop, which then finds them closing, goes on and exits before their storage is closed
+    Environment.default.vars.set('runtime.signals', false);
     environmentPrepared = true;
 }
 

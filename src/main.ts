@@ -24,6 +24,9 @@ import {
     Z2mImporter,
 } from './server/index.ts';
 
+/** how long a stop may take before the process exits anyway (the unit's TimeoutStopSec is 30 s) */
+const STOP_TIMEOUT_MS = 20_000;
+
 /** one line from stdin; on a terminal without echo */
 async function readSecret(prompt: string): Promise<string> {
     const stdin = process.stdin;
@@ -139,20 +142,29 @@ async function main(): Promise<void> {
     const app = new App(config, {log});
     let server: Server | undefined;
     let stopping = false;
-    /** stop cleanly; `code` is the exit code (the restart's one brings the systemd service back) */
+    /**
+     * Stop cleanly — the UI, the mappings, the bridges with their storage, the broker connection — then exit with
+     * `code` (the restart's one brings the systemd service back). A stop that hangs is cut off after
+     * STOP_TIMEOUT_MS, well inside the unit's TimeoutStopSec, so the process never waits for systemd's SIGKILL.
+     */
     const stop = (reason: string, code = 0): void => {
         if (stopping) {
             return;
         }
         stopping = true;
         log.info(`${reason}, stopping`);
+        const timer = setTimeout(() => {
+            log.error(`the stop did not finish within ${STOP_TIMEOUT_MS / 1000} s, exiting anyway`);
+            process.exit(code === 0 ? 1 : code);
+        }, STOP_TIMEOUT_MS);
+        timer.unref();
         Promise.resolve(server?.close())
             .then(() => app.stop())
             .then(
                 () => process.exit(code),
                 (error: unknown) => {
                     log.error('stop failed', error);
-                    process.exit(1);
+                    process.exit(code === 0 ? 1 : code);
                 },
             );
     };

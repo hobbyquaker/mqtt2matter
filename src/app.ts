@@ -168,9 +168,16 @@ export class App {
             return;
         }
         this.started = false;
-        await this.runtime.flush();
-        this.runtime.close();
-        await this.nodes.stop();
-        await this.mqtt.close();
+        try {
+            await this.runtime.flush();
+        } finally {
+            // the nodes close their storage whatever happened to the last publishes
+            this.runtime.close();
+            try {
+                await this.nodes.stop();
+            } finally {
+                await this.mqtt.close();
+            }
+        }
     }
 }
