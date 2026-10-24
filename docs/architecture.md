@@ -15,8 +15,9 @@ src/
   mqtt/        the broker connection and the topic cache (last payload per topic)
   matter/      the node manager (n ≥ 1 bridges), one bridge = ServerNode + aggregator, the model-driven endpoint
                builder, the strict dry run, ids, the shard map
-  importers/   foreign descriptions → model devices: patch.ts (baseline + edits), z2m/ (zigbee2mqtt; the
-               Home Assistant discovery importer is phase 4) — docs/importers.md
+  importers/   foreign descriptions → model devices: patch.ts (baseline + edits), sync.ts (the report, the
+               re-sync, orphaning — shared), actions.ts (press kinds — shared), z2m/ (zigbee2mqtt), ha/ (Home
+               Assistant MQTT discovery) — docs/importers.md
   commands/    the command line's subcommands beyond start and --check (`--import-z2m`, `--install`)
   server/      node:http + ws: the REST API and the event stream of docs/api.md, the config file as the UI
                edits it (compact, atomic writes), the catalogue as JSON, the preview of a binding's halves,

@@ -14,7 +14,8 @@ battery, availability. `mqtt2matter --check` validates a configuration against t
 strict mode. The Zigbee2MQTT importer adopts `bridge/devices` and `bridge/groups` from the command line or
 the UI and re-syncs them. The web UI edits devices and bindings with a live preview, adopts discovered
 devices, shows the pairing code and the live MQTT traffic. Not published, not released; the Home Assistant
-discovery importer is the next phase. The configuration schema is frozen.
+discovery importer adopts ESPHome, Tasmota, Shelly, Z-Wave JS UI, OpenMQTTGateway and the device-based
+form from the UI. The configuration schema is frozen.
 
 ## Try it
 
@@ -55,6 +56,16 @@ buttons as GenericSwitch endpoints, battery, availability — and prints one lin
 not map. Edit the result like any other device; running the import again carries your edits over, lists
 conflicts instead of resolving them, and marks devices that left zigbee2mqtt as orphaned without removing
 them. [docs/importers.md](docs/importers.md) has the mapping and the API.
+
+### Home Assistant MQTT discovery
+
+Anything that announces itself under `homeassistant/#` — ESPHome, Tasmota, Shelly, Z-Wave JS UI,
+OpenMQTTGateway, the device-based form with components — appears on the Adopt page while the bridge runs
+(`importers.ha` in the configuration): one Matter device per Home Assistant device, the primary entity on
+its own endpoint, the other entities as children, a suggested area as a Matter area tag, templates through
+the payload engine where it can run them and listed with the template where it cannot. What has no Matter
+equivalent (`number`, `select`, `button`, settings and diagnostics) is listed, not dropped. A device that
+zigbee2mqtt announces itself is marked: its native description is the better one.
 
 [docs/config.md](docs/config.md) describes the configuration, [docs/architecture.md](docs/architecture.md)
 the module layout and its rules.

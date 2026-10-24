@@ -43,6 +43,8 @@ change it migrates files on load. Additions are allowed; renames and removals ar
 | `presets`                                         | `[]`                    | directories with the user's preset files (`*.json`), on top of the shipped ones                                 |
 | `importers.z2m.enabled`                           | `true`                  | watch zigbee2mqtt's `bridge/devices` and `bridge/groups` for the UI's adopt page ([importers.md](importers.md)) |
 | `importers.z2m.baseTopic`                         | `zigbee2mqtt`           | zigbee2mqtt's base topic                                                                                        |
+| `importers.ha.enabled`                            | `true`                  | watch Home Assistant MQTT discovery (`<prefix>/#`) for the UI's adopt page ([importers.md](importers.md))       |
+| `importers.ha.prefix`                             | `homeassistant`         | the discovery prefix                                                                                            |
 
 ## Bridges
 

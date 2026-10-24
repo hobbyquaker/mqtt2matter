@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Phase 4, the Home Assistant MQTT discovery importer: everything under `homeassistant/#` — the per-entity
+  form and the device-based form with components, the 289 abbreviations, `~`, availability lists and modes,
+  removal by an empty payload — becomes a device of the manual model on the Adopt page (`importers.ha`): one
+  Matter device per Home Assistant device, the primary entity on its own endpoint, the other entities as
+  tagged child endpoints, a battery as the power source, event entities and device triggers as buttons; the
+  component table of `docs/importers.md` (switch as an outlet, the three light schemas, covers with position
+  and tilt, climate, lock, fan, valve, binary sensors and sensors by device class with unit conversions);
+  `number`, `select`, `text`, `button`, `scene`, settings and diagnostics listed as unmapped rather than
+  dropped. Templates go through the payload engine when it can run them; the importer checks each one and
+  leaves the half out — listed with the template — where it cannot (`states()`, `now()`, `int(base=16)`,
+  integer dictionary keys, macros). A `suggested_area` is shown on the Adopt page and becomes a Common Area
+  tag on the device when the name matches (English or German). A device zigbee2mqtt announces itself is marked
+  native; "Adopt all new" leaves it to the zigbee2mqtt importer. The re-sync, orphaning and adopt logic is
+  shared by both importers; a conflict now reports the device as updated even when the user's value stays.
+  Corpus: the maintainer's ESPHome devices, zigbee2mqtt's discovery and his adapters' device-based payloads
+  (anonymised), Tasmota, Shelly, Z-Wave JS UI and OpenMQTTGateway written after their documentation.
 - Running as a service: `mqtt2matter --install` sets up `mqtt2matter.service` (a system user of its own, the
   configuration in `/etc/mqtt2matter/mqtt2matter.json`, the Matter storage in `/var/lib/mqtt2matter`),
   `--uninstall` removes it and keeps both; `deploy.sh` (`npm run deploy -- <host>`) tests, builds, packs and

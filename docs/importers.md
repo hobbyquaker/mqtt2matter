@@ -10,8 +10,10 @@ never removed by the importer; removal is the user's click.
 
 Importers depend on `model/` and `mqtt/` only ([architecture.md](architecture.md)); the runtime does not know
 where a device came from. They are plain functions over a `devices` record as it stands in the file (no
-defaults filled in: `DeviceInput`, `DevicesInput` from `model/schema.ts`), so the command line today and the
-server for the UI tomorrow call the same code.
+defaults filled in: `DeviceInput`, `DevicesInput` from `model/schema.ts`), so the command line and the server
+for the UI call the same code. The report (`diff`), the adoption (`adopt`), the re-sync, orphaning and
+restoring are one generic implementation (`src/importers/sync.ts`); an importer brings its discovery, its
+`source.raw` format and the generator that turns a raw description into a baseline.
 
 ## Baseline + patch (`src/importers/patch.ts`)
 
@@ -105,8 +107,8 @@ not) and restores an orphaned one that is back. A merge that does not validate a
 device as it was (`invalid`, with the messages in `notes`). Groups are evaluable only together with the devices
 payload; without it they count as not seen. Manual devices are never touched.
 
-The server (phase 3) runs `adopt` on every retained `bridge/devices` / `bridge/groups` it receives and shows the
-report in the Adopt view; until then the command line does it:
+The server runs `adopt` on every retained `bridge/devices` / `bridge/groups` it receives and shows the
+report in the Adopt view; the command line does the same without the UI:
 
 ```sh
 mqtt2matter --import-z2m [config.json] [--base-topic zigbee2mqtt] [--dry-run] [--no-groups] [--timeout 15]
@@ -117,3 +119,98 @@ everything supported that is not in the file yet, re-syncs the rest, writes the 
 untouched) and prints one line per device plus the static validation; `--dry-run` prints without writing.
 Run it again after pairing, renaming or removing devices in zigbee2mqtt; the normal start afterwards logs the
 pairing code.
+
+## Home Assistant MQTT discovery (`src/importers/ha/`)
+
+Reads every retained `<prefix>/<component>/[<node_id>/]<object_id>/config` (the per-entity form) and
+`<prefix>/device/[<node_id>/]<object_id>/config` (the device-based form with `components`, each with a
+`platform`), prefix `homeassistant` by default. The 289 abbreviations of Home Assistant's `abbreviations.py`
+(`stat_t`, `cmd_t`, `val_tpl`, `dev`, `cmps`, …) are expanded once, `~` is substituted at the start or end of
+every `*_topic`, a component inherits the shared fields of a device-based payload (`device`, `origin`,
+`availability`, `state_topic`, `command_topic`, …), and an empty retained payload removes the entity (a
+component reduced to its `platform` is removed too). Topics with more than two levels between component and
+`config` are no discovery topics — Home Assistant ignores them as well.
+
+Keys: `ha:<first identifier or connection>` of the `device` block, cleaned to the key alphabet and hashed
+when longer than 64 characters. **One Matter device per Home Assistant device**: the primary entity (a
+`light`, `cover`, `climate`, `lock`, `fan`, `valve`, else a `switch`, in that order) is the node's own
+endpoint, every other entity a child endpoint named after its object id; children sharing a device type with
+a sibling carry a number tag as the zigbee2mqtt importer's do. An entity without a `device` block is listed as
+unsupported (Home Assistant itself needs `device` and `unique_id` to group entities). A `suggested_area`
+travels in the report (`area`) and, when the name matches one of Matter's Common Area tags (English, or
+German through a synonym table — `Küche`, `Wohnzimmer`, `Bad`, …), becomes a `Descriptor` tag of namespace
+`0x10` on the device's own endpoint. A device zigbee2mqtt announces itself (`origin.name: Zigbee2MQTT`,
+identifier `zigbee2mqtt_<ieee>`) is reported with `native: "z2m:<ieee>"`: the native description is
+preferred, the Adopt page's "Adopt all new" leaves it to the zigbee2mqtt importer.
+
+### What becomes what
+
+| Component (keys)                                                                                                                                                                          | Device type, bindings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `switch` (`state_on/off`, `payload_on/off`, `value_template`, `command_template`)                                                                                                         | `OnOffPlugInUnit` (the user switches it to `OnOffLight` / `OnOffMountedSwitch` in the editor); `OnOff.onOff` with `map` / `format`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `light`, default schema (`brightness_*`, `brightness_scale`, `color_temp_*`, `color_temp_kelvin`, `min/max_mireds`, `hs_*`, `xy_*`, `rgb_*`, `on_command_type`, `color_mode_state_topic`) | `OnOffLight` / `DimmableLight` / `ColorTemperatureLight` / `ExtendedColorLight` by the topics present; brightness `scale [1, brightness_scale] → [1, 254]`; colour temperature in mireds or `unit: kelvin`; `colorHs` / `colorXy` / `colorRgb` as `h,s` / `x,y` / `r,g,b` text with the command templates `{{ hue }},{{ saturation }}`, `{{ x }},{{ y }}`, `{{ red }},{{ green }},{{ blue }}` unless the config has its own; `options.light.onCommandType`; `colorMode` when colour and colour temperature meet; `rgbw`, `rgbww`, `white`, `effect` listed                                                                                                                                      |
+| `light`, json schema (`supported_color_modes`, `brightness`, one JSON state and command)                                                                                                  | the same types; `extract` / `wrap` on `state`, `brightness`, `color_temp`, `color` (xy as an object both ways; hs and rgb back as `{"state": "ON", "color": {…}}` templates), `color_mode`; `coalesce: 50`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `light`, template schema (`command_on/off_template`, `state_template`, `brightness_template`, `color_temp_template`)                                                                      | on/off as `{% if value %}<on>{% else %}<off>{% endif %}`, brightness and colour temperature through the on template; colour through separate templates is listed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `cover` (`position_*`, `set_position_*`, `position_open/closed`, `state_*`, `payload_open/close/stop`, `tilt_*`)                                                                          | `WindowCovering`: position `scale [closed, open] → [10000, 0]`; `set_position_template` with `{% set position = open %}` in front so Home Assistant's `position` (100 = open) keeps its meaning; `motion` from the state topic (opening/closing/stopped; open/closed too for a cover without position); `upOrOpen` / `downOrClose` for a cover without `set_position_topic`, `stopMotion` always; tilt likewise with `tilt_closed/opened_value`                                                                                                                                                                                                                                                 |
+| `climate` (`modes`, `mode_*`, `temperature_*`, `temperature_low/high_*`, `current_temperature_*`, `action_*`, `min/max_temp`, `temperature_unit`, `current_humidity_*`)                   | `Thermostat`: `localTemperature`, `occupiedHeatingSetpoint` / `occupiedCoolingSetpoint` by the modes (both on one `temperature_*` topic unless low/high topics exist), limits → `options.climate`, `systemMode` by name with `{% set value = … %}` giving a `mode_command_template` Home Assistant's `value`, `thermostatRunningState` from `action_topic`; `current_humidity_topic` → a `HumiditySensor` child; fan, swing, preset modes and target humidity listed; `coalesce: 50`                                                                                                                                                                                                            |
+| `lock` (`payload_lock/unlock`, `state_locked/unlocked/jammed`)                                                                                                                            | `DoorLock.lockState` (`Locked`, `Unlocked`, `NotFullyLocked`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `fan` (`percentage_*`, `speed_range_max`, `preset_modes`)                                                                                                                                 | `Fan`: `OnOff.onOff`, `percentSetting` `scale [0, speed_range_max] → [0, 100]`, `fanMode` from the preset modes named `off` / `low` / `medium` / `high` / `auto`; oscillation and direction listed; `coalesce: 50`                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `valve` (`state_open/opening/closed/closing`, `payload_open/close`)                                                                                                                       | `WaterValve`: `ValveConfigurationAndControl.currentState`, `open` / `close`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `binary_sensor` by `device_class`                                                                                                                                                         | door / window / opening / garage_door → `ContactSensor` (inverted: Home Assistant's on is the open contact); motion / occupancy / presence / moving → `OccupancySensor`; moisture → `WaterLeakDetector`; cold → `WaterFreezeDetector`; smoke, carbon_monoxide → `SmokeCoAlarm`; battery → `PowerSource.batChargeLevel`, battery_charging → `batChargeState` (the `Rechargeable` feature); every other class and no class: listed                                                                                                                                                                                                                                                                |
+| `sensor` by `device_class` and `unit_of_measurement`                                                                                                                                      | temperature (°C, °F) → `TemperatureSensor`; humidity → `HumiditySensor`; pressure / atmospheric_pressure (hPa, mbar, kPa, Pa, bar, psi, inHg, mmHg) → `PressureSensor`; illuminance (lx) → `LightSensor`; battery (%) → `PowerSource.batPercentRemaining`; carbon_dioxide, carbon_monoxide (ppm), pm1 / pm25 / pm10 (µg/m³), volatile_organic_compounds(_parts), nitrogen_dioxide, ozone, formaldehyde (ppb; ppm × 1000) → `AirQualitySensor`; aqi → `AirQuality.airQuality` through the US bands; volume_flow_rate (m³/h) → `FlowSensor`; °C / °F / lx without a class count as temperature / illuminance; everything else listed (the electrical classes until electrical measurement exists) |
+| `event` (`event_types`, payload `{"event_type": …}`)                                                                                                                                      | one `GenericSwitch` per button the event types name (`single` / `double` / `long` / `single_push` / `double_press` …, the shared press-kind table), `extract: event_type` unless a `value_template` renders it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `device_trigger` / `device_automation` (`topic`, `type`, `subtype`, `payload`)                                                                                                            | accumulated per device: one button per `subtype` (Tasmota's `button_1`), the kind from the `type` (`button_short_press`, `button_double_press`, `button_long_press`, …) or, for zigbee2mqtt's `type: action`, from the subtype as the zigbee2mqtt importer reads actions; continuous actions listed                                                                                                                                                                                                                                                                                                                                                                                             |
+| `button`, `number`, `select`, `text`, `scene`, `update`, `device_tracker`, `notify`, `image`, …                                                                                           | listed as unmapped (a Matter button emits events; scenes come later), never dropped silently                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+
+Entities with an `entity_category` (`config`, `diagnostic`) or `enabled_by_default: false` are listed, not
+mapped — settings and metrics are not the device's function — except battery sensors, which Matter has a place
+for. Every status half of an entity with `expire_after` gets `expire`; `optimistic: true` and `retain: true`
+are carried into the command half. The device's availability is the primary entity's (`availability_topic`
+with `payload_available` / `payload_not_available`, or the `availability` list with `availability_mode`),
+else the first entity's that has one. `name`, `vendor`, `model` and `serial` come from the device block,
+merged over every entity (each repeats it, often only with its identifiers).
+
+**Templates** go to the payload engine when it can run them: the importer parses every `*_template` with the
+same library and checks the filters, tests, functions and free names against what the engine provides
+([config.md](config.md), "Templates"; `src/importers/ha/templates.ts`). A template it cannot run — `states()`,
+`now()`, `this`, the time and regex helpers, `int(base=16)`, a dictionary with integer keys, macros — leaves
+that half of the binding out and is listed under `unmapped` with the template text, so the user sees what to
+write by hand. Where Home Assistant's command template sees a value the engine names differently, a `{% set …
+%}` prelude gives it Home Assistant's meaning: `value` is `ON` / `OFF` (`payload_on` / `payload_off`) for a
+switch, the mode string for a climate or a fan, `LOCK` / `UNLOCK` for a lock; `position` and `tilt_position`
+are the open-percentage for a cover. A `value_template` on a `light` is read as its `state_value_template`
+(what Tasmota sends).
+
+### `source`
+
+```json
+"source": {"kind": "ha-discovery", "key": "aa0000000002", "version": "1.9f0c…", "raw": {"kind": "ha", "prefix": "homeassistant", "identity": "aa0000000002", "device": {"identifiers": "aa0000000002", "name": "…", "manufacturer": "Espressif", "model": "esp01_1m", "suggested_area": "Küche"}, "entities": [{"id": "relay", "topic": "homeassistant/switch/usb-relay-02/relay/config", "component": "switch", "config": { … }}]}}
+```
+
+`raw` holds the expanded configs trimmed of what the generator does not read (`icon`, `entity_picture`,
+`json_attributes_*`, `configuration_url`, …), in a stable order; `version` is `<generator version>.<hash of raw>`.
+
+### The API (`src/importers/ha/sync.ts`, `source.ts`)
+
+```ts
+import {ha} from 'mqtt2matter';
+
+const source = new ha.HaSource('homeassistant');     // .topics = ['homeassistant/#']; .handle(topic, payload); .load(cache)
+const discovery = source.discover();                 // or ha.discover({entities, prefix, seen})
+//   Discovery {prefix, items: Discovered[], seen}
+//   Discovered {key, kind: 'device', name, vendor?, model?, area?, native?, supported, reason?, baseline?, unmapped}
+
+const report = ha.diff(discovery, config.devices);   // SyncEntry[] as the zigbee2mqtt importer's, plus `area` and `native`
+const {devices, report} = ha.adopt(config.devices, discovery, {keys?, resync?, orphan?});
+ha.orphaned(devices);
+ha.edits(device);
+ha.generate(raw);
+ha.checkTemplate(source, 'status' | 'command');     // {ok} | {ok: false, reason}
+ha.areaTag('Wohnzimmer');                            // {name: 'LivingRoom', id: 52} | undefined
+```
+
+`seen` is true once any discovery message (or removal) was handled: before that nothing is orphaned. The
+server subscribes `<prefix>/#` when `importers.ha.enabled` is set ([config.md](config.md)), feeds the
+importer every message and shows the report on the Adopt page; a re-sync regenerates the baseline from the
+retained configs and carries the user's edits over like the zigbee2mqtt importer does. There is no command
+line for it; the UI is the way to adopt.
