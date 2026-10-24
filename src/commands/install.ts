@@ -2,6 +2,10 @@
    systemd service `mqtt2matter.service`.
 
      /etc/systemd/system/mqtt2matter.service   the unit, rewritten on every --install (ExecStart follows node)
+     /etc/systemd/system/mqtt2matter-update.path, mqtt2matter-update.service
+                                               the update from the UI: the path unit sees the request the service
+                                               writes into /var/lib/mqtt2matter/update and starts the root oneshot
+                                               `mqtt2matter --apply-update` (commands/update.ts)
      /etc/mqtt2matter/mqtt2matter.json         the configuration; created once, never overwritten — the UI edits it,
                                                so the directory belongs to the service user
      /var/lib/mqtt2matter/                     matter.js storage (fabrics, endpoint numbers) and the shard map
@@ -22,6 +26,11 @@ export const UNIT_PATH = `/etc/systemd/system/${SERVICE}.service`;
 export const CONFIG_DIR = `/etc/${SERVICE}`;
 export const CONFIG_FILE = `${CONFIG_DIR}/${SERVICE}.json`;
 export const STATE_DIR = `/var/lib/${SERVICE}`;
+export const UPDATE_DIR = `${STATE_DIR}/update`;
+export const UPDATE_PATH_UNIT = `/etc/systemd/system/${SERVICE}-update.path`;
+export const UPDATE_SERVICE_UNIT = `/etc/systemd/system/${SERVICE}-update.service`;
+/** the exit code of a restart from the UI: the unit restarts the service on it (RestartForceExitStatus) */
+export const RESTART_EXIT_CODE = 75;
 
 export interface InstallArgs {
     uninstall: boolean;
@@ -81,9 +90,13 @@ Type=simple
 User=${SERVICE}
 Group=${SERVICE}
 Environment=MQTT2MATTER_CONFIG=${CONFIG_FILE}
+# the UI's restart and update: an exit with ${RESTART_EXIT_CODE} comes back; the update goes through ${SERVICE}-update.path
+Environment=MQTT2MATTER_SUPERVISOR=systemd
+Environment=MQTT2MATTER_UPDATE_DIR=${UPDATE_DIR}
 WorkingDirectory=${STATE_DIR}
 ExecStart=${execStart}
 Restart=on-failure
+RestartForceExitStatus=${RESTART_EXIT_CODE}
 RestartSec=5
 TimeoutStopSec=30
 SyslogIdentifier=${SERVICE}
@@ -98,6 +111,34 @@ PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
+`;
+}
+
+export function updatePathUnit(): string {
+    return `[Unit]
+Description=mqtt2matter: an update requested from the UI
+
+[Path]
+PathExists=${UPDATE_DIR}/request
+Unit=${SERVICE}-update.service
+
+[Install]
+WantedBy=multi-user.target
+`;
+}
+
+/** the root oneshot: installs the requested version with npm and restarts the service */
+export function updateServiceUnit(execStart: string): string {
+    return `[Unit]
+Description=mqtt2matter: install the version requested from the UI, then restart mqtt2matter
+
+[Service]
+Type=oneshot
+# npm keeps its cache under HOME, which systemd does not set for a system service
+Environment=HOME=/root
+ExecStart=${execStart} --apply-update
+TimeoutStartSec=900
+SyslogIdentifier=${SERVICE}-update
 `;
 }
 
@@ -124,7 +165,11 @@ async function install(args: InstallArgs, host: InstallHost): Promise<void> {
         host.out(
             configExists ? `would keep ${CONFIG_FILE}` : `would create ${CONFIG_FILE}:\n${initialConfig(args.mqttUrl)}`,
         );
-        host.out(`would create the system user ${SERVICE}, ${STATE_DIR}, and enable and start ${SERVICE}.service`);
+        host.out(`would write ${UPDATE_PATH_UNIT}:\n\n${updatePathUnit()}`);
+        host.out(`would write ${UPDATE_SERVICE_UNIT}:\n\n${updateServiceUnit(host.execStart)}`);
+        host.out(
+            `would create the system user ${SERVICE}, ${STATE_DIR}, ${UPDATE_DIR}, enable ${SERVICE}-update.path, and enable and start ${SERVICE}.service`,
+        );
         return;
     }
     const reason = host.unsuitable();
@@ -144,6 +189,7 @@ async function install(args: InstallArgs, host: InstallHost): Promise<void> {
         ]);
     }
     await mkdir(at(STATE_DIR), {recursive: true, mode: 0o750});
+    await mkdir(at(UPDATE_DIR), {recursive: true, mode: 0o750});
     await mkdir(at(CONFIG_DIR), {recursive: true, mode: 0o750});
     if (configExists) {
         host.out(`kept ${CONFIG_FILE}`);
@@ -160,7 +206,11 @@ async function install(args: InstallArgs, host: InstallHost): Promise<void> {
     await mkdir(join(host.root, '/etc/systemd/system'), {recursive: true});
     await writeFile(at(UNIT_PATH), unit, {mode: 0o644});
     host.out(`wrote ${UNIT_PATH} (ExecStart=${host.execStart})`);
+    await writeFile(at(UPDATE_PATH_UNIT), updatePathUnit(), {mode: 0o644});
+    await writeFile(at(UPDATE_SERVICE_UNIT), updateServiceUnit(host.execStart), {mode: 0o644});
+    host.out(`wrote ${UPDATE_PATH_UNIT} and ${UPDATE_SERVICE_UNIT} (the update from the UI)`);
     host.exec('systemctl', ['daemon-reload']);
+    host.exec('systemctl', ['enable', '--now', `${SERVICE}-update.path`]);
     host.exec('systemctl', ['enable', `${SERVICE}.service`]);
     // restart rather than start: a reinstall has to bring a running service onto the new unit
     host.exec('systemctl', ['restart', `${SERVICE}.service`]);
@@ -171,7 +221,7 @@ async function install(args: InstallArgs, host: InstallHost): Promise<void> {
 async function uninstall(args: InstallArgs, host: InstallHost): Promise<void> {
     if (args.dryRun) {
         host.out(
-            `would stop and disable ${SERVICE}.service and remove ${UNIT_PATH}; ${CONFIG_DIR} and ${STATE_DIR} stay`,
+            `would stop and disable ${SERVICE}.service and ${SERVICE}-update.path and remove their units; ${CONFIG_DIR} and ${STATE_DIR} stay`,
         );
         return;
     }
@@ -182,9 +232,12 @@ async function uninstall(args: InstallArgs, host: InstallHost): Promise<void> {
     if (!host.succeeds('systemctl', ['disable', '--now', `${SERVICE}.service`])) {
         host.out(`${SERVICE}.service was not enabled`);
     }
-    await rm(join(host.root, UNIT_PATH), {force: true});
+    host.succeeds('systemctl', ['disable', '--now', `${SERVICE}-update.path`]);
+    for (const path of [UNIT_PATH, UPDATE_PATH_UNIT, UPDATE_SERVICE_UNIT]) {
+        await rm(join(host.root, path), {force: true});
+    }
     host.exec('systemctl', ['daemon-reload']);
-    host.out(`removed ${UNIT_PATH}`);
+    host.out(`removed ${UNIT_PATH}, ${UPDATE_PATH_UNIT}, ${UPDATE_SERVICE_UNIT}`);
     // the storage holds the fabrics: removing it unpairs the bridge from every controller
     host.out(`kept ${CONFIG_DIR} and ${STATE_DIR} (the pairings); delete them by hand when they are no longer needed`);
 }

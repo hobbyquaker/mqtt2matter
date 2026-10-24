@@ -88,7 +88,8 @@ mqtt2matter runs as the systemd service `mqtt2matter.service` under a system use
 
 From a checkout, `deploy.sh` does all of it over ssh: lint, typecheck and tests (`SKIP_TESTS=1` skips them),
 build, `npm pack`, copy the tarball and the lock file, install with `npm install --omit=dev`, link the
-command, restart the service. It checks the host's Node against `engines` before anything is copied.
+command, and run `--install` again on a host that has the service (the units follow the version, the service
+restarts). It checks the host's Node against `engines` before anything is copied.
 
 ```sh
 INSTALL=1 MQTT_URL=mqtt://broker:1883 npm run deploy -- root@my-host   # the first time: also installs the service
@@ -99,8 +100,17 @@ The host defaults to `mqtt2matter` (an ssh host name or a `Host` alias in `~/.ss
 host: `npm install -g ./mqtt2matter-<version>.tgz`, then `sudo mqtt2matter --install --mqtt-url
 mqtt://broker:1883`. `--install` creates the user and the directories, writes the configuration only when there
 is none, writes the unit and enables and starts it; running it again rewrites the unit (after a Node update,
-say). `--install --dry-run` shows what it would write. `mqtt2matter --uninstall` removes the service and keeps
-the configuration and the storage.
+say, or after an update that needs a new unit). `--install --dry-run` shows what it would write.
+`mqtt2matter --uninstall` removes the service and keeps the configuration and the storage.
+
+**Restart and update from the UI** (Configuration → Version) work under this service. A restart exits with code
+75, which the unit restarts on (`RestartForceExitStatus=75`). An update installs the registry's latest
+`mqtt2matter` the way it was installed, globally with npm — which the service user may not do: the UI only writes
+the version into `/var/lib/mqtt2matter/update/request`, and `--install` sets up `mqtt2matter-update.path`, which
+starts the root oneshot `mqtt2matter-update.service` (`mqtt2matter --apply-update`): it installs exactly
+`mqtt2matter@<that version>`, logs to `/var/lib/mqtt2matter/update/update.log` (shown in the UI) and restarts
+the service. No sudo rule, no polkit. Until mqtt2matter is on npm, the UI says "not published" and only the
+restart works. Outside the service (by hand, Docker) the UI offers neither and says why.
 
 **The host needs:**
 

@@ -160,6 +160,20 @@ export interface Status {
     bridges: BridgeInfo[];
     devices: number;
     importers: string[];
+    /** the registry's latest version as last checked */
+    update?: {latest?: string; newer: boolean};
+}
+
+export interface UpdateStatus {
+    current: string;
+    latest?: string;
+    /** false: the package is not on npm; undefined: not checked yet */
+    published?: boolean;
+    newer: boolean;
+    checkedAt?: string;
+    error?: string;
+    restart: {available: boolean; reason?: string};
+    update: {available: boolean; reason?: string; requested?: string; log: string[]};
 }
 
 export interface Catalog {
@@ -330,6 +344,9 @@ export const api = {
     logout: () => request<AuthState>('POST', '/api/auth/logout', {}),
     setAccess: (settings: AccessSettings) => request<AuthState>('PUT', '/api/auth', settings),
     status: () => request<Status>('GET', '/api/status'),
+    updateStatus: (check = false) => request<UpdateStatus>('GET', `/api/update${check ? '?check=1' : ''}`),
+    requestUpdate: (version: string) => request<{requested: string}>('POST', '/api/update', {version}),
+    restart: () => request<{restarting: boolean}>('POST', '/api/restart', {}),
     config: () => request<ConfigView>('GET', '/api/config'),
     saveConfig: (settings: unknown) =>
         request<{saved: boolean; restartNeeded: boolean}>('PUT', '/api/config', settings),

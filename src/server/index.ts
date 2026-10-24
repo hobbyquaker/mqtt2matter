@@ -5,3 +5,4 @@ export {ConfigStore} from './config-store.ts';
 export {LogBuffer} from './log-buffer.ts';
 export {HaImporter, type Importer, type SyncEntry, Z2mImporter} from './importers.ts';
 export {Auth, hashPassword} from './auth.ts';
+export {RESTART_EXIT_CODE, Updater} from './update.ts';

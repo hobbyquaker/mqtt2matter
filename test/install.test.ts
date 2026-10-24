@@ -15,7 +15,12 @@ import {
     runInstall,
     STATE_DIR,
     UNIT_PATH,
+    UPDATE_DIR,
+    UPDATE_PATH_UNIT,
+    UPDATE_SERVICE_UNIT,
     unitFile,
+    updatePathUnit,
+    updateServiceUnit,
 } from '../src/commands/install.ts';
 import {parseConfig} from '../src/config/index.ts';
 
@@ -74,6 +79,20 @@ describe('the unit and the first configuration', () => {
         expect(unit).toContain('WantedBy=multi-user.target\n');
     });
 
+    it('comes back after a restart from the UI and knows where an update request goes', () => {
+        const unit = unitFile('/usr/bin/node /x/dist/main.js');
+        expect(unit).toContain('RestartForceExitStatus=75\n');
+        expect(unit).toContain('Environment=MQTT2MATTER_SUPERVISOR=systemd\n');
+        expect(unit).toContain('Environment=MQTT2MATTER_UPDATE_DIR=/var/lib/mqtt2matter/update\n');
+        expect(updatePathUnit()).toContain('PathExists=/var/lib/mqtt2matter/update/request\n');
+        expect(updatePathUnit()).toContain('Unit=mqtt2matter-update.service\n');
+        const oneshot = updateServiceUnit('/usr/bin/node /x/dist/main.js');
+        expect(oneshot).toContain('Type=oneshot\n');
+        expect(oneshot).toContain('ExecStart=/usr/bin/node /x/dist/main.js --apply-update\n');
+        // the oneshot runs as root: no User= line
+        expect(oneshot).not.toContain('User=');
+    });
+
     it('is a valid configuration with the storage under /var/lib', () => {
         const config = parseConfig(JSON.parse(initialConfig('mqtt://broker:1883')));
         expect(config.mqtt.url).toBe('mqtt://broker:1883');
@@ -93,11 +112,15 @@ describe('--install', () => {
         });
         expect((await stat(join(root, CONFIG_FILE))).mode & 0o777).toBe(0o640);
         expect((await stat(join(root, STATE_DIR))).isDirectory()).toBe(true);
+        expect((await stat(join(root, UPDATE_DIR))).isDirectory()).toBe(true);
+        expect(await readFile(join(root, UPDATE_PATH_UNIT), 'utf8')).toBe(updatePathUnit());
+        expect(await readFile(join(root, UPDATE_SERVICE_UNIT), 'utf8')).toBe(updateServiceUnit(host.execStart));
         expect(commands).toEqual([
             'id -u mqtt2matter',
             'useradd --system --no-create-home --home-dir /var/lib/mqtt2matter --shell /usr/sbin/nologin mqtt2matter',
             `chown -R mqtt2matter:mqtt2matter ${join(root, '/etc/mqtt2matter')} ${join(root, STATE_DIR)}`,
             'systemctl daemon-reload',
+            'systemctl enable --now mqtt2matter-update.path',
             'systemctl enable mqtt2matter.service',
             'systemctl restart mqtt2matter.service',
         ]);
@@ -137,8 +160,14 @@ describe('--uninstall', () => {
         await runInstall({uninstall: false, dryRun: false}, host);
         const {host: again, commands} = fakeHost({userExists: true});
         await runInstall({uninstall: true, dryRun: false}, again);
-        expect(commands).toEqual(['systemctl disable --now mqtt2matter.service', 'systemctl daemon-reload']);
+        expect(commands).toEqual([
+            'systemctl disable --now mqtt2matter.service',
+            'systemctl disable --now mqtt2matter-update.path',
+            'systemctl daemon-reload',
+        ]);
         await expect(stat(join(root, UNIT_PATH))).rejects.toThrow();
+        await expect(stat(join(root, UPDATE_PATH_UNIT))).rejects.toThrow();
+        await expect(stat(join(root, UPDATE_SERVICE_UNIT))).rejects.toThrow();
         expect((await stat(join(root, CONFIG_FILE))).isFile()).toBe(true);
         expect((await stat(join(root, STATE_DIR))).isDirectory()).toBe(true);
     });

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Build mqtt2matter, ship it to a Linux host and install it where `npm install -g` would put it
-# (/usr/local/lib/node_modules/mqtt2matter, the command /usr/local/bin/mqtt2matter), then restart
-# mqtt2matter.service there if it is installed.
+# (/usr/local/lib/node_modules/mqtt2matter, the command /usr/local/bin/mqtt2matter), then run
+# `mqtt2matter --install` there again if the service is installed (units rewritten, service restarted).
 #
 # Usage:
 #   bash deploy.sh                 # deploys to the host "mqtt2matter" (an ssh host name or alias)
@@ -138,8 +138,10 @@ $SUDO ln -sfn "$REMOTE_DIR/dist/main.js" "/usr/local/bin/$PKG"
 echo "Installed $PKG $("/usr/local/bin/$PKG" --version) in $REMOTE_DIR"
 
 if systemctl list-unit-files --no-legend "$PKG.service" 2>/dev/null | grep -q "^$PKG.service"; then
-  echo "Restarting $PKG.service"
-  $SUDO systemctl restart "$PKG.service"
+  # --install again: it keeps the configuration and the storage, rewrites the units this version expects
+  # (the restart and update from the UI) and restarts the service
+  echo "Updating the units and restarting $PKG.service"
+  $SUDO "/usr/local/bin/$PKG" --install
   sleep 3
   systemctl is-active --quiet "$PKG.service" || {
     echo "Error: $PKG.service did not stay up:" >&2

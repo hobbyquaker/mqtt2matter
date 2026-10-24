@@ -8,6 +8,7 @@
     import {t} from '../lib/i18n.svelte.ts';
     import {notices} from '../lib/notices.svelte.ts';
     import {session} from '../lib/session.svelte.ts';
+    import Version from './Version.svelte';
 
     let view = $state<ConfigView | undefined>(undefined);
     let text = $state('');
@@ -256,6 +257,7 @@
                     <Checkbox bind:checked={replace} label={t('replace every device')} />
                 </div>
             </section>
+            <Version />
         </div>
     </div>
 </div>

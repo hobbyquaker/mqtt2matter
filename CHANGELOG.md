@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Restart and update from the UI (Configuration → Version), under the service `--install` sets up: the restart
+  exits with code 75, on which the unit restarts the service; the update checks npm for a newer `mqtt2matter`
+  ("not published" until it is there) and hands the version to a root oneshot (`mqtt2matter-update.path` →
+  `mqtt2matter-update.service`, `mqtt2matter --apply-update`) that installs it globally with npm, logs for the UI
+  and restarts the service — no sudo rule, no polkit. `deploy.sh` runs `--install` again on a host that has the
+  service, so the units follow the version. **Run `mqtt2matter --install` once on an existing installation** (or
+  deploy with `deploy.sh`) to get the new units.
+
 - Scenes: zigbee2mqtt's scenes on devices and groups and Home Assistant discovery's `scene` entities become
   momentary outlets — one child endpoint per scene whose "on" recalls it and that falls back to off a second
   later (`options.onOff.momentary`, usable for any stateless trigger). Every controller can show and automate an

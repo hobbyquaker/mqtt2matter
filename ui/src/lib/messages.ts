@@ -440,4 +440,29 @@ export const MESSAGES: Record<string, Message> = {
             'Trust the {header} header of the reverse proxy? Only the proxy may reach the port then, or anyone can send the header.',
         ),
     'Access saved; it applies at once.': m('Zugang gespeichert; er gilt sofort.', 'Access saved; it applies at once.'),
+
+    // version, update, restart
+    Version: m('Version', 'Version'),
+    Running: m('Läuft', 'Running'),
+    Latest: m('Neueste', 'Latest'),
+    'not published on npm yet': m('noch nicht auf npm veröffentlicht', 'not published on npm yet'),
+    newer: m('neuer', 'newer'),
+    'Check now': m('Jetzt prüfen', 'Check now'),
+    Restart: m('Neu starten', 'Restart'),
+    'Install mqtt2matter {version} and restart? The bridge is offline for a moment; the pairings stay.': m(
+        'mqtt2matter {version} installieren und neu starten? Die Bridge ist kurz offline; die Kopplungen bleiben.',
+        'Install mqtt2matter {version} and restart? The bridge is offline for a moment; the pairings stay.',
+    ),
+    'Update to {version} requested.': m('Update auf {version} angefordert.', 'Update to {version} requested.'),
+    'Restart mqtt2matter? The bridge is offline for a moment.': m(
+        'mqtt2matter neu starten? Die Bridge ist kurz offline.',
+        'Restart mqtt2matter? The bridge is offline for a moment.',
+    ),
+    'Restarting…': m('Startet neu …', 'Restarting…'),
+    'Waiting for mqtt2matter to come back…': m(
+        'Warte, bis mqtt2matter wieder da ist …',
+        'Waiting for mqtt2matter to come back…',
+    ),
+    'mqtt2matter {version} is running.': m('mqtt2matter {version} läuft.', 'mqtt2matter {version} is running.'),
+    'Update {version}': m('Update {version}', 'Update {version}'),
 };

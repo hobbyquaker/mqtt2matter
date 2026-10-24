@@ -25,6 +25,7 @@ import {EventHub} from './events.ts';
 import {AuthConfigSchema} from '../config/schema.ts';
 import {Auth, hashPassword} from './auth.ts';
 import {HttpError, type Request, Router, sendJson, serveStatic} from './http.ts';
+import {Updater} from './update.ts';
 import type {Importer, SyncEntry} from './importers.ts';
 import type {LogBuffer} from './log-buffer.ts';
 import {loadPresets} from './presets.ts';
@@ -44,6 +45,10 @@ export interface ServerOptions {
     importers?: readonly Importer[];
     /** who may use the API and the event stream; default: everyone */
     auth?: Auth;
+    /** restart and update from the UI; default: neither (no supervisor) */
+    updater?: Updater;
+    /** a clean stop with the restart exit code (main.ts); called after the answer went out */
+    onRestart?: () => void;
     /** the MQTT subscriptions for the topic tree */
     topics?: readonly string[];
 }
@@ -112,6 +117,7 @@ export class Server {
     private readonly unsubscribe: (() => void)[] = [];
     private readonly startedAt = Date.now();
     private readonly auth: Auth;
+    private readonly updater: Updater;
 
     constructor(options: ServerOptions) {
         this.options = options;
@@ -119,6 +125,7 @@ export class Server {
         this.store = options.store;
         this.log = options.log;
         this.auth = options.auth ?? Auth.open();
+        this.updater = options.updater ?? new Updater({current: options.version});
         this.hub = new EventHub(options.log.child('events'), () => ({type: 'hello', version: options.version}));
         this.http = createServer((request, response) => {
             const path = new URL(request.url ?? '/', 'http://localhost').pathname;
@@ -610,7 +617,31 @@ export class Server {
             bridges: this.bridgesJson(),
             devices: Object.keys(this.app.config.devices).length,
             importers: this.importers().map((i) => i.kind),
+            update: this.updater.known,
         }));
+
+        r.add('GET', '/api/update', async (request) => {
+            await this.updater.check(request.query.get('check') === '1');
+            return await this.updater.status();
+        });
+        r.add('POST', '/api/update', async (request) => {
+            const version = body(request).version;
+            const reason = await this.updater.request(typeof version === 'string' ? version : '');
+            if (reason !== undefined) {
+                throw new HttpError(409, reason);
+            }
+            this.log.info(`update to ${String(version)} requested`);
+            return {requested: version};
+        });
+        r.add('POST', '/api/restart', () => {
+            const reason = this.updater.restartReason;
+            if (reason !== undefined) {
+                throw new HttpError(409, reason);
+            }
+            this.log.info('restart requested from the UI');
+            setTimeout(() => this.options.onRestart?.(), 300).unref();
+            return {restarting: true};
+        });
 
         r.add('GET', '/api/config', () => ({
             path: this.store.path,

@@ -97,6 +97,11 @@
                 {t('Live')}
             </span>
             {#if status}<span class="version ui-faint">{status.version}</span>{/if}
+            {#if status?.update?.newer === true}
+                <button type="button" class="ui-badge ui-badge-accent update" onclick={() => router.go('config')} data-testid="update-available"
+                    >{t('Update {version}', {version: status.update.latest ?? ''})}</button
+                >
+            {/if}
             {#if session.state?.mode === 'proxy' && session.state.user !== undefined}
                 <span class="status" data-testid="user">{session.state.user}</span>
             {/if}
@@ -210,6 +215,11 @@
 
     .logout {
         min-height: 24px;
+    }
+
+    .update {
+        border: none;
+        cursor: pointer;
     }
 
     .theme {

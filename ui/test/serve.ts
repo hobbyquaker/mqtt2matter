@@ -5,7 +5,7 @@
    listens; stops on SIGTERM/SIGINT (and when stdin closes, with UI_SERVE_STDIN=1). Node ≥ 22.18 runs it
    directly: `node ui/test/serve.ts`, then open the port it prints. */
 
-import {mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
+import {mkdir, mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
@@ -18,6 +18,7 @@ import {ConfigStore} from '../../src/server/config-store.ts';
 import {HaImporter, Z2mImporter} from '../../src/server/importers.ts';
 import {LogBuffer} from '../../src/server/log-buffer.ts';
 import {Server} from '../../src/server/server.ts';
+import {Updater} from '../../src/server/update.ts';
 import {startBroker} from '../../test/helpers/broker.ts';
 import {corpusMessages} from '../../test/helpers/ha-corpus.ts';
 import {freeUdpPort} from '../../test/helpers/util.ts';
@@ -112,6 +113,10 @@ async function main(): Promise<void> {
     });
     const app = new App(config, {log, mqttConnectTimeout: 5000});
     const importer = new Z2mImporter('zigbee2mqtt', log.child('z2m'));
+    // as if under systemd with a newer release on the registry; the restart only logs, the update only writes
+    // its request file (nothing installs or exits here)
+    const updateDir = join(dir, 'update');
+    await mkdir(updateDir);
     const server = new Server({
         app,
         store: new ConfigStore({path, raw, config, overridden: ['mqtt.url']}),
@@ -122,6 +127,15 @@ async function main(): Promise<void> {
         port: 0,
         importers: [importer, new HaImporter('homeassistant', log.child('ha'))],
         topics: ['#'],
+        updater: new Updater({
+            current: '0.0.0-ui-test',
+            supervisor: 'systemd',
+            updateDir,
+            fetchLatest: () => Promise.resolve('0.0.1'),
+        }),
+        onRestart: () => {
+            log.info('restart requested (the UI test stack does not exit)');
+        },
     });
     await server.listen();
     await app.start();

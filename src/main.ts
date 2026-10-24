@@ -2,9 +2,12 @@
 /* `mqtt2matter [config.json]`: load the configuration, start, stop on SIGINT/SIGTERM; the other commands are
    in `commands/` and `matter/check.ts`. */
 
+import {dirname, join} from 'node:path';
+
 import {App, VERSION} from './app.ts';
 import {importZ2m, parseImportArgs} from './commands/import-z2m.ts';
 import {parseInstallArgs, runInstall, systemHost} from './commands/install.ts';
+import {applyUpdate, systemUpdateHost} from './commands/update.ts';
 import {ConfigError, loadConfig} from './config/load.ts';
 import {createLogger, describeError} from './log.ts';
 import {checkConfig, formatCheck} from './matter/check.ts';
@@ -15,7 +18,9 @@ import {
     hashPassword,
     type Importer,
     LogBuffer,
+    RESTART_EXIT_CODE,
     Server,
+    Updater,
     Z2mImporter,
 } from './server/index.ts';
 
@@ -67,9 +72,14 @@ async function main(): Promise<void> {
     const arg = process.argv[2];
     if (arg === '--help' || arg === '-h') {
         console.log(
-            `mqtt2matter ${VERSION}\nusage: mqtt2matter [config.json]\n       mqtt2matter --check [config.json]   validate the devices against the Matter model and matter.js (strict), no network\n       mqtt2matter --import-z2m [config.json] [--base-topic zigbee2mqtt] [--dry-run] [--no-groups] [--timeout 15]\n                                           adopt the devices and groups zigbee2mqtt describes into the file, re-sync the adopted ones\n       mqtt2matter --install [--mqtt-url mqtt://broker:1883] [--dry-run]\n                                           run as the systemd service mqtt2matter.service (needs root): configuration\n                                           /etc/mqtt2matter/mqtt2matter.json, storage /var/lib/mqtt2matter, user mqtt2matter\n       mqtt2matter --uninstall [--dry-run] remove the service; the configuration and the storage (the pairings) stay\n       mqtt2matter --hash-password         read a password (stdin) and print its hash for server.auth.password\n  the file defaults to $MQTT2MATTER_CONFIG, then ./mqtt2matter.json`,
+            `mqtt2matter ${VERSION}\nusage: mqtt2matter [config.json]\n       mqtt2matter --check [config.json]   validate the devices against the Matter model and matter.js (strict), no network\n       mqtt2matter --import-z2m [config.json] [--base-topic zigbee2mqtt] [--dry-run] [--no-groups] [--timeout 15]\n                                           adopt the devices and groups zigbee2mqtt describes into the file, re-sync the adopted ones\n       mqtt2matter --install [--mqtt-url mqtt://broker:1883] [--dry-run]\n                                           run as the systemd service mqtt2matter.service (needs root): configuration\n                                           /etc/mqtt2matter/mqtt2matter.json, storage /var/lib/mqtt2matter, user mqtt2matter\n       mqtt2matter --uninstall [--dry-run] remove the service; the configuration and the storage (the pairings) stay\n       mqtt2matter --apply-update [dir]    (run by mqtt2matter-update.service as root) install the version the UI asked for\n       mqtt2matter --hash-password         read a password (stdin) and print its hash for server.auth.password\n  the file defaults to $MQTT2MATTER_CONFIG, then ./mqtt2matter.json`,
         );
         return;
+    }
+    if (arg === '--apply-update') {
+        // the root oneshot of mqtt2matter-update.service; npm is the one next to this node
+        const dir = process.argv[3] ?? '/var/lib/mqtt2matter/update';
+        process.exit(await applyUpdate(dir, systemUpdateHost(join(dirname(process.execPath), 'npm'))));
     }
     if (arg === '--hash-password') {
         const password = await readSecret('password: ');
@@ -128,6 +138,24 @@ async function main(): Promise<void> {
     }
     const app = new App(config, {log});
     let server: Server | undefined;
+    let stopping = false;
+    /** stop cleanly; `code` is the exit code (the restart's one brings the systemd service back) */
+    const stop = (reason: string, code = 0): void => {
+        if (stopping) {
+            return;
+        }
+        stopping = true;
+        log.info(`${reason}, stopping`);
+        Promise.resolve(server?.close())
+            .then(() => app.stop())
+            .then(
+                () => process.exit(code),
+                (error: unknown) => {
+                    log.error('stop failed', error);
+                    process.exit(1);
+                },
+            );
+    };
     if (config.server.enabled) {
         const {auth, plain} = await Auth.create(config.server.auth);
         if (plain && !overridden.includes('server.auth.password')) {
@@ -156,27 +184,18 @@ async function main(): Promise<void> {
             topics: config.server.topics,
             importers,
             auth,
+            updater: new Updater({
+                current: VERSION,
+                supervisor: process.env.MQTT2MATTER_SUPERVISOR,
+                updateDir: process.env.MQTT2MATTER_UPDATE_DIR,
+            }),
+            onRestart: () => {
+                stop('restart from the UI', RESTART_EXIT_CODE);
+            },
         });
         // the UI is reachable before the broker and the bridges are up, so a wrong setting can be fixed there
         await server.listen();
     }
-    let stopping = false;
-    const stop = (signal: string): void => {
-        if (stopping) {
-            return;
-        }
-        stopping = true;
-        log.info(`${signal}, stopping`);
-        Promise.resolve(server?.close())
-            .then(() => app.stop())
-            .then(
-                () => process.exit(0),
-                (error: unknown) => {
-                    log.error('stop failed', error);
-                    process.exit(1);
-                },
-            );
-    };
     process.on('SIGINT', () => {
         stop('SIGINT');
     });
