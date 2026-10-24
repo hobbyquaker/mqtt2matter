@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-/* `mqtt2matter [config.json]`: load the configuration, start, stop on SIGINT/SIGTERM. */
+/* `mqtt2matter [config.json]`: load the configuration, start, stop on SIGINT/SIGTERM; the other commands are
+   in `commands/` and `matter/check.ts`. */
 
 import {App, VERSION} from './app.ts';
 import {importZ2m, parseImportArgs} from './commands/import-z2m.ts';
+import {parseInstallArgs, runInstall, systemHost} from './commands/install.ts';
 import {ConfigError, loadConfig} from './config/load.ts';
 import {createLogger, describeError} from './log.ts';
 import {checkConfig, formatCheck} from './matter/check.ts';
@@ -12,7 +14,16 @@ async function main(): Promise<void> {
     const arg = process.argv[2];
     if (arg === '--help' || arg === '-h') {
         console.log(
-            `mqtt2matter ${VERSION}\nusage: mqtt2matter [config.json]\n       mqtt2matter --check [config.json]   validate the devices against the Matter model and matter.js (strict), no network\n       mqtt2matter --import-z2m [config.json] [--base-topic zigbee2mqtt] [--dry-run] [--no-groups] [--timeout 15]\n                                           adopt the devices and groups zigbee2mqtt describes into the file, re-sync the adopted ones\n  the file defaults to $MQTT2MATTER_CONFIG, then ./mqtt2matter.json`,
+            `mqtt2matter ${VERSION}\nusage: mqtt2matter [config.json]\n       mqtt2matter --check [config.json]   validate the devices against the Matter model and matter.js (strict), no network\n       mqtt2matter --import-z2m [config.json] [--base-topic zigbee2mqtt] [--dry-run] [--no-groups] [--timeout 15]\n                                           adopt the devices and groups zigbee2mqtt describes into the file, re-sync the adopted ones\n       mqtt2matter --install [--mqtt-url mqtt://broker:1883] [--dry-run]\n                                           run as the systemd service mqtt2matter.service (needs root): configuration\n                                           /etc/mqtt2matter/mqtt2matter.json, storage /var/lib/mqtt2matter, user mqtt2matter\n       mqtt2matter --uninstall [--dry-run] remove the service; the configuration and the storage (the pairings) stay\n  the file defaults to $MQTT2MATTER_CONFIG, then ./mqtt2matter.json`,
+        );
+        return;
+    }
+    if (arg === '--install' || arg === '--uninstall') {
+        await runInstall(
+            parseInstallArgs(process.argv.slice(2)),
+            systemHost((line) => {
+                console.log(line);
+            }),
         );
         return;
     }
