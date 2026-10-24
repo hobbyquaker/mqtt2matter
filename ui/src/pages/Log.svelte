@@ -86,15 +86,20 @@
     .log td {
         height: 22px;
         font-family: var(--ui-font-mono);
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
     }
 
-    .ts,
-    .level-cell,
-    .scope {
+    /* the narrow columns keep their width; only the message wraps (a rule on `.log td` itself would
+       outrank these and squeeze them to one character) */
+    .log td.ts,
+    .log td.level-cell,
+    .log td.scope {
         width: 1%;
         white-space: nowrap;
+    }
+
+    .log td.message {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
     }
 
     tr.warn .level-cell {

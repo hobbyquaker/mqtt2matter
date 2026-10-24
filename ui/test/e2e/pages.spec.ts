@@ -42,6 +42,11 @@ test('the MQTT page lists the topic tree, streams messages and publishes', async
 test('the log page shows the bridge log and filters by level', async ({page}) => {
     await page.goto('/#/log');
     await expect(page.getByTestId('log-row').first()).toBeVisible();
+    // time, level and scope stay on one line each instead of being squeezed to one character
+    for (const cell of ['ts', 'level-cell', 'scope']) {
+        const box = await page.locator(`[data-testid=log-row] td.${cell}`).first().boundingBox();
+        expect(box?.height).toBeLessThan(30);
+    }
     await page.getByTestId('log-level').selectOption('error');
     await expect(page.locator('[data-testid=log-row].debug')).toHaveCount(0);
 });
