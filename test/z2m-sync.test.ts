@@ -77,13 +77,13 @@ describe('adopt', () => {
 });
 
 describe('re-sync', () => {
-    it('carries an edited binding, a dropped one and an added one over a rename; the name edit conflicts', () => {
+    it('carries an edited mapping, a dropped one and an added one over a rename; the name edit conflicts', () => {
         const devices = adoptedCorpus();
         const light = devices[LIGHT]!;
         const main = light.endpoints[0]!;
-        main.bindings![0]!.command!.format = {true: 'on', false: 'off'};
-        main.bindings = main.bindings!.filter((b) => !('attribute' in b && b.attribute === 'ColorControl.colorMode'));
-        main.bindings.push({
+        main.mappings![0]!.command!.format = {true: 'on', false: 'off'};
+        main.mappings = main.mappings!.filter((b) => !('attribute' in b && b.attribute === 'ColorControl.colorMode'));
+        main.mappings.push({
             invoke: 'Identify.identify',
             command: {topic: 'zigbee2mqtt/Gledopto RGBCTT light I/set', wrap: 'effect', payload: 'blink'},
         });
@@ -110,8 +110,8 @@ describe('re-sync', () => {
         expect(result.name).toBe('Kitchen ceiling');
         expect(result.bridge).toBe('second');
         expect(result.availability).toMatchObject({topic: 'zigbee2mqtt/Kitchen/availability'});
-        const bindings = result.endpoints[0]!.bindings!;
-        expect(bindings[0]).toEqual({
+        const mappings = result.endpoints[0]!.mappings!;
+        expect(mappings[0]).toEqual({
             attribute: 'OnOff.onOff',
             status: {
                 topic: 'zigbee2mqtt/Kitchen',
@@ -121,9 +121,9 @@ describe('re-sync', () => {
             },
             command: {topic: 'zigbee2mqtt/Kitchen/set', wrap: 'state', format: {true: 'on', false: 'off'}},
         });
-        expect(bindings.some((b) => 'attribute' in b && b.attribute === 'ColorControl.colorMode')).toBe(false);
-        // the added binding keeps its (now stale) topic: it is the user's, not the importer's
-        expect(bindings.at(-1)).toMatchObject({
+        expect(mappings.some((b) => 'attribute' in b && b.attribute === 'ColorControl.colorMode')).toBe(false);
+        // the added mapping keeps its (now stale) topic: it is the user's, not the importer's
+        expect(mappings.at(-1)).toMatchObject({
             invoke: 'Identify.identify',
             command: {topic: 'zigbee2mqtt/Gledopto RGBCTT light I/set'},
         });
@@ -138,7 +138,7 @@ describe('re-sync', () => {
     it('a definition change regenerates the baseline; an edit on what disappeared is reported, not applied', () => {
         const devices = adoptedCorpus();
         const light = devices[LIGHT]!;
-        const xy = light.endpoints[0]!.bindings!.find(
+        const xy = light.endpoints[0]!.mappings!.find(
             (b) => 'attribute' in b && b.attribute === 'ColorControl.colorXy',
         )!;
         xy.comment = 'mine';
@@ -151,13 +151,13 @@ describe('re-sync', () => {
         expect(e.status).toBe('updated');
         expect(e.conflicts).toEqual([
             expect.objectContaining({
-                path: 'endpoints.main.bindings.attribute:ColorControl.colorXy.comment',
+                path: 'endpoints.main.mappings.attribute:ColorControl.colorXy.comment',
                 applied: false,
             }),
         ]);
         const result = synced[LIGHT]!;
         expect(result.endpoints[0]!.deviceTypes).toEqual(['ColorTemperatureLight']);
-        expect(result.endpoints[0]!.bindings!.map((b) => ('attribute' in b ? b.attribute : ''))).toEqual([
+        expect(result.endpoints[0]!.mappings!.map((b) => ('attribute' in b ? b.attribute : ''))).toEqual([
             'OnOff.onOff',
             'LevelControl.currentLevel',
             'ColorControl.colorTemperatureMireds',

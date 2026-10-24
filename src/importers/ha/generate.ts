@@ -3,7 +3,7 @@
    lock, fan, valve) is the node's own endpoint, every other entity a child endpoint, a battery sensor the
    node's power source, event entities and device triggers GenericSwitch buttons. The component → device
    type table is docs/importers.md's. Templates go to the payload engine when it can run them
-   (templates.ts); a binding whose template it cannot run is left out and listed with the template.
+   (templates.ts); a mapping whose template it cannot run is left out and listed with the template.
    What is generated is the *baseline*; `source.raw` keeps the expanded configs so a user's edits can be
    carried over when a device announces itself again. */
 
@@ -14,7 +14,7 @@ import type {z} from 'zod';
 import type {
     AvailabilitySchema,
     AvailabilityTopicSchema,
-    BindingInput,
+    MappingInput,
     CommandHalfSchema,
     DeviceInput,
     EndpointInput,
@@ -176,7 +176,7 @@ interface Draft {
     /** a light, switch, cover, climate, lock, fan or valve: a candidate for the device's own endpoint */
     primary: boolean;
     types: string[];
-    bindings: BindingInput[];
+    mappings: MappingInput[];
     features: Record<string, string[]>;
     attributes: Record<string, Record<string, unknown>>;
     options: OptionsInput;
@@ -288,7 +288,7 @@ class Builder {
                 entity,
                 primary,
                 types: [],
-                bindings: [],
+                mappings: [],
                 features: {},
                 attributes: {},
                 options: {},
@@ -305,7 +305,7 @@ class Builder {
             entity: undefined,
             primary: false,
             types: ['PowerSource'],
-            bindings: [],
+            mappings: [],
             features: {},
             attributes: {},
             options: {},
@@ -417,11 +417,11 @@ class Builder {
         if (status === undefined && command === undefined) {
             return;
         }
-        draft.bindings.push({
+        draft.mappings.push({
             ...target,
             ...(status === undefined ? {} : {status}),
             ...(command === undefined ? {} : {command}),
-        } as BindingInput);
+        } as MappingInput);
     }
 
     private takeAvailability(entity: RawEntity): void {
@@ -479,7 +479,7 @@ class Builder {
 
     /* ----- the components ----- */
 
-    private onOffBinding(
+    private onOffMapping(
         entity: RawEntity,
         draft: Draft,
         stateTopic: string,
@@ -511,7 +511,7 @@ class Builder {
         this.addType(draft, 'OnOffPlugInUnit');
         const on = text(c.payload_on, 'ON');
         const off = text(c.payload_off, 'OFF');
-        this.onOffBinding(
+        this.onOffMapping(
             entity,
             draft,
             'state_topic',
@@ -553,7 +553,7 @@ class Builder {
                     : 'OnOffLight',
         );
         this.lightOptions(draft, c);
-        this.onOffBinding(entity, draft, 'state_topic', 'state_value_template', on, off);
+        this.onOffMapping(entity, draft, 'state_topic', 'state_value_template', on, off);
         if (brightness) {
             const scale = num(c.brightness_scale) ?? 255;
             const steps = {scale: {from: [1, scale] as [number, number], to: [1, 254] as [number, number]}};
@@ -1093,7 +1093,7 @@ class Builder {
         draft.coalesce = 50;
         const on = text(c.payload_on, 'ON');
         const off = text(c.payload_off, 'OFF');
-        this.onOffBinding(entity, draft, 'state_topic', 'state_value_template', on, off);
+        this.onOffMapping(entity, draft, 'state_topic', 'state_value_template', on, off);
         if (str(c.percentage_command_topic) !== undefined || str(c.percentage_state_topic) !== undefined) {
             const max = num(c.speed_range_max) ?? 100;
             const scale = {from: [0, max] as [number, number], to: [0, 100] as [number, number]};
@@ -1584,18 +1584,18 @@ class Builder {
 
     /** the endpoints in their final form: the device's own first, children after; undefined when nothing maps */
     endpoints(area: string | undefined): EndpointInput[] | undefined {
-        const real = [...this.drafts.values()].filter((d) => d.types.length > 0 && d.bindings.length > 0);
+        const real = [...this.drafts.values()].filter((d) => d.types.length > 0 && d.mappings.length > 0);
         const isButton = (d: Draft): boolean => d.types[0] === 'GenericSwitch';
         let main = real.find((d) => d.primary) ?? real.find((d) => !isButton(d)) ?? real[0];
         if (main === undefined) {
-            if (this.power !== undefined && this.power.bindings.length > 0) {
+            if (this.power !== undefined && this.power.mappings.length > 0) {
                 main = this.power;
             } else {
                 return undefined;
             }
-        } else if (this.power !== undefined && this.power.bindings.length > 0) {
+        } else if (this.power !== undefined && this.power.mappings.length > 0) {
             this.addType(main, 'PowerSource');
-            main.bindings.push(...this.power.bindings);
+            main.mappings.push(...this.power.mappings);
             for (const [cluster, features] of Object.entries(this.power.features)) {
                 for (const feature of features) {
                     this.addFeature(main, cluster, feature);
@@ -1613,7 +1613,7 @@ class Builder {
         }
         let tag = 0;
         return ordered.map((draft, i) => {
-            const endpoint: EndpointInput = {deviceTypes: draft.types, bindings: draft.bindings};
+            const endpoint: EndpointInput = {deviceTypes: draft.types, mappings: draft.mappings};
             const tags: Record<string, unknown>[] = [];
             if (i > 0) {
                 endpoint.id = draft.id;

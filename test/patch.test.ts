@@ -1,4 +1,4 @@
-/* Baseline + patch: edits keyed by endpoint id and binding target survive a regenerated baseline;
+/* Baseline + patch: edits keyed by endpoint id and mapping target survive a regenerated baseline;
    edits on what the baseline changed too are conflicts, reported and still applied. */
 
 import {describe, expect, it} from 'vitest';
@@ -15,7 +15,7 @@ const baseline = (): DeviceInput => ({
         {
             deviceTypes: ['DimmableLight'],
             coalesce: 50,
-            bindings: [
+            mappings: [
                 {
                     attribute: 'OnOff.onOff',
                     status: {topic: 'z/lamp', extract: 'state', map: {ON: true, OFF: false}},
@@ -31,7 +31,7 @@ const baseline = (): DeviceInput => ({
         {
             id: 'l2',
             deviceTypes: ['OnOffLight'],
-            bindings: [{attribute: 'OnOff.onOff', status: {topic: 'z/lamp', extract: 'state_l2'}}],
+            mappings: [{attribute: 'OnOff.onOff', status: {topic: 'z/lamp', extract: 'state_l2'}}],
         },
     ],
 });
@@ -43,7 +43,7 @@ describe('the keyed tree', () => {
         expect(tree.source).toBeUndefined();
         expect(Object.keys(tree.endpoints as object)).toEqual(['main', 'l2']);
         const main = (tree.endpoints as Record<string, Record<string, unknown>>).main!;
-        expect(Object.keys(main.bindings as object)).toEqual([
+        expect(Object.keys(main.mappings as object)).toEqual([
             'attribute:OnOff.onOff',
             'attribute:LevelControl.currentLevel',
         ]);
@@ -58,7 +58,7 @@ describe('the keyed tree', () => {
             endpoints: [
                 {
                     deviceTypes: ['OnOffLight'],
-                    bindings: [
+                    mappings: [
                         {attribute: 'OnOff.onOff', status: {topic: 'a'}},
                         {attribute: 'OnOff.onOff', status: {topic: 'b'}},
                         {invoke: 'Identify.identify', command: {topic: 'c', payload: 'x'}},
@@ -68,7 +68,7 @@ describe('the keyed tree', () => {
             ],
         });
         const main = (tree.endpoints as Record<string, Record<string, unknown>>).main!;
-        expect(Object.keys(main.bindings as object)).toEqual([
+        expect(Object.keys(main.mappings as object)).toEqual([
             'attribute:OnOff.onOff',
             'attribute:OnOff.onOff#2',
             'invoke:Identify.identify',
@@ -120,14 +120,14 @@ describe('resync', () => {
     it('carries edits over a renamed baseline and keeps the baseline order', () => {
         const old = baseline();
         const current = baseline();
-        // the user's edits: a different on/off payload, a dropped level binding, an extra binding, a new endpoint
-        current.endpoints[0]!.bindings![0]!.command!.format = {true: 'on', false: 'off'};
-        current.endpoints[0]!.bindings!.splice(1, 1);
-        current.endpoints[0]!.bindings!.push({
+        // the user's edits: a different on/off payload, a dropped level mapping, an extra mapping, a new endpoint
+        current.endpoints[0]!.mappings![0]!.command!.format = {true: 'on', false: 'off'};
+        current.endpoints[0]!.mappings!.splice(1, 1);
+        current.endpoints[0]!.mappings!.push({
             invoke: 'Identify.identify',
             command: {topic: 'z/lamp/set', payload: 'id'},
         });
-        current.endpoints.push({id: 'mine', deviceTypes: ['ContactSensor'], bindings: []});
+        current.endpoints.push({id: 'mine', deviceTypes: ['ContactSensor'], mappings: []});
         current.name = 'My lamp';
         current.source = {kind: 'z2m', key: '0x1', version: '1', orphaned: true};
 
@@ -139,9 +139,9 @@ describe('resync', () => {
         const result = resync(old, current, renamed);
         const main = result.device.endpoints[0]!;
         expect(
-            main.bindings!.map((b) => ('attribute' in b ? b.attribute : 'invoke' in b ? b.invoke : b.event)),
+            main.mappings!.map((b) => ('attribute' in b ? b.attribute : 'invoke' in b ? b.invoke : b.event)),
         ).toEqual(['OnOff.onOff', 'Identify.identify']);
-        expect(main.bindings![0]!.command).toEqual({
+        expect(main.mappings![0]!.command).toEqual({
             topic: 'z/kitchen/set',
             wrap: 'state',
             format: {true: 'on', false: 'off'},

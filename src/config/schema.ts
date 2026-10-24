@@ -46,7 +46,7 @@ export const ServerConfigSchema = z
         enabled: z.boolean().default(true),
         host: z.string().min(1).default('0.0.0.0'),
         port: z.number().int().min(0).max(65535).default(8282),
-        /** the MQTT subscriptions for the UI's topic tree and live view, on top of the bindings' topics */
+        /** the MQTT subscriptions for the UI's topic tree and live view, on top of the mappings' topics */
         topics: z.array(z.string().min(1)).default(['#']),
     })
     .strict();

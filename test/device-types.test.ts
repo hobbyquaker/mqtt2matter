@@ -37,11 +37,11 @@ describe('buildEndpoint', () => {
         expect(built.defaults.descriptor).toBeUndefined();
     });
 
-    it('adds optional and foreign clusters that bindings name, with the family features they imply', () => {
+    it('adds optional and foreign clusters that mappings name, with the family features they imply', () => {
         const built = buildEndpoint(
             endpoint({
                 deviceTypes: ['OnOffLight'],
-                bindings: [
+                mappings: [
                     {attribute: 'LevelControl.currentLevel', status: {topic: 's'}},
                     {attribute: 'ColorControl.colorHs', status: {topic: 's'}},
                     {attribute: 'ColorControl.colorTemperatureMireds', status: {topic: 's'}},
@@ -61,7 +61,7 @@ describe('buildEndpoint', () => {
                 features: {PowerSource: ['Rechargeable']},
                 attributes: {PowerSource: {description: 'AA'}},
                 options: {powerSource: {warning: 30}},
-                bindings: [{attribute: 'PowerSource.batPercentRemaining', status: {topic: 's'}}],
+                mappings: [{attribute: 'PowerSource.batPercentRemaining', status: {topic: 's'}}],
             }),
         );
         expect([...built.features.get('PowerSource')!].sort()).toEqual(['Battery', 'Rechargeable']);
@@ -78,11 +78,11 @@ describe('buildEndpoint', () => {
         ).toThrow(/no feature "Sparkle"/);
     });
 
-    it('derives the thermostat and cover features from the bindings', () => {
+    it('derives the thermostat and cover features from the mappings', () => {
         const thermostat = buildEndpoint(
             endpoint({
                 deviceTypes: ['Thermostat'],
-                bindings: [
+                mappings: [
                     {attribute: 'Thermostat.occupiedHeatingSetpoint', status: {topic: 's'}},
                     {attribute: 'Thermostat.occupiedCoolingSetpoint', status: {topic: 's'}},
                     {attribute: 'Thermostat.systemMode', status: {topic: 's'}},
@@ -98,13 +98,13 @@ describe('buildEndpoint', () => {
         const cover = buildEndpoint(
             endpoint({
                 deviceTypes: ['WindowCovering'],
-                bindings: [{attribute: 'WindowCovering.currentPositionTiltPercent100ths', status: {topic: 's'}}],
+                mappings: [{attribute: 'WindowCovering.currentPositionTiltPercent100ths', status: {topic: 's'}}],
             }),
         );
         expect([...cover.features.get('WindowCovering')!].sort()).toEqual(['PositionAwareTilt', 'Tilt']);
         const stateOnlyConfig = endpoint({
             deviceTypes: ['WindowCovering'],
-            bindings: [{attribute: 'WindowCovering.motion', status: {topic: 's'}}],
+            mappings: [{attribute: 'WindowCovering.motion', status: {topic: 's'}}],
         });
         const stateOnly = buildEndpoint(stateOnlyConfig);
         expect([...stateOnly.features.get('WindowCovering')!]).toEqual(['Lift']);

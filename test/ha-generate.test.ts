@@ -1,5 +1,5 @@
 /* The Home Assistant discovery generator over the corpus of test/fixtures/ha (see its README): expected
-   device types, endpoints, bindings and the unmapped list per device; every baseline parses, validates
+   device types, endpoints, mappings and the unmapped list per device; every baseline parses, validates
    and passes the strict dry run. */
 
 import {describe, expect, it} from 'vitest';
@@ -7,7 +7,7 @@ import {describe, expect, it} from 'vitest';
 import {parseConfig} from '../src/config/load.ts';
 import {ha} from '../src/importers/index.ts';
 import {checkConfig, formatCheck} from '../src/matter/check.ts';
-import {type BindingInput, type DeviceInput, DeviceSchema, validateDevice} from '../src/model/index.ts';
+import {type MappingInput, type DeviceInput, DeviceSchema, validateDevice} from '../src/model/index.ts';
 
 import {CORPUS, loadCorpus} from './helpers/ha-corpus.ts';
 
@@ -32,10 +32,10 @@ function baseline(key: string): DeviceInput {
     return found.baseline;
 }
 
-const target = (b: BindingInput): string => ('attribute' in b ? b.attribute : 'invoke' in b ? b.invoke : b.event);
-const binding = (device: DeviceInput, name: string, endpoint = 'main'): BindingInput => {
+const target = (b: MappingInput): string => ('attribute' in b ? b.attribute : 'invoke' in b ? b.invoke : b.event);
+const mapping = (device: DeviceInput, name: string, endpoint = 'main'): MappingInput => {
     const ep = device.endpoints.find((e) => (e.id ?? 'main') === endpoint);
-    const found = ep?.bindings?.find((b) => target(b) === name);
+    const found = ep?.mappings?.find((b) => target(b) === name);
     if (found === undefined) {
         throw new Error(`${device.name}: no ${name} on ${endpoint}`);
     }
@@ -101,7 +101,7 @@ describe('ESPHome (per-entity form, abbreviated, identifiers as a string)', () =
             features: {Descriptor: ['TagList']},
             attributes: {Descriptor: {tagList: [{mfgCode: null, namespaceId: 16, tag: 47, label: 'Küche'}]}},
         });
-        expect(binding(device, 'OnOff.onOff')).toEqual({
+        expect(mapping(device, 'OnOff.onOff')).toEqual({
             attribute: 'OnOff.onOff',
             status: {topic: 'usb-relay-02/status/relay', map: {ON: true, OFF: false}},
             command: {topic: 'usb-relay-02/set/relay', format: {true: 'ON', false: 'OFF'}},
@@ -122,22 +122,22 @@ describe('ESPHome (per-entity form, abbreviated, identifiers as a string)', () =
         });
         expect(device.endpoints[0]!.options).toEqual({climate: {minHeat: 10, maxHeat: 30}});
         expect(device.endpoints[0]!.coalesce).toBe(50);
-        expect(binding(device, 'Thermostat.localTemperature').status).toEqual({
+        expect(mapping(device, 'Thermostat.localTemperature').status).toEqual({
             topic: 'seedling/climate/thermostat/current_temperature/state',
             unit: 'celsius',
             type: 'number',
         });
-        expect(binding(device, 'Thermostat.occupiedHeatingSetpoint')).toEqual({
+        expect(mapping(device, 'Thermostat.occupiedHeatingSetpoint')).toEqual({
             attribute: 'Thermostat.occupiedHeatingSetpoint',
             status: {topic: 'seedling/climate/thermostat/target_temperature/state', unit: 'celsius', type: 'number'},
             command: {topic: 'seedling/climate/thermostat/target_temperature/command', unit: 'celsius', round: 1},
         });
-        expect(binding(device, 'Thermostat.systemMode')).toEqual({
+        expect(mapping(device, 'Thermostat.systemMode')).toEqual({
             attribute: 'Thermostat.systemMode',
             status: {topic: 'seedling/climate/thermostat/mode/state', map: {off: 'Off', heat: 'Heat'}},
             command: {topic: 'seedling/climate/thermostat/mode/command', format: {Off: 'off', Heat: 'heat'}},
         });
-        expect(binding(device, 'Thermostat.thermostatRunningState').status?.map).toMatchObject({
+        expect(mapping(device, 'Thermostat.thermostatRunningState').status?.map).toMatchObject({
             heating: 'heat',
             idle: '',
         });
@@ -155,7 +155,7 @@ describe('ESPHome (per-entity form, abbreviated, identifiers as a string)', () =
             presence: ['OccupancySensor'],
             still_target: ['OccupancySensor'],
         });
-        expect(binding(device, 'OccupancySensing.occupancy', 'presence').status).toEqual({
+        expect(mapping(device, 'OccupancySensing.occupancy', 'presence').status).toEqual({
             topic: 'radar-one/status/has_target',
             map: {ON: true, OFF: false},
         });
@@ -180,16 +180,16 @@ describe('ESPHome (per-entity form, abbreviated, identifiers as a string)', () =
             pm2_5: ['AirQualitySensor'],
         });
         // VOC in ppm → ppb
-        expect(binding(device, 'TotalVolatileOrganicCompoundsConcentrationMeasurement.measuredValue').status).toEqual({
+        expect(mapping(device, 'TotalVolatileOrganicCompoundsConcentrationMeasurement.measuredValue').status).toEqual({
             topic: 'vindriktning/status/voc',
             type: 'number',
             scale: {from: [0, 1], to: [0, 1000], clamp: false},
         });
-        expect(binding(device, 'Pm25ConcentrationMeasurement.measuredValue', 'pm2_5').status).toEqual({
+        expect(mapping(device, 'Pm25ConcentrationMeasurement.measuredValue', 'pm2_5').status).toEqual({
             topic: 'vindriktning/status/pm25',
             type: 'number',
         });
-        expect(binding(device, 'PressureMeasurement.measuredValue', 'bme680_pressure').status).toEqual({
+        expect(mapping(device, 'PressureMeasurement.measuredValue', 'bme680_pressure').status).toEqual({
             topic: 'vindriktning/status/pressure',
             type: 'number',
             round: 0,
@@ -205,7 +205,7 @@ describe('the meter digitizer (~, payload_available, identifiers with a slash)',
         expect(gas.supported).toBe(true);
         expect(gas.name).toBe('gasmeter/status');
         expect(types(gas.baseline!)).toEqual({main: ['FlowSensor']});
-        expect(binding(gas.baseline!, 'FlowMeasurement.measuredValue').status).toEqual({
+        expect(mapping(gas.baseline!, 'FlowMeasurement.measuredValue').status).toEqual({
             topic: 'gasmeter/status/main/rate_per_time_unit',
             type: 'number',
             scale: {from: [0, 1], to: [0, 10], clamp: false},
@@ -247,23 +247,23 @@ describe("zigbee2mqtt's own discovery (native preferred)", () => {
         });
         expect(types(device)).toEqual({main: ['ExtendedColorLight']});
         expect(device.endpoints[0]!).toMatchObject({coalesce: 50, options: {light: {minMireds: 153, maxMireds: 500}}});
-        expect(binding(device, 'OnOff.onOff')).toEqual({
+        expect(mapping(device, 'OnOff.onOff')).toEqual({
             attribute: 'OnOff.onOff',
             status: {topic: 'zigbee2mqtt/light_cellar_1', extract: 'state', map: {ON: true, OFF: false}},
             command: {topic: 'zigbee2mqtt/light_cellar_1/set', wrap: 'state', format: {true: 'ON', false: 'OFF'}},
         });
-        expect(binding(device, 'LevelControl.currentLevel').command).toEqual({
+        expect(mapping(device, 'LevelControl.currentLevel').command).toEqual({
             topic: 'zigbee2mqtt/light_cellar_1/set',
             wrap: 'brightness',
             scale: {from: [1, 254], to: [1, 254]},
             round: 0,
         });
-        expect(binding(device, 'ColorControl.colorXy')).toEqual({
+        expect(mapping(device, 'ColorControl.colorXy')).toEqual({
             attribute: 'ColorControl.colorXy',
             status: {topic: 'zigbee2mqtt/light_cellar_1', extract: 'color'},
             command: {topic: 'zigbee2mqtt/light_cellar_1/set', wrap: 'color'},
         });
-        expect(binding(device, 'ColorControl.colorMode').status?.map).toMatchObject({
+        expect(mapping(device, 'ColorControl.colorMode').status?.map).toMatchObject({
             xy: 'CurrentXAndCurrentY',
             color_temp: 'ColorTemperatureMireds',
         });
@@ -276,39 +276,39 @@ describe("zigbee2mqtt's own discovery (native preferred)", () => {
         const device = baseline('ha:zigbee2mqtt_0x00124b0000000002');
         // the battery sensor is diagnostic in zigbee2mqtt's discovery and still the power source here
         expect(types(device)).toEqual({main: ['WindowCovering', 'PowerSource']});
-        expect(binding(device, 'PowerSource.batPercentRemaining').status).toMatchObject({unit: 'halfPercent'});
-        expect(binding(device, 'WindowCovering.currentPositionLiftPercent100ths').status).toEqual({
+        expect(mapping(device, 'PowerSource.batPercentRemaining').status).toMatchObject({unit: 'halfPercent'});
+        expect(mapping(device, 'WindowCovering.currentPositionLiftPercent100ths').status).toEqual({
             topic: 'zigbee2mqtt/blind_kitchen',
             scale: {from: [0, 100], to: [10000, 0]},
             type: 'number',
             template: '{{ value_json.position }}',
         });
-        expect(binding(device, 'WindowCovering.targetPositionLiftPercent100ths').command).toEqual({
+        expect(mapping(device, 'WindowCovering.targetPositionLiftPercent100ths').command).toEqual({
             topic: 'zigbee2mqtt/blind_kitchen/set',
             scale: {from: [0, 100], to: [10000, 0]},
             round: 0,
             template: '{% set position = open %}{ "position": {{ position }} }',
         });
         // a position-aware cover takes only the movement states from the state topic
-        expect(binding(device, 'WindowCovering.motion').status).toEqual({
+        expect(mapping(device, 'WindowCovering.motion').status).toEqual({
             topic: 'zigbee2mqtt/blind_kitchen',
             map: {opening: 'opening', closing: 'closing', STOP: 'stopped'},
             template: '{{ value_json.state }}',
         });
-        expect(binding(device, 'WindowCovering.stopMotion').command).toEqual({
+        expect(mapping(device, 'WindowCovering.stopMotion').command).toEqual({
             topic: 'zigbee2mqtt/blind_kitchen/set',
             payload: 'STOP',
         });
-        expect(device.endpoints[0]!.bindings?.map(target)).not.toContain('WindowCovering.upOrOpen');
+        expect(device.endpoints[0]!.mappings?.map(target)).not.toContain('WindowCovering.upOrOpen');
     });
 
     it('a fan: the percentage over the speed range, a command template with integer dictionary keys left out', () => {
         const device = baseline('ha:zigbee2mqtt_0x00124b0000000003');
         expect(types(device)).toEqual({main: ['Fan'], pm25: ['AirQualitySensor']});
-        const percent = binding(device, 'FanControl.percentSetting');
+        const percent = mapping(device, 'FanControl.percentSetting');
         expect(percent.status).toMatchObject({scale: {from: [0, 9], to: [0, 100]}, type: 'number'});
         expect(percent.command).toBeUndefined();
-        expect(binding(device, 'FanControl.fanMode')).toMatchObject({
+        expect(mapping(device, 'FanControl.fanMode')).toMatchObject({
             status: {map: {auto: 'Auto'}},
             command: {format: {Auto: 'auto'}},
         });
@@ -321,11 +321,11 @@ describe("zigbee2mqtt's own discovery (native preferred)", () => {
     it('device triggers: one button per subtype, continuous actions listed', () => {
         const device = baseline('ha:zigbee2mqtt_0x00124b0000000004');
         expect(types(device)).toEqual({main: ['GenericSwitch', 'PowerSource'], button_toggle: ['GenericSwitch']});
-        expect(binding(device, 'Switch')).toEqual({
+        expect(mapping(device, 'Switch')).toEqual({
             event: 'Switch',
             status: {topic: 'zigbee2mqtt/knob_workshop/action', map: {single: 'single'}},
         });
-        expect(binding(device, 'Switch', 'button_toggle').status?.map).toEqual({toggle: 'single'});
+        expect(mapping(device, 'Switch', 'button_toggle').status?.map).toEqual({toggle: 'single'});
         expect(item('ha:zigbee2mqtt_0x00124b0000000004').unmapped).toContain(
             'device_automation: action rotate_left is no press',
         );
@@ -354,7 +354,7 @@ describe('the device-based form', () => {
             },
         });
         expect(types(device)).toEqual({main: ['HumiditySensor'], temperature: ['TemperatureSensor']});
-        expect(binding(device, 'RelativeHumidityMeasurement.measuredValue').status).toEqual({
+        expect(mapping(device, 'RelativeHumidityMeasurement.measuredValue').status).toEqual({
             topic: 'cul/status/ws/2/humidity',
             type: 'number',
             unit: 'percent100ths',
@@ -365,7 +365,7 @@ describe('the device-based form', () => {
     it('a battery-low binary sensor becomes the power source of the device', () => {
         const device = baseline('ha:cul2mqtt_cul_hms_4334');
         expect(types(device)).toEqual({main: ['TemperatureSensor', 'PowerSource']});
-        expect(binding(device, 'PowerSource.batChargeLevel').status).toEqual({
+        expect(mapping(device, 'PowerSource.batChargeLevel').status).toEqual({
             topic: 'cul/status/hms/4334/battery_low',
             map: {ON: 'Critical', OFF: 'Ok'},
             template: "{{ 'ON' if value_json.val else 'OFF' }}",
@@ -383,20 +383,20 @@ describe('the device-based form', () => {
             'mat:ExtendedColorLight',
             'trans:OnOffPlugInUnit',
         ]);
-        expect(binding(device, 'LevelControl.currentLevel', 'mat')).toMatchObject({
+        expect(mapping(device, 'LevelControl.currentLevel', 'mat')).toMatchObject({
             status: {topic: 'awtrix/state/device', template: '{{ value_json.brightness }}', type: 'number'},
             command: {topic: 'awtrix/cmd/settings', template: '{"brightness":{{ value }}}'},
         });
-        expect(binding(device, 'ColorControl.colorRgb', 'mat').command).toMatchObject({
+        expect(mapping(device, 'ColorControl.colorRgb', 'mat').command).toMatchObject({
             topic: 'awtrix/cmd/settings',
             template: '{"textColor":[{{ red }},{{ green }},{{ blue }}]}',
         });
         // the rgb state template uses int(base=16), which the engine cannot do: status half left out, listed
-        expect(binding(device, 'ColorControl.colorRgb', 'mat').status).toBeUndefined();
+        expect(mapping(device, 'ColorControl.colorRgb', 'mat').status).toBeUndefined();
         expect(item('ha:aa0000000008').unmapped.some((u) => u.includes('rgb_value_template "int(base=\u2026)"'))).toBe(
             true,
         );
-        expect(binding(device, 'OnOff.onOff', 'mat')).toMatchObject({
+        expect(mapping(device, 'OnOff.onOff', 'mat')).toMatchObject({
             status: {map: {'{"power":true}': true, '{"power":false}': false}},
             command: {format: {true: '{"power":true}', false: '{"power":false}'}},
         });
@@ -422,7 +422,7 @@ describe('Tasmota (hand-written from its documentation)', () => {
         expect(device.endpoints[0]!.attributes).toEqual({
             Descriptor: {tagList: [{mfgCode: null, namespaceId: 16, tag: 52, label: 'Living room'}]},
         });
-        expect(binding(device, 'LevelControl.currentLevel')).toEqual({
+        expect(mapping(device, 'LevelControl.currentLevel')).toEqual({
             attribute: 'LevelControl.currentLevel',
             status: {
                 topic: 'tele/tasmota_AABBCC/STATE',
@@ -432,7 +432,7 @@ describe('Tasmota (hand-written from its documentation)', () => {
             },
             command: {topic: 'cmnd/tasmota_AABBCC/Dimmer', scale: {from: [1, 100], to: [1, 254]}, round: 0},
         });
-        expect(binding(device, 'ColorControl.colorRgb')).toEqual({
+        expect(mapping(device, 'ColorControl.colorRgb')).toEqual({
             attribute: 'ColorControl.colorRgb',
             status: {topic: 'tele/tasmota_AABBCC/STATE', template: "{{value_json.Color.split(',')[0:3]|join(',')}}"},
             command: {topic: 'cmnd/tasmota_AABBCC/Color2', template: '{{ red }},{{ green }},{{ blue }}'},
@@ -444,7 +444,7 @@ describe('Tasmota (hand-written from its documentation)', () => {
         const device = baseline('ha:DDEEFF');
         expect(device).toMatchObject({name: 'Tasmota Relay', vendor: 'Tasmota', model: 'Sonoff Basic'});
         expect(types(device)).toEqual({main: ['OnOffPlugInUnit'], DDEEFF_DS18B20_Temperature: ['TemperatureSensor']});
-        expect(binding(device, 'TemperatureMeasurement.measuredValue', 'DDEEFF_DS18B20_Temperature').status).toEqual({
+        expect(mapping(device, 'TemperatureMeasurement.measuredValue', 'DDEEFF_DS18B20_Temperature').status).toEqual({
             topic: 'tele/tasmota_DDEEFF/SENSOR',
             type: 'number',
             unit: 'celsius',
@@ -460,7 +460,7 @@ describe('Tasmota (hand-written from its documentation)', () => {
             button_button_1: ['GenericSwitch'],
             button_button_2: ['GenericSwitch'],
         });
-        expect(binding(device, 'Switch', 'button_button_1')).toEqual({
+        expect(mapping(device, 'Switch', 'button_button_1')).toEqual({
             event: 'Switch',
             status: {topic: 'stat/tasmota_112233/BUTTON1T', map: {SINGLE: 'single', DOUBLE: 'double', HOLD: 'long'}},
         });
@@ -474,7 +474,7 @@ describe('Tasmota (hand-written from its documentation)', () => {
 
     it('a shutter: position both ways, stop, no open/close commands', () => {
         const device = baseline('ha:445566');
-        expect(device.endpoints[0]!.bindings?.map(target)).toEqual([
+        expect(device.endpoints[0]!.mappings?.map(target)).toEqual([
             'WindowCovering.currentPositionLiftPercent100ths',
             'WindowCovering.targetPositionLiftPercent100ths',
             'WindowCovering.motion',
@@ -489,7 +489,7 @@ describe('Shelly (hand-written)', () => {
         expect(device).toMatchObject({name: 'Shelly Plus 1', vendor: 'Shelly', model: 'SNSW-001X16EU'});
         expect(item('ha:shellyplus1-a1b2c3').area).toBe('Boiler room');
         expect(device.endpoints[0]!.attributes).toBeUndefined();
-        expect(binding(device, 'OnOff.onOff')).toEqual({
+        expect(mapping(device, 'OnOff.onOff')).toEqual({
             attribute: 'OnOff.onOff',
             status: {
                 topic: 'shellyplus1-a1b2c3/status/switch:0',
@@ -503,7 +503,7 @@ describe('Shelly (hand-written)', () => {
 
     it('a Gen2 cover with a set_position_template', () => {
         const device = baseline('ha:shellyplus2pm-d4e5f6');
-        expect(binding(device, 'WindowCovering.targetPositionLiftPercent100ths').command?.template).toBe(
+        expect(mapping(device, 'WindowCovering.targetPositionLiftPercent100ths').command?.template).toBe(
             '{% set position = open %}pos,{{ position }}',
         );
         expect(item('ha:shellyplus2pm-d4e5f6').unmapped).toEqual([
@@ -514,13 +514,13 @@ describe('Shelly (hand-written)', () => {
     it('a battery sensor with expire_after: the power source on the device, expire on every topic', () => {
         const device = baseline('ha:shellyht-abc123');
         expect(types(device)).toEqual({main: ['HumiditySensor', 'PowerSource'], temperature: ['TemperatureSensor']});
-        expect(binding(device, 'PowerSource.batPercentRemaining').status).toEqual({
+        expect(mapping(device, 'PowerSource.batPercentRemaining').status).toEqual({
             topic: 'shellies/shellyht-abc123/sensor/battery',
             type: 'number',
             unit: 'halfPercent',
             expire: 43200,
         });
-        expect(binding(device, 'TemperatureMeasurement.measuredValue', 'temperature').status?.expire).toBe(43200);
+        expect(mapping(device, 'TemperatureMeasurement.measuredValue', 'temperature').status?.expire).toBe(43200);
         expect(device.endpoints[0]!.attributes?.Descriptor).toEqual({
             tagList: [{mfgCode: null, namespaceId: 16, tag: 7, label: 'Bedroom'}],
         });
@@ -530,7 +530,7 @@ describe('Shelly (hand-written)', () => {
         const device = baseline('ha:shellyplusi4-778899');
         expect(types(device)).toEqual({main: ['GenericSwitch']});
         expect(device.endpoints[0]!.options).toEqual({switch: {multiPressMax: 3}});
-        expect(binding(device, 'Switch').status).toEqual({
+        expect(mapping(device, 'Switch').status).toEqual({
             topic: 'shellyplusi4-778899/events/rpc',
             map: {single_push: 'single', double_push: 'double', triple_push: 'triple', long_push: 'long'},
             template: '{{ value_json.params.events[0].event }}',
@@ -540,7 +540,7 @@ describe('Shelly (hand-written)', () => {
 
 describe('Z-Wave JS UI (hand-written)', () => {
     it('a door sensor with numeric payloads: inverted into the contact state', () => {
-        expect(binding(baseline('ha:zwavejs2mqtt_0xd1e5f8a1_node9'), 'BooleanState.stateValue').status).toEqual({
+        expect(mapping(baseline('ha:zwavejs2mqtt_0xd1e5f8a1_node9'), 'BooleanState.stateValue').status).toEqual({
             topic: 'zwave/9/113/0/Access_Control/Door_state_simple',
             map: {'22': false, '23': true},
             template: '{{ value_json.value }}',
@@ -550,16 +550,16 @@ describe('Z-Wave JS UI (hand-written)', () => {
     it('a dimmer: brightness scale 99, on by brightness', () => {
         const device = baseline('ha:zwavejs2mqtt_0xd1e5f8a1_node12');
         expect(types(device)).toEqual({main: ['DimmableLight']});
-        expect(binding(device, 'LevelControl.currentLevel').command).toEqual({
+        expect(mapping(device, 'LevelControl.currentLevel').command).toEqual({
             topic: 'zwave/12/38/0/targetValue/set',
             scale: {from: [1, 99], to: [1, 254]},
             round: 0,
         });
-        expect(binding(device, 'OnOff.onOff').command?.format).toEqual({true: '255', false: '0'});
+        expect(mapping(device, 'OnOff.onOff').command?.format).toEqual({true: '255', false: '0'});
     });
 
     it('a lock with numeric states', () => {
-        expect(binding(baseline('ha:zwavejs2mqtt_0xd1e5f8a1_node10'), 'DoorLock.lockState')).toEqual({
+        expect(mapping(baseline('ha:zwavejs2mqtt_0xd1e5f8a1_node10'), 'DoorLock.lockState')).toEqual({
             attribute: 'DoorLock.lockState',
             status: {
                 topic: 'zwave/10/98/0/currentMode',
@@ -573,14 +573,14 @@ describe('Z-Wave JS UI (hand-written)', () => {
     it("a heat/cool thermostat on one setpoint topic; the mode templates get HA's value", () => {
         const device = baseline('ha:zwavejs2mqtt_0xd1e5f8a1_node11');
         expect(device.endpoints[0]!.options).toEqual({climate: {minHeat: 5, maxHeat: 40, minCool: 5, maxCool: 40}});
-        expect(binding(device, 'Thermostat.occupiedCoolingSetpoint').command).toEqual({
+        expect(mapping(device, 'Thermostat.occupiedCoolingSetpoint').command).toEqual({
             topic: 'zwave/11/67/0/setpoint/1/set',
             unit: 'celsius',
             round: 1,
             template: '{{ value }}',
         });
         // the state template uses integer dictionary keys the engine cannot render: listed, no status half
-        const mode = binding(device, 'Thermostat.systemMode');
+        const mode = mapping(device, 'Thermostat.systemMode');
         expect(mode.status).toBeUndefined();
         expect(item('ha:zwavejs2mqtt_0xd1e5f8a1_node11').unmapped).toEqual([
             "climate \"nodeID_11_climate\": mode_state_template a dictionary with non-string keys is not available: {{ {0:'off', 1:'heat', 2:'cool', 3:'auto'}[value_json.value] | default('off') }}",
@@ -595,14 +595,14 @@ describe('Z-Wave JS UI (hand-written)', () => {
 describe('OpenMQTTGateway (hand-written)', () => {
     it('BLE sensors with is_defined and expire_after', () => {
         const device = baseline('ha:A4C138AABB01');
-        expect(binding(device, 'TemperatureMeasurement.measuredValue', 'A4C138AABB01-tempc').status).toEqual({
+        expect(mapping(device, 'TemperatureMeasurement.measuredValue', 'A4C138AABB01-tempc').status).toEqual({
             topic: 'home/OMG_ESP32_BLE/BTtoMQTT/A4C138AABB01',
             type: 'number',
             unit: 'celsius',
             template: '{{ value_json.tempc | is_defined }}',
             expire: 21600,
         });
-        expect(binding(baseline('ha:A4C138AABB02'), 'BooleanState.stateValue').status?.map).toEqual({
+        expect(mapping(baseline('ha:A4C138AABB02'), 'BooleanState.stateValue').status?.map).toEqual({
             true: false,
             false: true,
         });
@@ -610,7 +610,7 @@ describe('OpenMQTTGateway (hand-written)', () => {
 
     it('an RF switch with JSON payloads and separate state values', () => {
         const device = baseline('ha:OMG_ESP32_BLE');
-        expect(binding(device, 'OnOff.onOff')).toMatchObject({
+        expect(mapping(device, 'OnOff.onOff')).toMatchObject({
             status: {map: {ON: true, OFF: false}},
             command: {format: {true: '{"value":1381717,"protocol":1,"length":24,"delay":350}'}},
         });
@@ -633,7 +633,7 @@ describe('a template that cannot run leaves its half out', () => {
         );
         const [entry] = source.discover().items;
         expect(entry?.supported).toBe(true);
-        const onOff = binding(entry!.baseline!, 'OnOff.onOff');
+        const onOff = mapping(entry!.baseline!, 'OnOff.onOff');
         expect(onOff.status).toBeUndefined();
         expect(onOff.command).toEqual({
             topic: 't/set',

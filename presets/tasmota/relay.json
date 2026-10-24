@@ -15,7 +15,7 @@
     "endpoints": [
       {
         "deviceTypes": ["OnOffPlugInUnit"],
-        "bindings": [
+        "mappings": [
           {
             "attribute": "OnOff.onOff",
             "status": {"topic": "stat/%topic%/RESULT", "extract": "$.POWER", "map": {"ON": true, "OFF": false}},

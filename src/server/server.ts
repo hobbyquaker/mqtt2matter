@@ -14,6 +14,7 @@ import type {App} from '../app.ts';
 import type {Logger} from '../log.ts';
 import type {DeviceHandle} from '../matter/bridge.ts';
 import {checkConfig} from '../matter/check.ts';
+import {migrateDevices} from '../model/migrate.ts';
 import {applyPreset} from '../model/presets.ts';
 import {DeviceSchema, type DeviceConfig, type DevicesInput} from '../model/schema.ts';
 import {type Issue, validateDevice} from '../model/validate.ts';
@@ -742,6 +743,8 @@ export class Server {
             if (!isRecord(devices)) {
                 throw new HttpError(400, 'expected {devices: {...}} or {config: {devices: {...}}}');
             }
+            // an export of an earlier version imports as it is
+            migrateDevices(devices);
             const parsed = new Map<string, DeviceConfig>();
             for (const [key, raw] of Object.entries(devices)) {
                 const result = DeviceSchema.safeParse(raw);

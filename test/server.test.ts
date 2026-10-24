@@ -61,7 +61,7 @@ beforeAll(async () => {
                 endpoints: [
                     {
                         deviceTypes: ['OnOffPlugInUnit'],
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'OnOff.onOff',
                                 status: {topic: 'stat/plug1/POWER', map: {ON: true, OFF: false}},
@@ -87,7 +87,7 @@ beforeAll(async () => {
                 endpoints: [
                     {
                         deviceTypes: ['OnOffPlugInUnit'],
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'OnOff.onOff',
                                 status: {topic: 'stat/%topic%/POWER', map: {ON: true, OFF: false}},
@@ -196,7 +196,7 @@ describe('the web server', () => {
             endpoints: [
                 {
                     deviceTypes: ['DimmableLight'],
-                    bindings: [
+                    mappings: [
                         {
                             attribute: 'OnOff.onOff',
                             status: {topic: 'stat/lamp/POWER', map: {ON: true, OFF: false}},
@@ -223,7 +223,7 @@ describe('the web server', () => {
             endpoints: [
                 {
                     deviceTypes: ['DimmableLight'],
-                    bindings: [
+                    mappings: [
                         {
                             attribute: 'OnOff.onOff',
                             status: {topic: 'stat/lamp/POWER', map: {ON: true, OFF: false}},
@@ -245,7 +245,7 @@ describe('the web server', () => {
             async () => (await api('GET', '/api/devices/lamp/state')).json.main.state.LevelControl.currentLevel === 127,
         );
 
-        // a replacement rebuilds it: the same endpoint number, the new binding wired
+        // a replacement rebuilds it: the same endpoint number, the new mapping wired
         const before = created.json.number;
         const replaced = await api('PUT', '/api/devices/lamp', {
             ...created.json.device,
@@ -253,7 +253,7 @@ describe('the web server', () => {
             endpoints: [
                 {
                     ...created.json.device.endpoints[0],
-                    bindings: [
+                    mappings: [
                         {
                             attribute: 'OnOff.onOff',
                             status: {topic: 'stat/lamp2/POWER', map: {ON: true, OFF: false}},
@@ -278,7 +278,7 @@ describe('the web server', () => {
         const validated = await api('POST', '/api/validate', {
             device: {
                 name: 'Odd',
-                endpoints: [{deviceTypes: ['OnOffLight'], bindings: [{attribute: 'OnOff.nope', status: {topic: 't'}}]}],
+                endpoints: [{deviceTypes: ['OnOffLight'], mappings: [{attribute: 'OnOff.nope', status: {topic: 't'}}]}],
             },
         });
         expect(validated.json.ok).toBe(false);
@@ -291,7 +291,7 @@ describe('the web server', () => {
                 odd: {
                     name: 'Odd',
                     endpoints: [
-                        {deviceTypes: ['OnOffLight'], bindings: [{attribute: 'OnOff.nope', status: {topic: 't'}}]},
+                        {deviceTypes: ['OnOffLight'], mappings: [{attribute: 'OnOff.nope', status: {topic: 't'}}]},
                     ],
                 },
             },
@@ -375,7 +375,7 @@ describe('the web server', () => {
         ]);
         const applied = await api('POST', '/api/presets/test%2Frelay/apply', {values: {topic: 'sonoff1'}});
         expect(applied.json.device.name).toBe('Relay');
-        expect(applied.json.device.endpoints[0].bindings[0].status.topic).toBe('stat/sonoff1/POWER');
+        expect(applied.json.device.endpoints[0].mappings[0].status.topic).toBe('stat/sonoff1/POWER');
         expect(applied.json.device.source).toEqual({kind: 'preset', key: 'test/relay', version: '1'});
         expect((await api('GET', '/api/devices')).json.map((d: any) => d.key)).not.toContain('Relay');
         expect((await api('POST', '/api/presets/none/apply', {values: {}})).status).toBe(404);
@@ -439,7 +439,7 @@ describe('the web server', () => {
         await waitFor(async () => (await entryOf(LIGHT))?.status === 'updated', 10_000, 'updated');
         const updated = await api('POST', `/api/adopt/z2m/${encodeURIComponent(LIGHT)}`, {});
         expect(updated.json.device.name).toBe('Gledopto renamed');
-        expect(updated.json.device.endpoints[0].bindings[0].status.topic).toBe('zigbee2mqtt/Gledopto renamed');
+        expect(updated.json.device.endpoints[0].mappings[0].status.topic).toBe('zigbee2mqtt/Gledopto renamed');
         expect((await entryOf(LIGHT)).status).toBe('unchanged');
 
         // the light disappears from zigbee2mqtt: orphaned on re-sync, still configured, still built

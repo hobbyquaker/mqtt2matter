@@ -1,7 +1,7 @@
 /* The light family: LevelControl and ColorControl. Commands: a controller's level, hue/saturation, xy or
-   colour temperature goes to whichever binding the endpoint has — the composite `colorHs` / `colorXy` /
+   colour temperature goes to whichever mapping the endpoint has — the composite `colorHs` / `colorXy` /
    `colorRgb` (converted as needed) or the plain attributes — with the on-command ordering of HA's
-   `on_command_type` and the transition time as a template field; applied locally only when the binding
+   `on_command_type` and the transition time as a template field; applied locally only when the mapping
    says so. Status: the composites set every representation the endpoint's features carry and arbitrate
    `colorMode` / `enhancedColorMode`, unless the config binds `colorMode` itself. */
 
@@ -244,7 +244,7 @@ function colorFields(
 }
 
 export class ColorControlServer extends BaseColorControlServer {
-    /** publish a colour through the binding the endpoint has, in the controller's representation */
+    /** publish a colour through the mapping the endpoint has, in the controller's representation */
     private async publishColor(
         color: {hs?: Hs; xy?: Xy},
         preferred: 'hs' | 'xy',

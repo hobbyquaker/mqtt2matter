@@ -2,7 +2,7 @@
     import {onMount} from 'svelte';
 
     import {
-        type Binding,
+        type Mapping,
         type BridgeInfo,
         type Catalog,
         type Device,
@@ -25,16 +25,16 @@
         OPTION_CHOICES,
         SUGGESTED,
         type Suggestion,
-        bindingTarget,
+        mappingTarget,
         boundClusters,
         cleanDevice,
         clusterOf,
-        emptyBinding,
+        emptyMapping,
         emptyEndpoint,
         familiesFor,
     } from '../lib/model.ts';
     import {notices} from '../lib/notices.svelte.ts';
-    import BindingEditor from './BindingEditor.svelte';
+    import MappingEditor from './MappingEditor.svelte';
 
     interface Props {
         key: string;
@@ -57,8 +57,8 @@
     let jsonText = $state('');
     let availabilityOn = $state(false);
 
-    // the binding editor
-    let editing = $state<{endpoint: number; index: number; binding: Binding} | undefined>(undefined);
+    // the mapping editor
+    let editing = $state<{endpoint: number; index: number; mapping: Mapping} | undefined>(undefined);
     let addType = $state<Record<number, string>>({});
 
     const jsonParsed = $derived(tryJson(jsonText));
@@ -89,7 +89,7 @@
     }
 
     function suggestionsFor(endpoint: Endpoint): {cluster: string; mandatory: boolean; targets: Suggestion[]}[] {
-        const bound = new Set(endpoint.bindings.map((b) => bindingTarget(b).name));
+        const bound = new Set(endpoint.mappings.map((b) => mappingTarget(b).name));
         return clustersOf(endpoint)
             .map(({cluster, mandatory}) => ({
                 cluster,
@@ -207,7 +207,7 @@
         }
     }
 
-    // ── endpoints and bindings ────────────────────────────────────────────────────────────────
+    // ── endpoints and mappings ────────────────────────────────────────────────────────────────
 
     function addEndpoint(): void {
         if (device === undefined) {
@@ -222,7 +222,7 @@
         if (device === undefined || index === 0) {
             return;
         }
-        if (await dialogs.confirm(t('Remove this endpoint and its bindings?'), {confirm: t('Remove'), danger: true})) {
+        if (await dialogs.confirm(t('Remove this endpoint and its mappings?'), {confirm: t('Remove'), danger: true})) {
             device.endpoints.splice(index, 1);
             changed();
         }
@@ -248,15 +248,15 @@
         changed();
     }
 
-    function openBinding(endpoint: number, index: number, binding: Binding): void {
-        editing = {endpoint, index, binding};
+    function openMapping(endpoint: number, index: number, mapping: Mapping): void {
+        editing = {endpoint, index, mapping};
     }
 
-    function newBinding(endpoint: number, target: Suggestion): void {
-        editing = {endpoint, index: -1, binding: emptyBinding(target)};
+    function newMapping(endpoint: number, target: Suggestion): void {
+        editing = {endpoint, index: -1, mapping: emptyMapping(target)};
     }
 
-    function saveBinding(binding: Binding): void {
+    function saveMapping(mapping: Mapping): void {
         if (editing === undefined || device === undefined) {
             return;
         }
@@ -265,24 +265,24 @@
             return;
         }
         if (editing.index === -1) {
-            endpoint.bindings.push(binding);
+            endpoint.mappings.push(mapping);
         } else {
-            endpoint.bindings[editing.index] = binding;
+            endpoint.mappings[editing.index] = mapping;
         }
         editing = undefined;
         changed();
     }
 
-    function removeBinding(endpoint: number, index: number): void {
-        device?.endpoints[endpoint]?.bindings.splice(index, 1);
+    function removeMapping(endpoint: number, index: number): void {
+        device?.endpoints[endpoint]?.mappings.splice(index, 1);
         changed();
     }
 
-    function duplicateBinding(endpoint: number, index: number): void {
-        const bindings = device?.endpoints[endpoint]?.bindings;
-        const binding = bindings?.[index];
-        if (bindings !== undefined && binding !== undefined) {
-            bindings.splice(index + 1, 0, structuredClone($state.snapshot(binding)));
+    function duplicateMapping(endpoint: number, index: number): void {
+        const mappings = device?.endpoints[endpoint]?.mappings;
+        const mapping = mappings?.[index];
+        if (mappings !== undefined && mapping !== undefined) {
+            mappings.splice(index + 1, 0, structuredClone($state.snapshot(mapping)));
             changed();
         }
     }
@@ -326,8 +326,8 @@
         changed();
     }
 
-    function halfSummary(binding: Binding, half: 'status' | 'command'): string {
-        const h = binding[half];
+    function halfSummary(mapping: Mapping, half: 'status' | 'command'): string {
+        const h = mapping[half];
         if (h === undefined) {
             return '';
         }
@@ -580,7 +580,7 @@
                             </div>
                         {/each}
 
-                        <table class="ui-table" data-testid="bindings">
+                        <table class="ui-table" data-testid="mappings">
                             <thead>
                                 <tr
                                     ><th>{t('Target')}</th><th>{t('Status (device → Matter)')}</th><th>{t('Command (Matter → device)')}</th><th>{t('Live')}</th
@@ -588,28 +588,28 @@
                                 >
                             </thead>
                             <tbody>
-                                {#each endpoint.bindings as binding, bi (bi)}
-                                    {@const target = bindingTarget(binding)}
+                                {#each endpoint.mappings as mapping, bi (bi)}
+                                    {@const target = mappingTarget(mapping)}
                                     {@const live = liveState?.[endpoint.id]?.state[clusterOf(target.name)]?.[target.name.split('.')[1] ?? '']}
-                                    <tr class="ui-row-link" onclick={() => openBinding(ei, bi, binding)} data-testid="binding-row">
+                                    <tr class="ui-row-link" onclick={() => openMapping(ei, bi, mapping)} data-testid="mapping-row">
                                         <td>
                                             <code>{target.name}</code>
                                             {#if target.kind !== 'attribute'}<span class="ui-badge">{target.kind}</span>{/if}
-                                            {#if binding.comment}<span class="ui-faint"> — {binding.comment}</span>{/if}
+                                            {#if mapping.comment}<span class="ui-faint"> — {mapping.comment}</span>{/if}
                                         </td>
-                                        <td><code>{halfSummary(binding, 'status')}</code></td>
-                                        <td><code>{halfSummary(binding, 'command')}</code></td>
+                                        <td><code>{halfSummary(mapping, 'status')}</code></td>
+                                        <td><code>{halfSummary(mapping, 'command')}</code></td>
                                         <td><code>{formatValue(live)}</code></td>
                                         <td class="ui-actions" onclick={(event) => event.stopPropagation()}>
-                                            <button type="button" class="ui-icon-button" title={t('Duplicate')} onclick={() => duplicateBinding(ei, bi)}
+                                            <button type="button" class="ui-icon-button" title={t('Duplicate')} onclick={() => duplicateMapping(ei, bi)}
                                                 ><Icon name="copy" /></button
                                             >
                                             <button
                                                 type="button"
                                                 class="ui-icon-button"
                                                 title={t('Remove')}
-                                                onclick={() => removeBinding(ei, bi)}
-                                                data-testid="remove-binding"><Icon name="trash" /></button
+                                                onclick={() => removeMapping(ei, bi)}
+                                                data-testid="remove-mapping"><Icon name="trash" /></button
                                             >
                                         </td>
                                     </tr>
@@ -623,7 +623,7 @@
                                                 <button
                                                     type="button"
                                                     class="ui-button suggest"
-                                                    onclick={() => newBinding(ei, target)}
+                                                    onclick={() => newMapping(ei, target)}
                                                     data-testid="bind-suggestion"
                                                     data-target={target.name}
                                                 >
@@ -637,8 +637,8 @@
                             </tbody>
                         </table>
                         <div>
-                            <button type="button" class="ui-button" onclick={() => newBinding(ei, {kind: 'attribute', name: ''})} data-testid="add-binding"
-                                >+ {t('Binding')}</button
+                            <button type="button" class="ui-button" onclick={() => newMapping(ei, {kind: 'attribute', name: ''})} data-testid="add-mapping"
+                                >+ {t('Mapping')}</button
                             >
                         </div>
                     </section>
@@ -649,12 +649,12 @@
 
         {#if editing}
             {@const endpoint = device.endpoints[editing.endpoint]}
-            <BindingEditor
+            <MappingEditor
                 open={true}
-                binding={editing.binding}
+                mapping={editing.mapping}
                 {catalog}
                 endpointClusters={endpoint === undefined ? [] : endpointClusters(endpoint)}
-                onsave={saveBinding}
+                onsave={saveMapping}
                 onclose={() => (editing = undefined)}
             />
         {/if}

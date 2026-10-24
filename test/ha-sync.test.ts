@@ -77,11 +77,11 @@ describe('adopt', () => {
 });
 
 describe('re-sync', () => {
-    it('a renamed device: updated, the name follows, an edited binding survives', () => {
+    it('a renamed device: updated, the name follows, an edited mapping survives', () => {
         const {source, devices} = adoptedCorpus();
         // the user edits the command topic of the relay
         const relay = structuredClone(devices[RELAY]!);
-        const onOff = relay.endpoints[0]!.bindings![0]!;
+        const onOff = relay.endpoints[0]!.mappings![0]!;
         onOff.command = {...onOff.command!, topic: 'usb-relay-02/set/relay/custom'};
         devices[RELAY] = relay;
         // the device announces itself again with a new name (every entity repeats the device block)
@@ -92,14 +92,14 @@ describe('re-sync', () => {
         expect(entry(report, RELAY)).toMatchObject({status: 'updated', edits: 1, conflicts: []});
         const {devices: synced} = ha.adopt(devices, source.discover());
         expect(synced[RELAY]!.name).toBe('Fairy lights 2');
-        expect(synced[RELAY]!.endpoints[0]!.bindings![0]!.command!.topic).toBe('usb-relay-02/set/relay/custom');
+        expect(synced[RELAY]!.endpoints[0]!.mappings![0]!.command!.topic).toBe('usb-relay-02/set/relay/custom');
         expect(synced[RELAY]!.source!.version).not.toBe(devices[RELAY].source!.version);
     });
 
     it('a conflict: the user and the source changed the same value; the user wins, the conflict is reported', () => {
         const {source, devices} = adoptedCorpus();
         const relay = structuredClone(devices[RELAY]!);
-        relay.endpoints[0]!.bindings![0]!.status = {topic: 'mine/state', map: {ON: true, OFF: false}};
+        relay.endpoints[0]!.mappings![0]!.status = {topic: 'mine/state', map: {ON: true, OFF: false}};
         devices[RELAY] = relay;
         const config = source.entities.get('homeassistant/switch/usb-relay-02/relay/config')!.config;
         source.handle(
@@ -111,7 +111,7 @@ describe('re-sync', () => {
         expect(e.status).toBe('updated');
         expect(e.conflicts).toEqual([
             {
-                path: 'endpoints.main.bindings.attribute:OnOff.onOff.status.topic',
+                path: 'endpoints.main.mappings.attribute:OnOff.onOff.status.topic',
                 op: 'set',
                 user: 'mine/state',
                 before: 'usb-relay-02/status/relay',
@@ -120,7 +120,7 @@ describe('re-sync', () => {
                 reason: expect.any(String),
             },
         ]);
-        expect(e.device!.endpoints[0]!.bindings![0]!.status!.topic).toBe('mine/state');
+        expect(e.device!.endpoints[0]!.mappings![0]!.status!.topic).toBe('mine/state');
     });
 
     it('an entity removed by an empty payload: the device shrinks, a deleted endpoint is a change', () => {

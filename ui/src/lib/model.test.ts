@@ -3,12 +3,12 @@ import {describe, expect, it} from 'vitest';
 import type {Device} from './api.ts';
 import {debounce, jsonPaths, tryJson} from './format.ts';
 import {
-    bindingTarget,
-    cleanBinding,
+    mappingTarget,
+    cleanMapping,
     cleanDevice,
     cleanHalf,
     clusterOf,
-    emptyBinding,
+    emptyMapping,
     familiesFor,
     scalarOf,
     valueOf,
@@ -16,15 +16,15 @@ import {
 import {hashFor, parseHash} from './router.svelte.ts';
 
 describe('the model helpers', () => {
-    it('reads a binding target', () => {
-        expect(bindingTarget({attribute: 'OnOff.onOff'})).toEqual({kind: 'attribute', name: 'OnOff.onOff'});
-        expect(bindingTarget({invoke: 'WindowCovering.stopMotion'})).toEqual({
+    it('reads a mapping target', () => {
+        expect(mappingTarget({attribute: 'OnOff.onOff'})).toEqual({kind: 'attribute', name: 'OnOff.onOff'});
+        expect(mappingTarget({invoke: 'WindowCovering.stopMotion'})).toEqual({
             kind: 'invoke',
             name: 'WindowCovering.stopMotion',
         });
-        expect(bindingTarget({event: 'Switch'})).toEqual({kind: 'event', name: 'Switch'});
+        expect(mappingTarget({event: 'Switch'})).toEqual({kind: 'event', name: 'Switch'});
         expect(clusterOf('LevelControl.currentLevel')).toBe('LevelControl');
-        expect(emptyBinding({kind: 'invoke', name: 'Identify.identify'})).toEqual({invoke: 'Identify.identify'});
+        expect(emptyMapping({kind: 'invoke', name: 'Identify.identify'})).toEqual({invoke: 'Identify.identify'});
     });
 
     it('names the families by the clusters', () => {
@@ -49,7 +49,7 @@ describe('the model helpers', () => {
             scale: {from: [0, 100], to: [1, 254]},
             get: {topic: 'g', payload: ''},
         });
-        expect(cleanBinding({attribute: 'OnOff.onOff', comment: '', status: {topic: 's', extract: ''}})).toEqual({
+        expect(cleanMapping({attribute: 'OnOff.onOff', comment: '', status: {topic: 's', extract: ''}})).toEqual({
             attribute: 'OnOff.onOff',
             status: {topic: 's'},
         });
@@ -66,7 +66,7 @@ describe('the model helpers', () => {
                 {
                     id: 'main',
                     deviceTypes: ['OnOffLight'],
-                    bindings: [],
+                    mappings: [],
                     options: {},
                     coalesce: 0,
                     features: {},
@@ -78,7 +78,7 @@ describe('the model helpers', () => {
             name: 'X',
             enabled: true,
             source: {kind: 'manual'},
-            endpoints: [{id: 'main', deviceTypes: ['OnOffLight'], bindings: [], options: {}, coalesce: 0}],
+            endpoints: [{id: 'main', deviceTypes: ['OnOffLight'], mappings: [], options: {}, coalesce: 0}],
         });
     });
 

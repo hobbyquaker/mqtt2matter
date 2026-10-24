@@ -1,5 +1,5 @@
 /* Static validation of a device against @matter/model (study §2.5, layer 1): device types exist, clusters
-   and attributes exist, the attribute's conformance holds under the endpoint's features, bindings fit the
+   and attributes exist, the attribute's conformance holds under the endpoint's features, mappings fit the
    attribute's shape (a boolean attribute does not take a number map, an enum map's values are member
    names), commands and event channels exist, templates parse. Pure: no node is built; the strict dry run
    (matter/check.ts) is layer 2. The result is a list of issues with paths the UI can point at. */
@@ -15,17 +15,17 @@ import {
 } from './catalog.ts';
 import type {Options} from './options.ts';
 import {
-    type Binding,
+    type Mapping,
     type DeviceConfig,
     type EndpointConfig,
     type Scalar,
     type StatusHalf,
-    bindingTarget,
+    mappingTarget,
 } from './schema.ts';
 
 export interface Issue {
     level: 'error' | 'warning';
-    /** `endpoints[0].bindings[2].status.map` */
+    /** `endpoints[0].mappings[2].status.map` */
     path: string;
     message: string;
 }
@@ -274,15 +274,15 @@ function checkStatusHalf(issues: Issue[], path: string, half: StatusHalf, info: 
     }
 }
 
-function checkBinding(
+function checkMapping(
     issues: Issue[],
     path: string,
     endpoint: EndpointConfig,
-    binding: Binding,
+    mapping: Mapping,
     bound: ReadonlySet<string>,
     clusters: ReadonlyMap<string, ClusterInfo>,
 ): void {
-    const {kind, name} = bindingTarget(binding);
+    const {kind, name} = mappingTarget(mapping);
     const [clusterName, member] = name.split('.') as [string, string | undefined];
     const info = clusters.get(clusterName) ?? clusterInfo(clusterName);
     if (info === undefined) {
@@ -300,8 +300,8 @@ function checkBinding(
     if (kind === 'event') {
         if (clusterName !== 'Switch') {
             issues.push({level: 'error', path, message: `event channel "${name}" is unknown; 1.0 knows Switch`});
-        } else if (binding.status === undefined) {
-            issues.push({level: 'error', path, message: 'an event binding needs a status half'});
+        } else if (mapping.status === undefined) {
+            issues.push({level: 'error', path, message: 'an event mapping needs a status half'});
         }
         return;
     }
@@ -324,12 +324,12 @@ function checkBinding(
         } else if (command.applicability(features) === Conformance.Applicability.None) {
             issues.push({level: 'error', path, message: `${name} needs a feature the endpoint does not enable`});
         }
-        if (binding.command === undefined) {
-            issues.push({level: 'error', path, message: 'a command binding needs a command half'});
+        if (mapping.command === undefined) {
+            issues.push({level: 'error', path, message: 'a command mapping needs a command half'});
         } else if (
-            binding.command.payload === undefined &&
-            binding.command.template === undefined &&
-            binding.command.format === undefined
+            mapping.command.payload === undefined &&
+            mapping.command.template === undefined &&
+            mapping.command.format === undefined
         ) {
             issues.push({
                 level: 'warning',
@@ -360,11 +360,11 @@ function checkBinding(
             message: `${name} needs a ${clusterName} feature the endpoint does not enable (enabled: ${[...features].join(', ') || 'none'})`,
         });
     }
-    if (binding.status !== undefined) {
-        checkStatusHalf(issues, `${path}.status`, binding.status, attribute);
+    if (mapping.status !== undefined) {
+        checkStatusHalf(issues, `${path}.status`, mapping.status, attribute);
     }
-    if (binding.command !== undefined) {
-        const half = binding.command;
+    if (mapping.command !== undefined) {
+        const half = mapping.command;
         if (half.format !== undefined) {
             for (const key of Object.keys(half.format)) {
                 if (attribute.metatype === 'enum' && attribute.enumMembers !== undefined) {
@@ -391,7 +391,7 @@ function checkBinding(
                 issues.push({level: 'error', path: `${path}.command.template`, message: rendered.reason});
             }
         }
-        if (attribute.writable && binding.status !== undefined && half.optimistic === false) {
+        if (attribute.writable && mapping.status !== undefined && half.optimistic === false) {
             issues.push({
                 level: 'warning',
                 path: `${path}.command.optimistic`,
@@ -474,24 +474,24 @@ export function validateEndpoint(endpoint: EndpointConfig, path: string): Issue[
         }
     }
     const bound = new Set<string>();
-    for (const binding of endpoint.bindings) {
-        bound.add(bindingTarget(binding).name);
+    for (const mapping of endpoint.mappings) {
+        bound.add(mappingTarget(mapping).name);
     }
     const seen = new Map<string, number>();
-    for (const [i, binding] of endpoint.bindings.entries()) {
-        const bindingPath = `${path}.bindings[${i}]`;
-        const key = bindingTarget(binding).name;
+    for (const [i, mapping] of endpoint.mappings.entries()) {
+        const mappingPath = `${path}.mappings[${i}]`;
+        const key = mappingTarget(mapping).name;
         const first = seen.get(key);
-        if (first !== undefined && bindingTarget(binding).kind !== 'event') {
+        if (first !== undefined && mappingTarget(mapping).kind !== 'event') {
             issues.push({
                 level: 'warning',
-                path: bindingPath,
-                message: `${key} is bound twice (also bindings[${first}])`,
+                path: mappingPath,
+                message: `${key} is bound twice (also mappings[${first}])`,
             });
         } else {
             seen.set(key, i);
         }
-        checkBinding(issues, bindingPath, endpoint, binding, bound, clusters);
+        checkMapping(issues, mappingPath, endpoint, mapping, bound, clusters);
     }
     return issues;
 }

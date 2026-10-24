@@ -63,7 +63,7 @@ test('a preset becomes a device', async ({page}) => {
     await dialog.getByTestId('preset-create').click();
     await expect(page.getByTestId('device-editor')).toBeVisible();
     expect(page.url()).toContain('#/devices/desk-relay');
-    await expect(page.getByTestId('binding-row').first()).toContainText('stat/sonoff-desk/RESULT');
+    await expect(page.getByTestId('mapping-row').first()).toContainText('stat/sonoff-desk/RESULT');
     await page.getByTestId('editor-back').click();
     const row = page.locator('[data-testid=device-row][data-key=desk-relay]');
     await expect(row).toContainText('preset');

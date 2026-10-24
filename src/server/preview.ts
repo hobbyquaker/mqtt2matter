@@ -1,4 +1,4 @@
-/* The binding editor's live preview: a payload through a status half step by step (extracted →
+/* The mapping editor's live preview: a payload through a status half step by step (extracted →
    templated → mapped → unit → scaled → the attribute's value), and a Matter value through a command
    half (numeric steps → format / template → wrap → the payload). Each stage runs the engine on the
    half cut down to the steps up to that stage, so what is shown is exactly what the engine does. */

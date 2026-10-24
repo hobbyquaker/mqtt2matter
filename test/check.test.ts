@@ -15,7 +15,7 @@ describe('checkConfig', () => {
                     endpoints: [
                         {
                             deviceTypes: ['ColorTemperatureLight'],
-                            bindings: [{attribute: 'ColorControl.colorHs', status: {topic: 's'}}],
+                            mappings: [{attribute: 'ColorControl.colorHs', status: {topic: 's'}}],
                         },
                     ],
                 },
@@ -28,7 +28,7 @@ describe('checkConfig', () => {
                     endpoints: [
                         {
                             deviceTypes: ['TemperatureSensor', 'PowerSource'],
-                            bindings: [{attribute: 'PowerSource.batPercentRemaining', status: {topic: 's'}}],
+                            mappings: [{attribute: 'PowerSource.batPercentRemaining', status: {topic: 's'}}],
                         },
                     ],
                 },
@@ -38,7 +38,7 @@ describe('checkConfig', () => {
                     endpoints: [
                         {
                             deviceTypes: ['OnOffLight'],
-                            bindings: [{attribute: 'OnOff.brightness', status: {topic: 's'}}],
+                            mappings: [{attribute: 'OnOff.brightness', status: {topic: 's'}}],
                         },
                     ],
                 },
@@ -55,7 +55,7 @@ describe('checkConfig', () => {
         expect(result.devices.get('disabled')!.map((i) => i.level)).toEqual(['error']);
         const lines = formatCheck(result);
         expect(lines.at(-1)).toBe('not ok');
-        expect(lines.some((l) => l.startsWith('ERROR badAttribute endpoints[0].bindings[0]'))).toBe(true);
+        expect(lines.some((l) => l.startsWith('ERROR badAttribute endpoints[0].mappings[0]'))).toBe(true);
 
         const good = await checkConfig(
             parseConfig({log: {matter: 'error'}, devices: {light: config.devices.light, child: config.devices.child}}),

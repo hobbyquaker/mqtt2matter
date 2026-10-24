@@ -1,6 +1,6 @@
 /* The lock family: DoorLock. lock/unlock/unbolt publish through the `DoorLock.lockState` command half
    (its format map keyed by the state names `Locked`, `Unlocked`, `Unlatched`) and apply locally only when
-   the binding says so; matter.js' own actuation path is bypassed because it needs a remote fabric and
+   the mapping says so; matter.js' own actuation path is bypassed because it needs a remote fabric and
    writes the state unconditionally. Status: `lockState` is a plain enum (`Locked`, `Unlocked`,
    `NotFullyLocked` for jammed, `Unlatched`). No credentials, schedules or users: the lock is the device's. */
 

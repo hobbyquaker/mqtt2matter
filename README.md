@@ -12,7 +12,7 @@ directions with Jinja templates, and the families — lights (level, colour temp
 RGB), covers (positions, state-only, tilt), thermostats, locks, fans, buttons (GenericSwitch events), sensors,
 battery, availability. `mqtt2matter --check` validates a configuration against the model and matter.js in
 strict mode. The Zigbee2MQTT importer adopts `bridge/devices` and `bridge/groups` from the command line or
-the UI and re-syncs them. The web UI edits devices and bindings with a live preview, adopts discovered
+the UI and re-syncs them. The web UI edits devices and mappings with a live preview, adopts discovered
 devices, shows the pairing code and the live MQTT traffic. Not published, not released; the Home Assistant
 discovery importer adopts ESPHome, Tasmota, Shelly, Z-Wave JS UI, OpenMQTTGateway and the device-based
 form from the UI. The configuration schema is frozen.
@@ -35,7 +35,7 @@ Assistant, Google Home or Alexa like any Matter bridge; the devices appear as br
 ### The web UI
 
 The bridge serves its UI on port 8282 (`server.port`): the device list, an editor for devices and their
-bindings with a live preview of every conversion step in both directions and a topic picker over the broker's
+mappings with a live preview of every conversion step in both directions and a topic picker over the broker's
 live topic tree, presets, the adopt page for devices Zigbee2MQTT describes, the bridges with their QR code
 and pairing code, the live MQTT traffic, the log, the strict dry run, import and export. German and English,
 light and dark. **It has no login** — keep it on a trusted network or behind a reverse proxy;

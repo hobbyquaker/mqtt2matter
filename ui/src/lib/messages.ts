@@ -91,9 +91,9 @@ export const MESSAGES: Record<string, Message> = {
         'Der Schlüssel ist die Matter-Endpunkt-Id: stabil, wird nie umbenannt. Buchstaben, Ziffern, : . _ -',
         'The key is the Matter endpoint id: stable, never renamed. Letters, digits, : . _ -',
     ),
-    'The device type brings its mandatory clusters; their bindings are filled in the editor.': m(
-        'Der Gerätetyp bringt seine Pflicht-Cluster mit; ihre Bindungen werden im Editor ausgefüllt.',
-        'The device type brings its mandatory clusters; their bindings are filled in the editor.',
+    'The device type brings its mandatory clusters; their mappings are filled in the editor.': m(
+        'Der Gerätetyp bringt seine Pflicht-Cluster mit; ihre Zuordnungen werden im Editor ausgefüllt.',
+        'The device type brings its mandatory clusters; their mappings are filled in the editor.',
     ),
     Create: m('Anlegen', 'Create'),
 
@@ -125,7 +125,7 @@ export const MESSAGES: Record<string, Message> = {
     'Status (device → Matter)': m('Status (Gerät → Matter)', 'Status (device → Matter)'),
     'Command (Matter → device)': m('Befehl (Matter → Gerät)', 'Command (Matter → device)'),
     mandatory: m('Pflicht', 'mandatory'),
-    Binding: m('Bindung', 'Binding'),
+    Mapping: m('Zuordnung', 'Mapping'),
     map: m('Map', 'map'),
     format: m('Format', 'format'),
     template: m('Template', 'template'),
@@ -144,12 +144,12 @@ export const MESSAGES: Record<string, Message> = {
     '{name} saved and built': m('{name} gespeichert und gebaut', '{name} saved and built'),
     'Discard the unsaved changes?': m('Die ungespeicherten Änderungen verwerfen?', 'Discard the unsaved changes?'),
     Discard: m('Verwerfen', 'Discard'),
-    'Remove this endpoint and its bindings?': m(
-        'Diesen Endpunkt und seine Bindungen entfernen?',
-        'Remove this endpoint and its bindings?',
+    'Remove this endpoint and its mappings?': m(
+        'Diesen Endpunkt und seine Zuordnungen entfernen?',
+        'Remove this endpoint and its mappings?',
     ),
 
-    // the binding editor
+    // the mapping editor
     Kind: m('Art', 'Kind'),
     attribute: m('Attribut', 'attribute'),
     'command (invoke)': m('Befehl (invoke)', 'command (invoke)'),

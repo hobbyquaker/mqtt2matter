@@ -1,4 +1,4 @@
-/* What every family shares: the per-endpoint context (options, the enabled features, the bindings it has,
+/* What every family shares: the per-endpoint context (options, the enabled features, the mappings it has,
    the command handlers the runtime registered) and `route()`, which hands a controller's command to the
    runtime's handler and answers whether the family applies the value locally. The context is keyed by
    the matter.js Endpoint in a WeakMap, so a behavior finds it through `this.endpoint`. */

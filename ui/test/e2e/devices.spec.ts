@@ -37,40 +37,40 @@ test('create a device by hand, bind a suggested attribute with the topic picker,
     await expect(editor.getByTestId('suggestion-row').first()).toContainText('mandatory');
     await suggestion.click();
 
-    // the binding editor: the status topic from the live topic tree, the key from the payload
-    const binding = page.getByTestId('binding-editor');
-    await expect(binding).toBeVisible();
-    await expect(binding.getByTestId('binding-cluster')).toHaveValue('OnOff');
-    await expect(binding.getByTestId('binding-member')).toHaveValue('onOff');
-    await binding.getByTestId('status-enabled').check();
-    await binding.getByTestId('pick-status-topic').click();
+    // the mapping editor: the status topic from the live topic tree, the key from the payload
+    const mapping = page.getByTestId('mapping-editor');
+    await expect(mapping).toBeVisible();
+    await expect(mapping.getByTestId('mapping-cluster')).toHaveValue('OnOff');
+    await expect(mapping.getByTestId('mapping-member')).toHaveValue('onOff');
+    await mapping.getByTestId('status-enabled').check();
+    await mapping.getByTestId('pick-status-topic').click();
     const picker = page.getByTestId('topic-picker');
     await picker.getByTestId('picker-filter').fill('stat/b1');
     await picker.getByTestId('picker-row').first().click();
     await picker.locator('[data-testid=picker-path]', {hasText: '$.POWER'}).click();
-    await expect(binding.getByTestId('status-topic')).toHaveValue('stat/b1/RESULT');
-    await expect(binding.getByTestId('status-extract')).toHaveValue('$.POWER');
-    await binding.getByTestId('map-add').click();
-    await binding.getByTestId('map-key').last().fill('ON');
-    await binding.getByTestId('map-value').last().fill('true');
-    await binding.getByTestId('map-add').click();
-    await binding.getByTestId('map-key').last().fill('OFF');
-    await binding.getByTestId('map-value').last().fill('false');
+    await expect(mapping.getByTestId('status-topic')).toHaveValue('stat/b1/RESULT');
+    await expect(mapping.getByTestId('status-extract')).toHaveValue('$.POWER');
+    await mapping.getByTestId('map-add').click();
+    await mapping.getByTestId('map-key').last().fill('ON');
+    await mapping.getByTestId('map-value').last().fill('true');
+    await mapping.getByTestId('map-add').click();
+    await mapping.getByTestId('map-key').last().fill('OFF');
+    await mapping.getByTestId('map-value').last().fill('false');
     // the live preview: the retained payload through extract and map
-    await expect(binding.getByTestId('status-payload')).toHaveValue(/POWER/);
-    await expect(binding.getByTestId('status-stages')).toContainText('extract');
-    await expect(binding.getByTestId('status-stages')).toContainText('attribute');
-    await expect(binding.getByTestId('status-stages').locator('li').last()).toContainText('true');
+    await expect(mapping.getByTestId('status-payload')).toHaveValue(/POWER/);
+    await expect(mapping.getByTestId('status-stages')).toContainText('extract');
+    await expect(mapping.getByTestId('status-stages')).toContainText('attribute');
+    await expect(mapping.getByTestId('status-stages').locator('li').last()).toContainText('true');
     // the command half with a format and the reverse preview
-    await binding.getByTestId('command-enabled').check();
-    await binding.getByTestId('command-topic').fill('cmnd/desk/POWER');
-    await binding.getByText('ON / OFF').click();
-    await binding.getByTestId('command-value').selectOption('true');
-    await expect(binding.getByTestId('command-stages').locator('li').last()).toContainText('ON');
-    await binding.getByTestId('binding-save').click();
+    await mapping.getByTestId('command-enabled').check();
+    await mapping.getByTestId('command-topic').fill('cmnd/desk/POWER');
+    await mapping.getByText('ON / OFF').click();
+    await mapping.getByTestId('command-value').selectOption('true');
+    await expect(mapping.getByTestId('command-stages').locator('li').last()).toContainText('ON');
+    await mapping.getByTestId('mapping-save').click();
 
-    await expect(editor.getByTestId('binding-row')).toHaveCount(1);
-    await expect(editor.getByTestId('binding-row').first()).toContainText('OnOff.onOff');
+    await expect(editor.getByTestId('mapping-row')).toHaveCount(1);
+    await expect(editor.getByTestId('mapping-row').first()).toContainText('OnOff.onOff');
     await expect(editor.getByTestId('issues')).toHaveCount(0);
     await editor.getByTestId('save-device').click();
     await expect(page.getByTestId('notice').last()).toContainText('saved and built');
@@ -98,18 +98,18 @@ test('create a device by hand, bind a suggested attribute with the topic picker,
 test('editing a device validates live and refuses an unsaved exit without asking', async ({page}) => {
     await page.goto('/#/devices/living-room-lamp');
     const editor = page.getByTestId('device-editor');
-    await expect(editor.getByTestId('binding-row')).toHaveCount(3);
+    await expect(editor.getByTestId('mapping-row')).toHaveCount(3);
     await expect(editor.getByText('The device validates.')).toBeVisible();
     await editor.getByTestId('device-name').fill('');
     await expect(editor.getByTestId('issues')).toContainText('name');
     await editor.getByTestId('device-name').fill('Living room lamp');
-    await editor.getByTestId('remove-binding').first().click();
-    await expect(editor.getByTestId('binding-row')).toHaveCount(2);
+    await editor.getByTestId('remove-mapping').first().click();
+    await expect(editor.getByTestId('mapping-row')).toHaveCount(2);
     await editor.getByTestId('editor-back').click();
     await expect(page.getByTestId('dialog-confirm')).toContainText('Discard');
     await page.getByTestId('dialog-ok').click();
     await expect(page.getByTestId('devices-page')).toBeVisible();
     // nothing was saved
     await page.goto('/#/devices/living-room-lamp');
-    await expect(editor.getByTestId('binding-row')).toHaveCount(3);
+    await expect(editor.getByTestId('mapping-row')).toHaveCount(3);
 });

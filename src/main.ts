@@ -51,13 +51,19 @@ async function main(): Promise<void> {
         console.log(VERSION);
         return;
     }
-    const {config, path, fromFile, raw, overridden} = await loadConfig();
+    const {config, path, fromFile, raw, overridden, migrated} = await loadConfig();
     const logBuffer = new LogBuffer();
     const log = createLogger(config.log.level, (line) => {
         console.error(line);
         logBuffer.push(line);
     });
     log.info(`mqtt2matter ${VERSION}, ${fromFile ? `configuration ${path}` : `no ${path}, defaults`}`);
+    if (migrated.length > 0) {
+        log.warn(
+            `${path}: ${migrated.length} device(s) use the old field "bindings", read as "mappings"; ` +
+                'the file is written in the new form at the next save from the UI',
+        );
+    }
     const app = new App(config, {log});
     let server: Server | undefined;
     if (config.server.enabled) {

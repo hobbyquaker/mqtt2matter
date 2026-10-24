@@ -4,7 +4,7 @@
    (the user's edits carried over, conflicts listed), mark the ones zigbee2mqtt no longer describes as
    orphaned, write the file back and report. The normal start afterwards logs the pairing code. */
 
-import {readFile, writeFile} from 'node:fs/promises';
+import {writeFile} from 'node:fs/promises';
 
 import {applyEnv, ConfigError, loadConfig, parseConfig} from '../config/index.ts';
 import {z2m} from '../importers/index.ts';
@@ -53,18 +53,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** the config file as it is on disk (no defaults filled in), so it can be written back as the user left it */
-async function readRawConfig(path: string, fromFile: boolean): Promise<Record<string, unknown>> {
-    if (!fromFile) {
-        return {};
-    }
-    const parsed: unknown = JSON.parse(await readFile(path, 'utf8'));
-    if (!isRecord(parsed)) {
-        throw new ConfigError(`${path} is not a JSON object`);
-    }
-    return parsed;
-}
-
 const MARK: Record<z2m.SyncStatus, string> = {
     new: '+',
     updated: '~',
@@ -110,11 +98,10 @@ export interface ImportIo {
 export async function importZ2m(args: ImportZ2mArgs, io: ImportIo): Promise<number> {
     const env = io.env ?? process.env;
     const log = io.log ?? silentLogger;
-    const {config, path, fromFile} = await loadConfig({
+    const {config, path, raw} = await loadConfig({
         ...(args.configPath === undefined ? {} : {path: args.configPath}),
         env,
     });
-    const raw = await readRawConfig(path, fromFile);
     const existing = DevicesSchema.safeParse(raw.devices ?? {});
     if (!existing.success) {
         throw new ConfigError(`${path}: the devices do not validate; fix the file first`);

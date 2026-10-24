@@ -40,7 +40,7 @@ async function main(): Promise<void> {
                 endpoints: [
                     {
                         deviceTypes: ['ColorTemperatureLight'],
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'OnOff.onOff',
                                 status: {topic: 'stat/b1/RESULT', extract: '$.POWER', map: {ON: true, OFF: false}},
@@ -66,7 +66,7 @@ async function main(): Promise<void> {
                 endpoints: [
                     {
                         deviceTypes: ['ContactSensor', 'PowerSource'],
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'BooleanState.stateValue',
                                 status: {topic: 'zigbee2mqtt/hall_window', extract: 'contact', type: 'boolean'},
@@ -85,7 +85,7 @@ async function main(): Promise<void> {
                 endpoints: [
                     {
                         deviceTypes: ['WindowCovering'],
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'WindowCovering.currentPositionLiftPercent100ths',
                                 status: {topic: 'stat/blind/position', unit: 'percent100ths'},

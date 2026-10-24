@@ -62,7 +62,7 @@ export interface CommandHalf {
     codec?: {module: string; options?: unknown};
 }
 
-export interface Binding {
+export interface Mapping {
     attribute?: string;
     invoke?: string;
     event?: string;
@@ -76,7 +76,7 @@ export interface Endpoint {
     deviceTypes: string[];
     features?: Record<string, string[]>;
     attributes?: Record<string, Record<string, unknown>>;
-    bindings: Binding[];
+    mappings: Mapping[];
     options: Record<string, Record<string, unknown>>;
     coalesce: number;
 }

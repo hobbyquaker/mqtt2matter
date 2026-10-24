@@ -1,10 +1,10 @@
-/* The binding runtime with fakes on both sides: subscriptions, decoding to targets, events, commands,
+/* The mapping runtime with fakes on both sides: subscriptions, decoding to targets, events, commands,
    coalescing, availability, expire and get requests — nothing of MQTT or matter.js. */
 
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import type {Decoded} from '../src/engine/payload.ts';
-import {type CommandHandler, type EndpointTarget, BindingRuntime, evaluateAvailability} from '../src/engine/runtime.ts';
+import {type CommandHandler, type EndpointTarget, MappingRuntime, evaluateAvailability} from '../src/engine/runtime.ts';
 import {silentLogger} from '../src/log.ts';
 import type {AttributeRef} from '../src/model/attribute.ts';
 import {DeviceSchema} from '../src/model/schema.ts';
@@ -53,7 +53,7 @@ class FakeTarget implements EndpointTarget {
 
 function setup(deviceRaw: Record<string, unknown>) {
     const published: {topic: string; payload: string; retain: boolean; qos: number}[] = [];
-    const runtime = new BindingRuntime(
+    const runtime = new MappingRuntime(
         {
             publish: (topic, payload, {retain, qos}) => {
                 published.push({topic, payload, retain, qos});
@@ -71,14 +71,14 @@ function setup(deviceRaw: Record<string, unknown>) {
     return {runtime, published, targets, main: targets.get(device.endpoints[0]!.id)!};
 }
 
-describe('BindingRuntime: status in', () => {
+describe('MappingRuntime: status in', () => {
     it('subscribes the status topics and sets decoded values', async () => {
         const {runtime, main} = setup({
             name: 'd',
             endpoints: [
                 {
                     deviceTypes: ['Thermostat'],
-                    bindings: [
+                    mappings: [
                         {
                             attribute: 'Thermostat.systemMode',
                             status: {topic: 's', extract: 'mode', map: {heat: 'Heat'}},
@@ -107,12 +107,12 @@ describe('BindingRuntime: status in', () => {
             endpoints: [
                 {
                     deviceTypes: ['GenericSwitch'],
-                    bindings: [{event: 'Switch', status: {topic: 'b', extract: 'action'}}],
+                    mappings: [{event: 'Switch', status: {topic: 'b', extract: 'action'}}],
                 },
                 {
                     id: 'l1',
                     deviceTypes: ['OnOffLight'],
-                    bindings: [{attribute: 'OnOff.onOff', status: {topic: 'b', extract: 'state_l1', map: {ON: true}}}],
+                    mappings: [{attribute: 'OnOff.onOff', status: {topic: 'b', extract: 'state_l1', map: {ON: true}}}],
                 },
             ],
         });
@@ -127,7 +127,7 @@ describe('BindingRuntime: status in', () => {
             endpoints: [
                 {
                     deviceTypes: ['DimmableLight'],
-                    bindings: [
+                    mappings: [
                         {attribute: 'OnOff.onOff', status: {topic: 's', extract: 'state', map: {ON: true}}},
                         {attribute: 'LevelControl.currentLevel', status: {topic: 's', extract: 'level'}},
                     ],
@@ -144,7 +144,7 @@ describe('BindingRuntime: status in', () => {
     it('announces new topics to listeners and forgets devices', () => {
         const {runtime} = setup({
             name: 'd',
-            endpoints: [{deviceTypes: ['OnOffLight'], bindings: [{attribute: 'OnOff.onOff', status: {topic: 'a'}}]}],
+            endpoints: [{deviceTypes: ['OnOffLight'], mappings: [{attribute: 'OnOff.onOff', status: {topic: 'a'}}]}],
         });
         const seen: string[] = [];
         runtime.onTopic((t) => seen.push(t));
@@ -154,14 +154,14 @@ describe('BindingRuntime: status in', () => {
     });
 });
 
-describe('BindingRuntime: commands out', () => {
+describe('MappingRuntime: commands out', () => {
     it('registers a handler per command half and publishes through the engine', async () => {
         const {main, published} = setup({
             name: 'd',
             endpoints: [
                 {
                     deviceTypes: ['Thermostat'],
-                    bindings: [
+                    mappings: [
                         {
                             attribute: 'Thermostat.systemMode',
                             command: {topic: 'c', format: {Heat: 'heat', Off: 'off'}, retain: true, qos: 1},
@@ -196,7 +196,7 @@ describe('BindingRuntime: commands out', () => {
                     {
                         deviceTypes: ['DimmableLight'],
                         coalesce: 50,
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'OnOff.onOff',
                                 command: {topic: 'c', wrap: 'state', format: {true: 'ON', false: 'OFF'}},
@@ -228,7 +228,7 @@ describe('BindingRuntime: commands out', () => {
     });
 });
 
-describe('BindingRuntime: availability, expire, get', () => {
+describe('MappingRuntime: availability, expire, get', () => {
     beforeEach(() => {
         vi.useFakeTimers();
     });
@@ -259,7 +259,7 @@ describe('BindingRuntime: availability, expire, get', () => {
             const {runtime, main} = setup({
                 name: 'd',
                 availability: {mode, topics: [{topic: 'a1'}, {topic: 'a2'}]},
-                endpoints: [{deviceTypes: ['OnOffLight'], bindings: []}],
+                endpoints: [{deviceTypes: ['OnOffLight'], mappings: []}],
             });
             expect(runtime.topics().sort()).toEqual(['a1', 'a2']);
             await runtime.handleMessage('a1', Buffer.from('offline'));
@@ -275,7 +275,7 @@ describe('BindingRuntime: availability, expire, get', () => {
         const {runtime, main} = setup({
             name: 'd',
             availability: {topic: 'tele/LWT', online: 'Online', offline: 'Offline'},
-            endpoints: [{deviceTypes: ['OnOffLight'], bindings: []}],
+            endpoints: [{deviceTypes: ['OnOffLight'], mappings: []}],
         });
         await runtime.handleMessage('tele/LWT', Buffer.from('Offline'));
         await runtime.handleMessage('tele/LWT', Buffer.from('Online'));
@@ -288,7 +288,7 @@ describe('BindingRuntime: availability, expire, get', () => {
             endpoints: [
                 {
                     deviceTypes: ['TemperatureSensor'],
-                    bindings: [
+                    mappings: [
                         {
                             attribute: 'TemperatureMeasurement.measuredValue',
                             status: {topic: 't', type: 'number', expire: 10},
@@ -313,7 +313,7 @@ describe('BindingRuntime: availability, expire, get', () => {
             endpoints: [
                 {
                     deviceTypes: ['OnOffLight'],
-                    bindings: [
+                    mappings: [
                         {
                             attribute: 'OnOff.onOff',
                             status: {

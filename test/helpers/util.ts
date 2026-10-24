@@ -20,7 +20,7 @@ export async function waitFor(
 
 /**
  * retry `assertions` until all of them pass; after `timeout` ms the last failure is thrown as it is. For the
- * attributes one MQTT message sets: the bindings are applied one after the other, so waiting for the first of
+ * attributes one MQTT message sets: the mappings are applied one after the other, so waiting for the first of
  * them says nothing about the others yet.
  */
 export async function settled(assertions: () => void, timeout = 5000): Promise<void> {

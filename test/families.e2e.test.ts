@@ -1,6 +1,6 @@
 /* Every family against a real matter.js node and an in-process broker: status messages set the
    attributes the way the family means them, a controller's commands (the node's own interaction API)
-   publish what the bindings say, and the state machines — colour mode arbitration, the cover's movement,
+   publish what the mappings say, and the state machines — colour mode arbitration, the cover's movement,
    fan consistency, switch events, battery levels, availability — behave. One App, many devices. */
 
 import {mkdtemp, rm} from 'node:fs/promises';
@@ -82,7 +82,7 @@ const config = () =>
                         deviceTypes: ['ExtendedColorLight'],
                         coalesce: 30,
                         options: {light: {onCommandType: 'last', minMireds: 150, maxMireds: 500}},
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'OnOff.onOff',
                                 status: {topic: 'z/light', extract: 'state', map: {ON: true, OFF: false}},
@@ -114,7 +114,7 @@ const config = () =>
                         deviceTypes: ['ExtendedColorLight'],
                         features: {ColorControl: ['HueSaturation']},
                         options: {light: {onCommandType: 'first'}},
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'OnOff.onOff',
                                 status: {topic: 'stat/hs/RESULT', extract: 'POWER', map: {ON: true, OFF: false}},
@@ -145,7 +145,7 @@ const config = () =>
                     {
                         deviceTypes: ['WindowCovering'],
                         options: {cover: {reportTimeout: 0.5, echoFilter: true}},
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'WindowCovering.currentPositionLiftPercent100ths',
                                 status: {
@@ -177,7 +177,7 @@ const config = () =>
                     {
                         deviceTypes: ['WindowCovering'],
                         options: {cover: {reportTimeout: 0.3}},
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'WindowCovering.motion',
                                 status: {
@@ -207,7 +207,7 @@ const config = () =>
                     {
                         deviceTypes: ['Thermostat'],
                         options: {climate: {minHeat: 5, maxHeat: 30}},
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'Thermostat.localTemperature',
                                 status: {topic: 'z/trv', extract: 'local_temperature', unit: 'celsius'},
@@ -240,7 +240,7 @@ const config = () =>
                 endpoints: [
                     {
                         deviceTypes: ['DoorLock'],
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'DoorLock.lockState',
                                 status: {
@@ -263,7 +263,7 @@ const config = () =>
                 endpoints: [
                     {
                         deviceTypes: ['Fan'],
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'FanControl.percentSetting',
                                 status: {topic: 'fan/state', type: 'number'},
@@ -279,7 +279,7 @@ const config = () =>
                     {
                         deviceTypes: ['GenericSwitch'],
                         options: {switch: {multiPressDelay: 100, longPressDelay: 150, pressDuration: 20}},
-                        bindings: [
+                        mappings: [
                             {
                                 event: 'Switch',
                                 status: {
@@ -294,7 +294,7 @@ const config = () =>
                         id: 'b2',
                         deviceTypes: ['GenericSwitch'],
                         options: {switch: {kind: 'latching'}},
-                        bindings: [{event: 'Switch', status: {topic: 'z/button', extract: 'toggle', type: 'boolean'}}],
+                        mappings: [{event: 'Switch', status: {topic: 'z/button', extract: 'toggle', type: 'boolean'}}],
                     },
                 ],
             },
@@ -304,7 +304,7 @@ const config = () =>
                     {
                         deviceTypes: ['TemperatureSensor', 'PowerSource'],
                         options: {powerSource: {warning: 30, critical: 10}},
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'TemperatureMeasurement.measuredValue',
                                 status: {topic: 'z/sensor', extract: 'temperature', unit: 'celsius', expire: 1},
@@ -322,7 +322,7 @@ const config = () =>
                     {
                         id: 'humidity',
                         deviceTypes: ['HumiditySensor'],
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'RelativeHumidityMeasurement.measuredValue',
                                 status: {topic: 'z/sensor', extract: 'humidity', unit: 'percent100ths'},
@@ -336,7 +336,7 @@ const config = () =>
                 endpoints: [
                     {
                         deviceTypes: ['ContactSensor'],
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'BooleanState.stateValue',
                                 status: {topic: 'z/contact', extract: 'contact', type: 'boolean'},
@@ -350,7 +350,7 @@ const config = () =>
                 endpoints: [
                     {
                         deviceTypes: ['OccupancySensor', 'LightSensor'],
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'OccupancySensing.occupancy',
                                 status: {topic: 'z/motion', extract: 'occupancy', type: 'boolean'},
@@ -368,7 +368,7 @@ const config = () =>
                 endpoints: [
                     {
                         deviceTypes: ['AirQualitySensor'],
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'AirQuality.airQuality',
                                 status: {
@@ -622,7 +622,7 @@ describe('cover', () => {
         });
     });
 
-    it('stop publishes the command binding and snaps the target', async () => {
+    it('stop publishes the command mapping and snaps the target', async () => {
         published.length = 0;
         await device('cover').endpoint.act((agent) =>
             commands(agent.get(WindowCoveringServer)).goToLiftPercentage!({liftPercent100thsValue: 0}),

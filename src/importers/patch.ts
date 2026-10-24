@@ -1,20 +1,20 @@
 /* Baseline + patch: an importer generates a device (the baseline) from a foreign description; the user
    edits the result; when the description changes, the baseline is regenerated and the user's edits are
    reapplied. The edits are the difference between the old baseline and the device as it is now, taken
-   over a *keyed tree* of the device: endpoints by their id, bindings by their target, so a binding keeps
-   its edits when the importer reorders or adds bindings. A conflict is a changed value on a path the new
+   over a *keyed tree* of the device: endpoints by their id, mappings by their target, so a mapping keeps
+   its edits when the importer reorders or adds mappings. A conflict is a changed value on a path the new
    baseline changed too; it is reported, never silently resolved (the edit still wins, so nothing the user
    wrote is lost — the report says what the importer would have written). What the user removed stays
    removed. Nothing here knows about zigbee2mqtt. */
 
-import type {BindingInput, DeviceInput, EndpointInput} from '../model/schema.ts';
+import type {MappingInput, DeviceInput, EndpointInput} from '../model/schema.ts';
 
 export type Path = readonly string[];
 
 export type Op = {op: 'set'; path: Path; value: unknown} | {op: 'delete'; path: Path};
 
 export interface Conflict {
-    /** `endpoints.l1.bindings.attribute:OnOff.onOff.status.topic` */
+    /** `endpoints.l1.mappings.attribute:OnOff.onOff.status.topic` */
     path: string;
     op: 'set' | 'delete';
     /** what the user's edit put there (set) */
@@ -48,14 +48,14 @@ export function deepEqual(a: unknown, b: unknown): boolean {
     return false;
 }
 
-/** the key of a binding in the tree: its target, with a counter for a repeated target */
-function bindingKey(binding: BindingInput, seen: Map<string, number>): string {
+/** the key of a mapping in the tree: its target, with a counter for a repeated target */
+function mappingKey(mapping: MappingInput, seen: Map<string, number>): string {
     const target =
-        'attribute' in binding
-            ? `attribute:${binding.attribute}`
-            : 'invoke' in binding
-              ? `invoke:${binding.invoke}`
-              : `event:${binding.event}`;
+        'attribute' in mapping
+            ? `attribute:${mapping.attribute}`
+            : 'invoke' in mapping
+              ? `invoke:${mapping.invoke}`
+              : `event:${mapping.event}`;
     const n = (seen.get(target) ?? 0) + 1;
     seen.set(target, n);
     return n === 1 ? target : `${target}#${n}`;
@@ -63,26 +63,26 @@ function bindingKey(binding: BindingInput, seen: Map<string, number>): string {
 
 export const MAIN_ENDPOINT = 'main';
 
-/** the keyed tree: endpoints by id, bindings by target; `source` left out (it is the importer's) */
+/** the keyed tree: endpoints by id, mappings by target; `source` left out (it is the importer's) */
 export function toTree(device: DeviceInput): Tree {
     const {endpoints, ...rest} = device;
     const tree: Tree = structuredClone(rest);
     delete tree.source;
     const byId: Tree = {};
     for (const endpoint of endpoints) {
-        const {bindings, ...endpointRest} = endpoint;
+        const {mappings, ...endpointRest} = endpoint;
         const seen = new Map<string, number>();
         const byTarget: Tree = {};
-        for (const binding of bindings ?? []) {
-            byTarget[bindingKey(binding, seen)] = structuredClone(binding);
+        for (const mapping of mappings ?? []) {
+            byTarget[mappingKey(mapping, seen)] = structuredClone(mapping);
         }
-        byId[endpoint.id ?? MAIN_ENDPOINT] = {...structuredClone(endpointRest), bindings: byTarget};
+        byId[endpoint.id ?? MAIN_ENDPOINT] = {...structuredClone(endpointRest), mappings: byTarget};
     }
     tree.endpoints = byId;
     return tree;
 }
 
-/** back to the array form; `order` says which endpoints and bindings come first (the baseline's order) */
+/** back to the array form; `order` says which endpoints and mappings come first (the baseline's order) */
 export function fromTree(tree: Tree, order?: Tree): DeviceInput {
     const {endpoints, ...rest} = tree;
     const result = structuredClone(rest) as DeviceInput;
@@ -96,19 +96,19 @@ export function fromTree(tree: Tree, order?: Tree): DeviceInput {
         if (!isRecord(node)) {
             continue;
         }
-        const {bindings, ...endpointRest} = node;
+        const {mappings, ...endpointRest} = node;
         const orderNode = isRecord(order?.endpoints) ? order.endpoints[id] : undefined;
-        const bindingOrder = isRecord(orderNode) && isRecord(orderNode.bindings) ? orderNode.bindings : {};
-        const bindingList: BindingInput[] = [];
-        if (isRecord(bindings)) {
-            for (const key of orderedKeys(bindings, bindingOrder)) {
-                const binding = bindings[key];
-                if (isRecord(binding)) {
-                    bindingList.push(structuredClone(binding) as BindingInput);
+        const mappingOrder = isRecord(orderNode) && isRecord(orderNode.mappings) ? orderNode.mappings : {};
+        const mappingList: MappingInput[] = [];
+        if (isRecord(mappings)) {
+            for (const key of orderedKeys(mappings, mappingOrder)) {
+                const mapping = mappings[key];
+                if (isRecord(mapping)) {
+                    mappingList.push(structuredClone(mapping) as MappingInput);
                 }
             }
         }
-        const endpoint = {...structuredClone(endpointRest), bindings: bindingList} as EndpointInput;
+        const endpoint = {...structuredClone(endpointRest), mappings: mappingList} as EndpointInput;
         if (id !== MAIN_ENDPOINT) {
             endpoint.id = id;
         }

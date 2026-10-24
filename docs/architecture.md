@@ -6,10 +6,10 @@ everything else generates it (importers), renders it (UI) or runs it (engine, fa
 ```
 src/
   config/      the configuration file and the environment: schema, loading, defaults
-  model/       the manual model — devices, endpoints, bindings, family options — the @matter/model catalogue,
+  model/       the manual model — devices, endpoints, mappings, family options — the @matter/model catalogue,
                the static validator, the preset format
   engine/      the payload engine (pure functions over the model's halves: extract, template, map, unit, scale,
-               wrap …), the Jinja templates, the binding runtime (availability, expire, get, coalescing)
+               wrap …), the Jinja templates, the mapping runtime (availability, expire, get, coalescing)
   families/    cluster semantics that live in code: the servers that route controller commands, the status
                hooks (colour composites, the cover's movement, fan consistency, battery levels), switch events
   mqtt/        the broker connection and the topic cache (last payload per topic)
@@ -20,7 +20,7 @@ src/
                Assistant MQTT discovery) — docs/importers.md
   commands/    the command line's subcommands beyond start and --check (`--import-z2m`, `--install`)
   server/      node:http + ws: the REST API and the event stream of docs/api.md, the config file as the UI
-               edits it (compact, atomic writes), the catalogue as JSON, the preview of a binding's halves,
+               edits it (compact, atomic writes), the catalogue as JSON, the preview of a mapping's halves,
                the importers as the server runs them, the built UI as static files
   app.ts       wiring and lifecycle; devices are added and removed while it runs
   main.ts      the command line entry (`--check` is the dry run)
@@ -31,7 +31,7 @@ ui/            the Svelte 5 app (Vite, TypeScript strict, svelte-check): built i
 
 ## Data flow
 
-MQTT message → `mqtt/` (cache) → `engine/runtime` finds the bindings on that topic → `engine/payload`
+MQTT message → `mqtt/` (cache) → `engine/runtime` finds the mappings on that topic → `engine/payload`
 decodes (extract, template, map, type, unit, scale, offset, invert, round, then the attribute's shape from the
 model: enum names, bitmap fields, integers) → the endpoint handle in `matter/` hands the value to the
 cluster's family (a composite, a state machine) or sets the attribute.
@@ -39,7 +39,7 @@ cluster's family (a composite, a state machine) or sets the attribute.
 Controller command → the family server in `families/` (e.g. `LevelControlServer.moveToLevelLogic`) →
 `route()` finds the handler the runtime registered for the key → `engine/payload` encodes (numeric steps
 inverted, format, template, wrap) → `mqtt/` publishes (coalesced per topic when the endpoint asks) → the family
-applies the value locally only when the binding is optimistic (its default without a status half, or without
+applies the value locally only when the mapping is optimistic (its default without a status half, or without
 a related one); otherwise the device's status report sets it.
 
 Controller write of a writable attribute → matter.js applies it → the endpoint handle's observer sees the
@@ -67,11 +67,11 @@ Enforced by `no-restricted-imports` in `eslint.config.js` per folder:
 `matter/device-types.ts` builds an endpoint type from matter.js' own device definitions (every `*Device` it
 ships, plus the utility `PowerSource`) and `@matter/model`: the first device type is the endpoint's type, the
 others go into the Descriptor's device type list with their mandatory clusters; the clusters are the device
-types' mandatory ones, the optional ones a binding or the config names, and any other cluster a binding names;
+types' mandatory ones, the optional ones a mapping or the config names, and any other cluster a mapping names;
 each cluster's server is the family's class (it routes commands) with the device type's alterations re-applied
 (read off the requirement's schema: `remainingTime` mandatory on colour lights, `currentLevel` 1–254 on
 dimmable ones), else matter.js' default; the features are the union of what the device type requires, what
-the bindings imply and what the config asks for. `matter/cluster-defaults.ts` holds the few mandatory
+the mappings imply and what the config asks for. `matter/cluster-defaults.ts` holds the few mandatory
 attributes the model gives no default for. There is no table of device types.
 
 ## Validation

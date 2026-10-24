@@ -254,7 +254,7 @@
                     {/each}
                 </select>
             </div>
-            <div class="ui-form-help">{t('The device type brings its mandatory clusters; their bindings are filled in the editor.')}</div>
+            <div class="ui-form-help">{t('The device type brings its mandatory clusters; their mappings are filled in the editor.')}</div>
         </div>
         {#snippet buttons()}
             <button type="button" class="ui-button" onclick={() => (creating = false)}>{t('Cancel')}</button>

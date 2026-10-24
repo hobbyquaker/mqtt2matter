@@ -1,5 +1,5 @@
 /* The families as the Matter layer uses them: per cluster the server class that routes controller
-   commands, the features the bindings imply, the attribute defaults an endpoint needs, the status hook
+   commands, the features the mappings imply, the attribute defaults an endpoint needs, the status hook
    that translates composites and keeps the cluster consistent, the write hook for attributes controllers
    write, and the event channels. Everything stateful about a cluster lives in its family; the bridge only
    dispatches. */
@@ -21,7 +21,7 @@ import {SwitchServer, switchEvent} from './switch.ts';
 export interface Family {
     cluster: string;
     server: Behavior.Type;
-    /** features the bindings imply (`Thermostat` from the setpoints); titles */
+    /** features the mappings imply (`Thermostat` from the setpoints); titles */
     features?: (boundKeys: ReadonlySet<string>, options: Options) => string[];
     /** attribute defaults for the endpoint's construction */
     defaults?: (features: ReadonlySet<string>, options: Options) => Record<string, unknown>;
@@ -33,7 +33,7 @@ export interface Family {
     ) => Promise<Record<string, unknown> | boolean>;
     /** a controller wrote a writable attribute (already applied) */
     write?: (context: FamilyContext, attribute: string, value: unknown) => Promise<void>;
-    /** writable attributes the family watches even without a binding (the fan derives one from the other) */
+    /** writable attributes the family watches even without a mapping (the fan derives one from the other) */
     writes?: readonly string[];
     /** the event channel of the cluster */
     event?: (context: FamilyContext, value: Decoded) => Promise<void>;

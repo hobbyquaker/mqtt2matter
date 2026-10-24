@@ -1,7 +1,7 @@
 /* The Zigbee2MQTT generator over the 35-device corpus (`test/fixtures/z2m/`, matterbridge-zigbee2mqtt's
    `src/mock/bridge-devices.json` and `bridge-groups.json` at commit c72dd312, Apache-2.0 — see NOTICE)
    and over hand-written descriptions of devices the corpus lacks: expected device types, clusters,
-   features and bindings per device; every baseline parses, validates and passes the strict dry run. */
+   features and mappings per device; every baseline parses, validates and passes the strict dry run. */
 
 import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
@@ -11,7 +11,7 @@ import {describe, expect, it} from 'vitest';
 import {parseConfig} from '../src/config/load.ts';
 import {z2m} from '../src/importers/index.ts';
 import {checkConfig, formatCheck} from '../src/matter/check.ts';
-import {type BindingInput, type DeviceInput, DeviceSchema, validateDevice} from '../src/model/index.ts';
+import {type MappingInput, type DeviceInput, DeviceSchema, validateDevice} from '../src/model/index.ts';
 
 const fixtures = join(import.meta.dirname, 'fixtures', 'z2m');
 const devices = z2m.parseBridgeDevices(readFileSync(join(fixtures, 'bridge-devices.json')));
@@ -27,10 +27,10 @@ function baseline(key: string): DeviceInput {
     return item.baseline;
 }
 
-const target = (b: BindingInput): string => ('attribute' in b ? b.attribute : 'invoke' in b ? b.invoke : b.event);
-const binding = (device: DeviceInput, name: string, endpoint = 'main'): BindingInput => {
+const target = (b: MappingInput): string => ('attribute' in b ? b.attribute : 'invoke' in b ? b.invoke : b.event);
+const mapping = (device: DeviceInput, name: string, endpoint = 'main'): MappingInput => {
     const ep = device.endpoints.find((e) => (e.id ?? 'main') === endpoint);
-    const found = ep?.bindings?.find((b) => target(b) === name);
+    const found = ep?.mappings?.find((b) => target(b) === name);
     if (found === undefined) {
         throw new Error(`${device.name}: no ${name} on ${endpoint}`);
     }
@@ -89,24 +89,24 @@ describe('the corpus', () => {
             availability: {topic: 'zigbee2mqtt/Climate sensor/availability', template: z2m.AVAILABILITY_TEMPLATE},
         });
         expect(types(device)).toEqual({main: ['TemperatureSensor', 'HumiditySensor', 'PressureSensor', 'PowerSource']});
-        expect(binding(device, 'TemperatureMeasurement.measuredValue')).toEqual({
+        expect(mapping(device, 'TemperatureMeasurement.measuredValue')).toEqual({
             attribute: 'TemperatureMeasurement.measuredValue',
             status: {topic: 'zigbee2mqtt/Climate sensor', extract: 'temperature', unit: 'celsius'},
         });
-        expect(binding(device, 'RelativeHumidityMeasurement.measuredValue').status).toMatchObject({
+        expect(mapping(device, 'RelativeHumidityMeasurement.measuredValue').status).toMatchObject({
             extract: 'humidity',
             unit: 'percent100ths',
         });
-        expect(binding(device, 'PressureMeasurement.measuredValue').status).toMatchObject({
+        expect(mapping(device, 'PressureMeasurement.measuredValue').status).toMatchObject({
             extract: 'pressure',
             round: 0,
         });
-        expect(binding(device, 'PowerSource.batPercentRemaining').status).toMatchObject({
+        expect(mapping(device, 'PowerSource.batPercentRemaining').status).toMatchObject({
             extract: 'battery',
             unit: 'halfPercent',
         });
         // the voltage is in mV already
-        expect(binding(device, 'PowerSource.batVoltage').status).toEqual({
+        expect(mapping(device, 'PowerSource.batVoltage').status).toEqual({
             topic: 'zigbee2mqtt/Climate sensor',
             extract: 'voltage',
             round: 0,
@@ -117,7 +117,7 @@ describe('the corpus', () => {
     it('a contact sensor: zigbee2mqtt reports the open contact as its "on"', () => {
         const device = baseline('z2m:0x00158d00091e7bd6');
         expect(types(device)).toEqual({main: ['ContactSensor', 'PowerSource']});
-        expect(binding(device, 'BooleanState.stateValue').status).toMatchObject({
+        expect(mapping(device, 'BooleanState.stateValue').status).toMatchObject({
             extract: 'contact',
             map: {false: false, true: true},
         });
@@ -126,16 +126,16 @@ describe('the corpus', () => {
     it('an occupancy sensor with illuminance: two sensor types, the lux expose chosen once', () => {
         const device = baseline('z2m:0x00158d0007e778c1');
         expect(types(device)).toEqual({main: ['OccupancySensor', 'LightSensor', 'PowerSource']});
-        expect(binding(device, 'OccupancySensing.occupancy').status).toMatchObject({
+        expect(mapping(device, 'OccupancySensing.occupancy').status).toMatchObject({
             extract: 'occupancy',
             map: {true: true, false: false},
         });
-        expect(binding(device, 'IlluminanceMeasurement.measuredValue').status).toMatchObject({
+        expect(mapping(device, 'IlluminanceMeasurement.measuredValue').status).toMatchObject({
             extract: 'illuminance',
             unit: 'lux',
         });
         expect(
-            device.endpoints[0]!.bindings!.filter((b) => target(b) === 'IlluminanceMeasurement.measuredValue'),
+            device.endpoints[0]!.mappings!.filter((b) => target(b) === 'IlluminanceMeasurement.measuredValue'),
         ).toHaveLength(1);
     });
 
@@ -147,7 +147,7 @@ describe('the corpus', () => {
             button_l1: ['GenericSwitch'],
             button_l2: ['GenericSwitch'],
         });
-        expect(binding(device, 'OnOff.onOff')).toEqual({
+        expect(mapping(device, 'OnOff.onOff')).toEqual({
             attribute: 'OnOff.onOff',
             status: {
                 topic: 'zigbee2mqtt/Aqara Dual relay module T2',
@@ -161,12 +161,12 @@ describe('the corpus', () => {
                 format: {true: 'ON', false: 'OFF'},
             },
         });
-        expect(binding(device, 'OnOff.onOff', 'l2').status).toMatchObject({extract: 'state_l2'});
-        expect(binding(device, 'Switch', 'button_l1').status).toMatchObject({
+        expect(mapping(device, 'OnOff.onOff', 'l2').status).toMatchObject({extract: 'state_l2'});
+        expect(mapping(device, 'Switch', 'button_l1').status).toMatchObject({
             extract: 'action',
             map: {single_l1: 'single'},
         });
-        expect(binding(device, 'Switch', 'button_l2').status).toMatchObject({map: {single_l2: 'single'}});
+        expect(mapping(device, 'Switch', 'button_l2').status).toMatchObject({map: {single_l2: 'single'}});
         const l2 = device.endpoints.find((e) => e.id === 'l2')!;
         expect(l2.features).toEqual({Descriptor: ['TagList']});
         expect(l2.attributes).toEqual({Descriptor: {tagList: [{mfgCode: null, namespaceId: 7, tag: 1, label: 'l2'}]}});
@@ -179,26 +179,26 @@ describe('the corpus', () => {
         const device = baseline('z2m:0x70ac08fffee6dd5e');
         expect(types(device)).toEqual({main: ['WindowCovering']});
         const scale = {from: [0, 100], to: [10000, 0]};
-        expect(binding(device, 'WindowCovering.currentPositionLiftPercent100ths').status).toEqual({
+        expect(mapping(device, 'WindowCovering.currentPositionLiftPercent100ths').status).toEqual({
             topic: 'zigbee2mqtt/Window shutter',
             extract: 'position',
             scale,
             get: {topic: 'zigbee2mqtt/Window shutter/get', payload: '{"position":""}'},
         });
-        expect(binding(device, 'WindowCovering.targetPositionLiftPercent100ths')).toEqual({
+        expect(mapping(device, 'WindowCovering.targetPositionLiftPercent100ths')).toEqual({
             attribute: 'WindowCovering.targetPositionLiftPercent100ths',
             command: {topic: 'zigbee2mqtt/Window shutter/set', wrap: 'position', scale, round: 0},
         });
-        expect(binding(device, 'WindowCovering.stopMotion').command).toEqual({
+        expect(mapping(device, 'WindowCovering.stopMotion').command).toEqual({
             topic: 'zigbee2mqtt/Window shutter/set',
             wrap: 'state',
             payload: 'STOP',
         });
-        expect(binding(device, 'WindowCovering.motion').status).toMatchObject({
+        expect(mapping(device, 'WindowCovering.motion').status).toMatchObject({
             extract: 'moving',
             map: {UP: 'opening', STOP: 'stopped', DOWN: 'closing'},
         });
-        expect(device.endpoints[0]!.bindings!.map(target)).not.toContain('WindowCovering.upOrOpen');
+        expect(device.endpoints[0]!.mappings!.map(target)).not.toContain('WindowCovering.upOrOpen');
         expect(byKey.get('z2m:0x70ac08fffee6dd5e')!.unmapped).toEqual([
             'calibration_time',
             'motor_reversal',
@@ -209,7 +209,7 @@ describe('the corpus', () => {
     it('a button: press kinds and the most presses it announces', () => {
         const device = baseline('z2m:0x00158d0008066798');
         expect(types(device)).toEqual({main: ['GenericSwitch', 'PowerSource']});
-        expect(binding(device, 'Switch')).toEqual({
+        expect(mapping(device, 'Switch')).toEqual({
             event: 'Switch',
             status: {
                 topic: 'zigbee2mqtt/Scenes button',
@@ -232,11 +232,11 @@ describe('the corpus', () => {
         expect(types(device)).toEqual({main: ['Thermostat']});
         expect(device.endpoints[0]!.options).toEqual({climate: {minHeat: 5, maxHeat: 45}});
         expect(device.endpoints[0]!.coalesce).toBe(50);
-        expect(binding(device, 'Thermostat.localTemperature').status).toMatchObject({
+        expect(mapping(device, 'Thermostat.localTemperature').status).toMatchObject({
             extract: 'local_temperature',
             unit: 'celsius',
         });
-        expect(binding(device, 'Thermostat.occupiedHeatingSetpoint')).toEqual({
+        expect(mapping(device, 'Thermostat.occupiedHeatingSetpoint')).toEqual({
             attribute: 'Thermostat.occupiedHeatingSetpoint',
             status: {topic: 'zigbee2mqtt/Moes thermo', extract: 'current_heating_setpoint', unit: 'celsius'},
             command: {
@@ -246,18 +246,18 @@ describe('the corpus', () => {
                 round: 1,
             },
         });
-        expect(binding(device, 'Thermostat.systemMode')).toMatchObject({
+        expect(mapping(device, 'Thermostat.systemMode')).toMatchObject({
             status: {map: {off: 'Off', heat: 'Heat'}},
             command: {format: {Off: 'off', Heat: 'heat'}},
         });
-        expect(binding(device, 'Thermostat.thermostatRunningState').status).toMatchObject({
+        expect(mapping(device, 'Thermostat.thermostatRunningState').status).toMatchObject({
             map: {idle: '', heat: 'heat', cool: 'cool'},
         });
         const unmapped = byKey.get('z2m:0xa4c138f402dfba8a')!.unmapped;
         expect(unmapped).toContain('child_lock');
         expect(unmapped).toContain('preset');
         expect(unmapped).toContain('program');
-        expect(device.endpoints[0]!.bindings!.map(target)).not.toContain('DoorLock.lockState');
+        expect(device.endpoints[0]!.mappings!.map(target)).not.toContain('DoorLock.lockState');
     });
 
     it('an extended colour light: xy with hue/saturation as a feature, colour mode bound, mireds range', () => {
@@ -267,22 +267,22 @@ describe('the corpus', () => {
         expect(main.coalesce).toBe(50);
         expect(main.features).toEqual({ColorControl: ['HueSaturation']});
         expect(main.options).toEqual({light: {minMireds: 158, maxMireds: 495}});
-        expect(binding(device, 'OnOff.onOff').status).toMatchObject({
+        expect(mapping(device, 'OnOff.onOff').status).toMatchObject({
             get: {topic: 'zigbee2mqtt/Gledopto RGBCTT light I/get', payload: '{"state":""}'},
         });
-        expect(binding(device, 'LevelControl.currentLevel')).toMatchObject({
+        expect(mapping(device, 'LevelControl.currentLevel')).toMatchObject({
             status: {extract: 'brightness', scale: {from: [1, 254], to: [1, 254]}},
             command: {wrap: 'brightness', scale: {from: [1, 254], to: [1, 254]}, round: 0},
         });
-        expect(binding(device, 'ColorControl.colorTemperatureMireds')).toMatchObject({
+        expect(mapping(device, 'ColorControl.colorTemperatureMireds')).toMatchObject({
             status: {extract: 'color_temp'},
             command: {wrap: 'color_temp'},
         });
-        expect(binding(device, 'ColorControl.colorXy')).toMatchObject({
+        expect(mapping(device, 'ColorControl.colorXy')).toMatchObject({
             status: {extract: 'color'},
             command: {wrap: 'color'},
         });
-        expect(binding(device, 'ColorControl.colorMode').status).toMatchObject({
+        expect(mapping(device, 'ColorControl.colorMode').status).toMatchObject({
             extract: 'color_mode',
             map: {
                 xy: 'CurrentXAndCurrentY',
@@ -290,17 +290,17 @@ describe('the corpus', () => {
                 color_temp: 'ColorTemperatureMireds',
             },
         });
-        expect(main.bindings!.map(target)).not.toContain('ColorControl.colorHs');
+        expect(main.mappings!.map(target)).not.toContain('ColorControl.colorHs');
         // only one `/get` per endpoint
-        expect(main.bindings!.filter((b) => b.status?.get !== undefined)).toHaveLength(1);
+        expect(main.mappings!.filter((b) => b.status?.get !== undefined)).toHaveLength(1);
     });
 
     it('a two-channel dimmer: the first channel is the device, the second a tagged child', () => {
         const device = baseline('z2m:0x847127fffeaff50a');
         expect(types(device)).toEqual({main: ['DimmableLight'], l2: ['DimmableLight']});
-        expect(binding(device, 'OnOff.onOff').status).toMatchObject({extract: 'state_l1'});
-        expect(binding(device, 'OnOff.onOff').status!.get).toBeUndefined();
-        expect(binding(device, 'LevelControl.currentLevel', 'l2').status).toMatchObject({extract: 'brightness_l2'});
+        expect(mapping(device, 'OnOff.onOff').status).toMatchObject({extract: 'state_l1'});
+        expect(mapping(device, 'OnOff.onOff').status!.get).toBeUndefined();
+        expect(mapping(device, 'LevelControl.currentLevel', 'l2').status).toMatchObject({extract: 'brightness_l2'});
         expect(device.endpoints[1]!.attributes).toEqual({
             Descriptor: {tagList: [{mfgCode: null, namespaceId: 7, tag: 1, label: 'l2'}]},
         });
@@ -311,7 +311,7 @@ describe('the corpus', () => {
         expect(types(device)).toEqual({
             main: ['AirQualitySensor', 'TemperatureSensor', 'HumiditySensor', 'PowerSource'],
         });
-        expect(binding(device, 'AirQuality.airQuality').status).toMatchObject({
+        expect(mapping(device, 'AirQuality.airQuality').status).toMatchObject({
             map: {
                 excellent: 'Good',
                 good: 'Fair',
@@ -329,11 +329,11 @@ describe('the corpus', () => {
         const device = baseline('z2m:0xa4c138636c5c666e');
         expect(types(device)).toEqual({main: ['SmokeCoAlarm', 'AirQualitySensor', 'PowerSource']});
         expect(device.endpoints[0]!.features).toEqual({SmokeCoAlarm: ['CoAlarm']});
-        expect(binding(device, 'SmokeCoAlarm.coState').status).toMatchObject({
+        expect(mapping(device, 'SmokeCoAlarm.coState').status).toMatchObject({
             extract: 'carbon_monoxide',
             map: {true: 'Critical', false: 'Normal'},
         });
-        expect(binding(device, 'CarbonMonoxideConcentrationMeasurement.measuredValue').status).toMatchObject({
+        expect(mapping(device, 'CarbonMonoxideConcentrationMeasurement.measuredValue').status).toMatchObject({
             extract: 'co',
         });
     });
@@ -345,11 +345,11 @@ describe('the corpus', () => {
             button_on: ['GenericSwitch'],
             button_off: ['GenericSwitch'],
         });
-        expect(binding(device, 'Switch').status).toMatchObject({
+        expect(mapping(device, 'Switch').status).toMatchObject({
             map: {single: 'single', double: 'double', hold: 'long'},
         });
-        expect(binding(device, 'Switch', 'button_on').status).toMatchObject({map: {on: 'single'}});
-        expect(binding(device, 'Switch', 'button_off').status).toMatchObject({map: {off: 'single'}});
+        expect(mapping(device, 'Switch', 'button_on').status).toMatchObject({map: {on: 'single'}});
+        expect(mapping(device, 'Switch', 'button_off').status).toMatchObject({map: {off: 'single'}});
         expect(byKey.get('z2m:0x385b44fffe20cfb2')!.unmapped).toEqual([
             'action:brightness_move_to_level',
             'action:color_temperature_move',
@@ -373,7 +373,7 @@ describe('the corpus', () => {
         expect(types(lights)).toEqual({main: ['ExtendedColorLight']});
         expect(lights.endpoints[0]!.options).toEqual({light: {minMireds: 153, maxMireds: 555}});
         expect(lights.endpoints[0]!.features).toEqual({ColorControl: ['HueSaturation']});
-        expect(binding(lights, 'OnOff.onOff')).toEqual({
+        expect(mapping(lights, 'OnOff.onOff')).toEqual({
             attribute: 'OnOff.onOff',
             status: {topic: 'zigbee2mqtt/Lights', extract: 'state', map: {ON: true, OFF: false}},
             command: {topic: 'zigbee2mqtt/Lights/set', wrap: 'state', format: {true: 'ON', false: 'OFF'}},
@@ -381,7 +381,7 @@ describe('the corpus', () => {
         expect(types(baseline('z2m:group:8'))).toEqual({main: ['OnOffPlugInUnit']});
         const covers = baseline('z2m:group:9');
         expect(types(covers)).toEqual({main: ['WindowCovering']});
-        expect(covers.endpoints[0]!.bindings!.map(target)).toEqual([
+        expect(covers.endpoints[0]!.mappings!.map(target)).toEqual([
             'WindowCovering.currentPositionLiftPercent100ths',
             'WindowCovering.targetPositionLiftPercent100ths',
             'WindowCovering.stopMotion',
@@ -441,8 +441,8 @@ describe('hand-written descriptions', () => {
         const fyrtur = generateOne(device('E1757', [cover, battery], {power_source: 'Battery'})).device;
         expect(types(fyrtur)).toEqual({main: ['WindowCovering', 'PowerSource']});
         expect(fyrtur.endpoints[0]!.options).toEqual({cover: {echoFilter: true}});
-        // without a movement report there is no motion binding on a position-aware cover
-        expect(fyrtur.endpoints[0]!.bindings!.map(target)).toEqual([
+        // without a movement report there is no motion mapping on a position-aware cover
+        expect(fyrtur.endpoints[0]!.mappings!.map(target)).toEqual([
             'WindowCovering.currentPositionLiftPercent100ths',
             'WindowCovering.targetPositionLiftPercent100ths',
             'WindowCovering.stopMotion',
@@ -464,17 +464,17 @@ describe('hand-written descriptions', () => {
             ]),
         );
         const main = generated.device.endpoints[0]!;
-        expect(main.bindings!.map(target)).toEqual([
+        expect(main.mappings!.map(target)).toEqual([
             'WindowCovering.upOrOpen',
             'WindowCovering.downOrClose',
             'WindowCovering.stopMotion',
             'WindowCovering.motion',
         ]);
-        expect(binding(generated.device, 'WindowCovering.motion').status).toMatchObject({
+        expect(mapping(generated.device, 'WindowCovering.motion').status).toMatchObject({
             extract: 'state',
             map: {OPEN: 'open', CLOSE: 'closed', STOP: 'stopped'},
         });
-        expect(binding(generated.device, 'WindowCovering.downOrClose').command).toEqual({
+        expect(mapping(generated.device, 'WindowCovering.downOrClose').command).toEqual({
             topic: 'z/Test/set',
             wrap: 'state',
             payload: 'CLOSE',
@@ -508,8 +508,8 @@ describe('hand-written descriptions', () => {
             ]),
         );
         expect(types(generated.device)).toEqual({main: ['Fan', 'AirQualitySensor']});
-        expect(binding(generated.device, 'OnOff.onOff').status).toMatchObject({extract: 'fan_state'});
-        expect(binding(generated.device, 'FanControl.percentSetting')).toEqual({
+        expect(mapping(generated.device, 'OnOff.onOff').status).toMatchObject({extract: 'fan_state'});
+        expect(mapping(generated.device, 'FanControl.percentSetting')).toEqual({
             attribute: 'FanControl.percentSetting',
             status: {topic: 'z/Test', extract: 'fan_mode', map: {off: 0, '1': 20, '2': 40, '3': 60, '4': 80, '5': 100}},
             command: {
@@ -518,11 +518,11 @@ describe('hand-written descriptions', () => {
                 template: "{{ 'off' if percent == 0 else ((percent * 5 / 100) | round(0, 'ceil') | int) }}",
             },
         });
-        expect(binding(generated.device, 'FanControl.fanMode')).toMatchObject({
+        expect(mapping(generated.device, 'FanControl.fanMode')).toMatchObject({
             status: {map: {off: 'Off', auto: 'Auto'}},
             command: {format: {Off: 'off', Auto: 'auto', Low: '2', Medium: '4', High: '5'}},
         });
-        expect(binding(generated.device, 'Pm25ConcentrationMeasurement.measuredValue').status).toMatchObject({
+        expect(mapping(generated.device, 'Pm25ConcentrationMeasurement.measuredValue').status).toMatchObject({
             extract: 'pm25',
         });
     });
@@ -544,8 +544,8 @@ describe('hand-written descriptions', () => {
                 },
             ]),
         ).device;
-        expect(named.endpoints[0]!.bindings!.map(target)).toEqual(['FanControl.fanMode']);
-        expect(binding(named, 'FanControl.fanMode')).toMatchObject({
+        expect(named.endpoints[0]!.mappings!.map(target)).toEqual(['FanControl.fanMode']);
+        expect(mapping(named, 'FanControl.fanMode')).toMatchObject({
             status: {map: {off: 'Off', low: 'Low', medium: 'Medium', high: 'High', on: 'On'}},
             command: {format: {Off: 'off', Low: 'low', Medium: 'medium', High: 'high', On: 'on'}},
         });
@@ -559,7 +559,7 @@ describe('hand-written descriptions', () => {
                 },
             ]),
         ).device;
-        expect(binding(speed, 'FanControl.percentSetting')).toMatchObject({
+        expect(mapping(speed, 'FanControl.percentSetting')).toMatchObject({
             status: {scale: {from: [1, 4], to: [0, 100]}, round: 0},
             command: {scale: {from: [1, 4], to: [0, 100]}, round: 0},
         });
@@ -582,9 +582,9 @@ describe('hand-written descriptions', () => {
             main: ['GenericSwitch', 'PowerSource'],
             button_off: ['GenericSwitch'],
         });
-        expect(binding(generated.device, 'Switch').status).toMatchObject({map: {on: 'single'}});
+        expect(mapping(generated.device, 'Switch').status).toMatchObject({map: {on: 'single'}});
         expect(generated.device.endpoints[0]!.options).toEqual({switch: {multiPressMax: 2}});
-        expect(binding(generated.device, 'Switch', 'button_off').status).toMatchObject({map: {off: 'single'}});
+        expect(mapping(generated.device, 'Switch', 'button_off').status).toMatchObject({map: {off: 'single'}});
         expect(generated.device.endpoints[1]!.attributes).toEqual({
             Descriptor: {tagList: [{mfgCode: null, namespaceId: 7, tag: 1, label: 'button_off'}]},
         });
@@ -620,7 +620,7 @@ describe('hand-written descriptions', () => {
             button_brightness_up: ['GenericSwitch'],
             button_arrow_left: ['GenericSwitch'],
         });
-        expect(binding(generated.device, 'Switch', 'button_brightness_up').status).toMatchObject({
+        expect(mapping(generated.device, 'Switch', 'button_brightness_up').status).toMatchObject({
             map: {brightness_up_click: 'single', brightness_up_hold: 'long', brightness_up_release: 'longRelease'},
         });
     });
@@ -638,7 +638,7 @@ describe('hand-written descriptions', () => {
             ]),
         );
         expect(types(generated.device)).toEqual({main: ['GenericSwitch'], button_toggle: ['GenericSwitch']});
-        expect(binding(generated.device, 'Switch').status).toMatchObject({
+        expect(mapping(generated.device, 'Switch').status).toMatchObject({
             map: {single: 'single', double: 'double', hold: 'long'},
         });
         expect(generated.unmapped).toEqual(['action:hue_move', 'action:rotate_left']);
@@ -670,7 +670,7 @@ describe('hand-written descriptions', () => {
             ]),
         ).device;
         expect(types(lock)).toEqual({main: ['DoorLock']});
-        expect(binding(lock, 'DoorLock.lockState')).toEqual({
+        expect(mapping(lock, 'DoorLock.lockState')).toEqual({
             attribute: 'DoorLock.lockState',
             status: {
                 topic: 'z/Test',
@@ -769,15 +769,15 @@ describe('hand-written descriptions', () => {
             rgb: ['ExtendedColorLight'],
             relay: ['OnOffPlugInUnit'],
         });
-        expect(binding(d, 'ColorControl.colorHs', 'rgb')).toMatchObject({
+        expect(mapping(d, 'ColorControl.colorHs', 'rgb')).toMatchObject({
             status: {extract: 'color_rgb'},
             command: {wrap: 'color_rgb'},
         });
         expect(d.endpoints.find((e) => e.id === 'rgb')!.features).toBeUndefined();
-        expect(binding(d, 'TemperatureMeasurement.measuredValue').status).toMatchObject({unit: 'fahrenheit'});
-        expect(binding(d, 'SmokeCoAlarm.smokeState').status).toMatchObject({map: {true: 'Critical', false: 'Normal'}});
+        expect(mapping(d, 'TemperatureMeasurement.measuredValue').status).toMatchObject({unit: 'fahrenheit'});
+        expect(mapping(d, 'SmokeCoAlarm.smokeState').status).toMatchObject({map: {true: 'Critical', false: 'Normal'}});
         expect(d.endpoints[0]!.features).toEqual({SmokeCoAlarm: ['SmokeAlarm']});
-        expect(binding(d, 'PowerSource.batChargeLevel').status).toMatchObject({map: {true: 'Critical', false: 'Ok'}});
+        expect(mapping(d, 'PowerSource.batChargeLevel').status).toMatchObject({map: {true: 'Critical', false: 'Ok'}});
     });
 
     it('nothing to map, not supported, not interviewed', () => {

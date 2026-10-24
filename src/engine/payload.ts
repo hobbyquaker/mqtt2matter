@@ -556,9 +556,9 @@ export function encodeCommand(half: CommandHalf, value: unknown, options: Encode
     }
 }
 
-/** the default of `optimistic`: a binding without a status half applies the command locally */
-export function isOptimistic(binding: {status?: StatusHalf | undefined; command: CommandHalf}): boolean {
-    return binding.command.optimistic ?? binding.status === undefined;
+/** the default of `optimistic`: a mapping without a status half applies the command locally */
+export function isOptimistic(mapping: {status?: StatusHalf | undefined; command: CommandHalf}): boolean {
+    return mapping.command.optimistic ?? mapping.status === undefined;
 }
 
 /** deep-merge JSON objects, later wins; arrays and scalars are replaced */

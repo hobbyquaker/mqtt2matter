@@ -1,12 +1,12 @@
-/* The application: the MQTT connection, the Matter node manager and the binding runtime between them.
+/* The application: the MQTT connection, the Matter node manager and the mapping runtime between them.
    Start order: connect to the broker (so retained status is there when the endpoints come up), build the
-   bridges and endpoints, wire the bindings (which subscribes the status topics), go online, log the
+   bridges and endpoints, wire the mappings (which subscribes the status topics), go online, log the
    pairing codes. */
 
 import {createRequire} from 'node:module';
 
 import type {Config} from './config/schema.ts';
-import {BindingRuntime, type Codec} from './engine/runtime.ts';
+import {MappingRuntime, type Codec} from './engine/runtime.ts';
 import {type Logger, silentLogger} from './log.ts';
 import type {DeviceHandle} from './matter/bridge.ts';
 import {NodeManager} from './matter/node-manager.ts';
@@ -30,7 +30,7 @@ export class App {
     readonly log: Logger;
     readonly mqtt: MqttClient;
     readonly nodes: NodeManager;
-    readonly runtime: BindingRuntime;
+    readonly runtime: MappingRuntime;
     readonly config: Config;
     private started = false;
 
@@ -46,13 +46,13 @@ export class App {
         };
         this.mqtt = new MqttClient(mqttOptions, this.log.child('mqtt'));
         this.nodes = new NodeManager({config, softwareVersion: VERSION, log: this.log.child('matter')});
-        this.runtime = new BindingRuntime(
+        this.runtime = new MappingRuntime(
             {
                 publish: async (topic, payload, {retain, qos}) => {
                     await this.mqtt.publish(topic, payload, {retain, qos});
                 },
             },
-            this.log.child('bindings'),
+            this.log.child('mappings'),
             {codecs: options.codecs ?? new Map()},
         );
         this.mqtt.on('message', (topic, payload) => {
@@ -127,7 +127,7 @@ export class App {
     }
 
     /**
-     * Add or replace a device while running: its old endpoint and bindings go, the new entry is validated,
+     * Add or replace a device while running: its old endpoint and mappings go, the new entry is validated,
      * built in its bridge and wired. A device with errors is kept in the configuration but not built.
      */
     async applyDevice(key: string, device: DeviceConfig): Promise<DeviceHandle | undefined> {

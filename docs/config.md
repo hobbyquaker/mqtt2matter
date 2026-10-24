@@ -7,7 +7,10 @@ example; `mqtt2matter --check [config.json]` validates a file against the Matter
 in strict mode without touching the network.
 
 **This schema is frozen** (format 1): importers write it, the UI edits it, and a later version that has to
-change it migrates files on load. Additions are allowed; renames and removals are not.
+change it migrates files on load. Additions are allowed; renames and removals are not. The one rename so far,
+before the first release: an endpoint's `bindings` are `mappings` (Matter's own Binding cluster means
+something else); a file with `bindings` is read as `mappings`, a warning is logged once at start, and the file is
+written in the new form at the next save from the UI (`POST /api/import` takes the old form too).
 
 ## Environment
 
@@ -39,7 +42,7 @@ change it migrates files on load. Additions are allowed; renames and removals ar
 | `devices`                                         | `{}`                    | one entry per device, keyed by the **device key**                                                               |
 | `server.enabled`                                  | `true`                  | the web UI and its API (`docs/api.md`); `false` for headless                                                    |
 | `server.host`, `server.port`                      | `0.0.0.0`, `8282`       | where the UI listens; it has no login — keep it on a trusted network or behind a reverse proxy                  |
-| `server.topics`                                   | `["#"]`                 | MQTT subscriptions for the UI's topic tree and live view, on top of the bindings' topics                        |
+| `server.topics`                                   | `["#"]`                 | MQTT subscriptions for the UI's topic tree and live view, on top of the mappings' topics                        |
 | `presets`                                         | `[]`                    | directories with the user's preset files (`*.json`), on top of the shipped ones                                 |
 | `importers.z2m.enabled`                           | `true`                  | watch zigbee2mqtt's `bridge/devices` and `bridge/groups` for the UI's adopt page ([importers.md](importers.md)) |
 | `importers.z2m.baseTopic`                         | `zigbee2mqtt`           | zigbee2mqtt's base topic                                                                                        |
@@ -72,7 +75,7 @@ The bridge id (`default`) is the matter.js node id and its storage directory: 1�
   "endpoints": [{
     "deviceTypes": ["ColorTemperatureLight"],
     "options": {"light": {"onCommandType": "last"}},
-    "bindings": [
+    "mappings": [
       {"attribute": "OnOff.onOff",
        "status":  {"topic": "stat/b1/RESULT", "extract": "$.POWER", "map": {"ON": true, "OFF": false}},
        "command": {"topic": "cmnd/b1/POWER", "format": {"true": "ON", "false": "OFF"}}},
@@ -127,7 +130,7 @@ device is unreachable when availability says so or any expired topic has not rep
 | `deviceTypes` | required | matter.js device type names; the first is the endpoint's type, the others are added (`PowerSource`)  |
 | `features`    | —        | cluster features on top of what the device types require, e.g. `{"PowerSource": ["Battery"]}`        |
 | `attributes`  | —        | fixed attribute values and defaults, e.g. `{"PowerSource": {"description": "2×AA"}}`                 |
-| `bindings`    | `[]`     | see below                                                                                            |
+| `mappings`    | `[]`     | see below                                                                                            |
 | `options`     | defaults | the family options (light, cover, climate, fan, switch, powerSource), see below                      |
 | `coalesce`    | `0`      | ms: JSON command payloads to one topic within this window are merged into one message (z2m's `/set`) |
 
@@ -136,14 +139,14 @@ device is unreachable when availability says so or any expired topic has not rep
 `Thermostat`, `DoorLock`, `Fan`, `GenericSwitch`, `ContactSensor`, `OccupancySensor`, `TemperatureSensor`,
 `HumiditySensor`, `LightSensor`, `PressureSensor`, `FlowSensor`, `AirQualitySensor`, `WaterLeakDetector`,
 `RainSensor`, `SmokeCoAlarm`, …) plus the utility `PowerSource`. The device type's mandatory clusters come
-with it, its optional clusters and any other cluster are added when a binding names them. Feature names are
+with it, its optional clusters and any other cluster are added when a mapping names them. Feature names are
 matter.js' (`Lighting`, `ColorTemperature`, `HueSaturation`, `Xy`, `PositionAwareLift`, `Heating`, `Battery`,
 …) or the specification's codes (`LT`, `CT`, `HS`, `XY`, `PA_LF`, `HEAT`, `BAT`). The families add the
-features their bindings imply (a bound `occupiedHeatingSetpoint` → `Heating`; `colorHs` → `HueSaturation`).
+features their mappings imply (a bound `occupiedHeatingSetpoint` → `Heating`; `colorHs` → `HueSaturation`).
 
-### Bindings
+### Mappings
 
-A binding joins one Matter attribute, command or event channel with MQTT in two independent halves —
+A mapping joins one Matter attribute, command or event channel with MQTT in two independent halves —
 `status` (device → Matter) and `command` (Matter → device); one may be absent.
 
 | Key         | Meaning                                                                                                                                  |
@@ -189,7 +192,7 @@ object or array is handed to the family (the colour composites).
 | `unit`, `scale`, `offset`, `invert`, `round` | —        | the status steps inverted                                                                                                                                                |
 | `precision`                                  | —        | decimals the number is printed with                                                                                                                                      |
 | `format`                                     | —        | attribute value (as text, enum name, bitmap field list) → payload: `{"true": "ON", "false": "OFF"}`, `{"Locked": "LOCK"}`                                                |
-| `payload`                                    | —        | a fixed payload (for `invoke` bindings: `"STOP"`)                                                                                                                        |
+| `payload`                                    | —        | a fixed payload (for `invoke` mappings: `"STOP"`)                                                                                                                        |
 | `template`                                   | —        | a Jinja template over `value`, `name` (an enum's member name), `topic` and the family's fields, see _Templates_                                                          |
 | `wrap`                                       | —        | a JSON path: the payload becomes `{"a": {"b": value}}` for `$.a.b`; merged by `coalesce`                                                                                 |
 | `retain`                                     | `false`  |                                                                                                                                                                          |
@@ -243,10 +246,10 @@ array or `"a,b(,c)"`):
 | `ColorControl.colorRgb` | `r`, `g`, `b` 0–255 (`red`, `green`, `blue`) | — (converted to the features the endpoint has) |
 
 A controller's colour command goes to whichever of these the endpoint binds (converted), else to the plain
-`currentHue`/`currentSaturation` or `currentX`/`currentY` bindings. A status on any colour attribute sets every
+`currentHue`/`currentSaturation` or `currentX`/`currentY` mappings. A status on any colour attribute sets every
 representation the endpoint's features carry and `colorMode`/`enhancedColorMode` — unless `ColorControl.colorMode`
-has a status binding of its own (bind it for devices that report `color_mode`; a message carrying both a colour and
-a colour temperature lets the last binding win otherwise).
+has a status mapping of its own (bind it for devices that report `color_mode`; a message carrying both a colour and
+a colour temperature lets the last mapping win otherwise).
 
 The cover family owns `WindowCovering.motion`: `opening`, `closing`, `stopped` (`stop`, `idle`), `open`,
 `closed` — for state-only covers and for `moving`/`motor_state` reports.
@@ -262,11 +265,11 @@ The cover family owns `WindowCovering.motion`: `opening`, `closing`, `stopped` (
 | `minMireds`, `maxMireds` | `153`, `500` | the colour temperature range                                                                                         |
 
 A controller's `moveToLevelWithOnOff` publishes the level and, per `onCommandType`, the on/off; `move` and
-`step` publish the resulting level. Values are applied locally only where the binding is optimistic.
+`step` publish the resulting level. Values are applied locally only where the mapping is optimistic.
 
 **cover** (`WindowCovering`): bind `currentPositionLiftPercent100ths` (status) and `targetPositionLiftPercent100ths`
 (command) for a position-aware cover — Matter counts 0 = open, 100 % = closed; a device counting the other way
-uses `scale: {"from": [0, 100], "to": [10000, 0]}` — or `motion` plus `invoke` bindings for `upOrOpen`,
+uses `scale: {"from": [0, 100], "to": [10000, 0]}` — or `motion` plus `invoke` mappings for `upOrOpen`,
 `downOrClose`, `stopMotion` for a state-only one; tilt uses the `…Tilt…` attributes.
 
 | Option          | Default | Meaning                                                                                                              |
@@ -280,7 +283,7 @@ from target vs current; a report while no command is in flight is an external mo
 direction's extreme) is written before the current position; after a stop the next report is the final
 position.
 
-**climate** (`Thermostat`): temperatures in Matter's 0.01 °C (`unit: celsius`). Features follow the bindings:
+**climate** (`Thermostat`): temperatures in Matter's 0.01 °C (`unit: celsius`). Features follow the mappings:
 `Heating` with `occupiedHeatingSetpoint`, `Cooling` with `occupiedCoolingSetpoint`, `AutoMode` with both and
 `systemMode`. `thermostatRunningState` is a bitmap (`"heat"`, `"cool"`, `"fan"`, `""`).
 
@@ -350,7 +353,7 @@ A preset is a device template in a JSON file:
     "endpoints": [
       {
         "deviceTypes": ["OnOffPlugInUnit"],
-        "bindings": [
+        "mappings": [
           {
             "attribute": "OnOff.onOff",
             "status": {"topic": "stat/%topic%/RESULT", "extract": "$.POWER", "map": {"ON": true, "OFF": false}},

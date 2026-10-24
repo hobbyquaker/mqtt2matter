@@ -1,5 +1,5 @@
 /* The cover family: WindowCovering with the movement logic of the maintainer's matterbridge-zigbee2mqtt
-   PR #170 as options. Commands set the target and publish it (or the up/down/stop command bindings); the
+   PR #170 as options. Commands set the target and publish it (or the up/down/stop command mappings); the
    device's position reports drive the current position; `operationalStatus` follows from target vs
    current; a report timeout ends a movement nobody reported the end of; an external move (a report while
    no command is in flight) writes a predicted target — the direction's extreme — before the current

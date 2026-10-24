@@ -1,7 +1,7 @@
-/* The binding runtime: the bindings of every device, indexed by status topic; incoming payloads go through
+/* The mapping runtime: the mappings of every device, indexed by status topic; incoming payloads go through
    the payload engine to the endpoint target, controller commands come back through the engine to the
    publisher. The runtime knows neither mqtt.js nor matter.js — both are interfaces here — so it is testable
-   with fakes and the layers stay where docs/architecture.md puts them. It also owns what spans bindings:
+   with fakes and the layers stay where docs/architecture.md puts them. It also owns what spans mappings:
    availability (`all` / `any` / `latest` over topics) and `expire` → reachable, the `get` requests
    published at start and after a reconnect, and the coalescing of command payloads per topic. */
 
@@ -17,12 +17,12 @@ import {RELATED_STATUS} from '../model/catalog.ts';
 import {
     type Availability,
     type AvailabilityTopic,
-    type Binding,
+    type Mapping,
     type CommandHalf,
     type DeviceConfig,
     type EndpointConfig,
     type StatusHalf,
-    bindingTarget,
+    mappingTarget,
 } from '../model/schema.ts';
 import type {Logger} from '../log.ts';
 import {
@@ -68,7 +68,7 @@ export interface Codec {
 interface Subscription {
     deviceKey: string;
     endpointId: string;
-    binding: Binding;
+    mapping: Mapping;
     half: StatusHalf;
     ref: AttributeRef | undefined;
     event: string | undefined;
@@ -105,7 +105,7 @@ export interface RuntimeOptions {
     codecs?: ReadonlyMap<string, Codec>;
 }
 
-export class BindingRuntime {
+export class MappingRuntime {
     private readonly byTopic = new Map<string, Subscription[]>();
     private readonly availabilityTopics = new Map<string, DeviceState[]>();
     private readonly topicsChanged = new Set<(topic: string) => void>();
@@ -148,7 +148,7 @@ export class BindingRuntime {
         }
     }
 
-    /** wire a device's bindings: status topics in, command handlers out, availability and expire */
+    /** wire a device's mappings: status topics in, command handlers out, availability and expire */
     bind(deviceKey: string, device: DeviceConfig, targets: ReadonlyMap<string, EndpointTarget>): void {
         const main = targets.get(device.endpoints[0]?.id ?? 'main');
         if (main === undefined) {
@@ -179,22 +179,22 @@ export class BindingRuntime {
         for (const endpoint of device.endpoints) {
             const target = targets.get(endpoint.id);
             if (target === undefined) {
-                this.log.warn(`${deviceKey}/${endpoint.id}: no Matter endpoint, its bindings are not wired`);
+                this.log.warn(`${deviceKey}/${endpoint.id}: no Matter endpoint, its mappings are not wired`);
                 continue;
             }
             const statusKeys = new Set<string>();
-            for (const binding of endpoint.bindings) {
-                if (binding.status !== undefined) {
-                    statusKeys.add(bindingTarget(binding).name);
+            for (const mapping of endpoint.mappings) {
+                if (mapping.status !== undefined) {
+                    statusKeys.add(mappingTarget(mapping).name);
                 }
             }
-            for (const binding of endpoint.bindings) {
-                this.bindOne(deviceKey, endpoint, binding, target, statusKeys);
+            for (const mapping of endpoint.mappings) {
+                this.bindOne(deviceKey, endpoint, mapping, target, statusKeys);
             }
         }
     }
 
-    /** forget a device's bindings, timers and handlers */
+    /** forget a device's mappings, timers and handlers */
     unbind(deviceKey: string): void {
         const state = this.devices.get(deviceKey);
         if (state === undefined) {
@@ -243,11 +243,11 @@ export class BindingRuntime {
     private bindOne(
         deviceKey: string,
         endpoint: EndpointConfig,
-        binding: Binding,
+        mapping: Mapping,
         target: EndpointTarget,
         statusKeys: ReadonlySet<string>,
     ): void {
-        const {kind, name} = bindingTarget(binding);
+        const {kind, name} = mappingTarget(mapping);
         const where = `${deviceKey}/${endpoint.id} ${name}`;
         let ref: AttributeRef | undefined;
         let command: CommandRef | undefined;
@@ -261,18 +261,18 @@ export class BindingRuntime {
             this.log.error(`${where}: not wired`, error);
             return;
         }
-        if (binding.status !== undefined) {
-            const half = binding.status;
+        if (mapping.status !== undefined) {
+            const half = mapping.status;
             const codec = half.codec === undefined ? undefined : this.codecs.get(half.codec.module);
             if (half.codec !== undefined && codec === undefined) {
                 this.log.error(`${where}: codec ${half.codec.module} is not loaded; the status half is not wired`);
             } else if (kind === 'invoke') {
-                this.log.warn(`${where}: a command binding has no status half; ignored`);
+                this.log.warn(`${where}: a command mapping has no status half; ignored`);
             } else {
                 this.subscribe(half.topic, {
                     deviceKey,
                     endpointId: endpoint.id,
-                    binding,
+                    mapping,
                     half,
                     ref,
                     event: kind === 'event' ? name : undefined,
@@ -285,8 +285,8 @@ export class BindingRuntime {
                 }
             }
         }
-        if (binding.command !== undefined) {
-            const half = binding.command;
+        if (mapping.command !== undefined) {
+            const half = mapping.command;
             const codec = half.codec === undefined ? undefined : this.codecs.get(half.codec.module);
             if (half.codec !== undefined && codec === undefined) {
                 this.log.error(`${where}: codec ${half.codec.module} is not loaded; the command half is not wired`);
@@ -296,7 +296,7 @@ export class BindingRuntime {
             const shape = ref === undefined ? undefined : target.shapeOf(ref);
             // a command confirmed by another attribute's status (a cover's target by its position) is not optimistic
             const related = (RELATED_STATUS[key] ?? []).some((k) => statusKeys.has(k));
-            const optimistic = half.optimistic ?? (!related && isOptimistic({status: binding.status, command: half}));
+            const optimistic = half.optimistic ?? (!related && isOptimistic({status: mapping.status, command: half}));
             target.onCommand(key, async (value, fields) => {
                 let encoded;
                 try {
@@ -329,9 +329,9 @@ export class BindingRuntime {
     }
 
     /**
-     * an MQTT message: every binding on that topic decodes it and sets its attribute. The messages of one topic
+     * an MQTT message: every mapping on that topic decodes it and sets its attribute. The messages of one topic
      * are applied one after the other in arrival order: the client emits them without waiting, and a message
-     * whose first binding is still being set would otherwise let the next message's later binding overtake it
+     * whose first mapping is still being set would otherwise let the next message's later mapping overtake it
      * and leave the older value standing. Different topics run independently, as MQTT orders per topic only.
      */
     handleMessage(topic: string, payload: Buffer): Promise<void> {

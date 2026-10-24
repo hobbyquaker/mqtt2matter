@@ -1,10 +1,10 @@
 /* The endpoint type for an endpoint of the model, built from matter.js' own device definitions — every
    `<Name>Device` it ships plus the utility `PowerSource` — and @matter/model: the first device type is the
    endpoint's type, the others are added to the Descriptor's device type list and their mandatory clusters
-   merged; the clusters are the device types' mandatory ones, the optional ones a binding or the config
-   names, and any other cluster a binding names; each cluster's server is the family's class where there
+   merged; the clusters are the device types' mandatory ones, the optional ones a mapping or the config
+   names, and any other cluster a mapping names; each cluster's server is the family's class where there
    is one (it routes controller commands), else matter.js' default; its features are the union of what the
-   device type requires (`OnOffServer.with("Lighting")` on lights), what the bindings imply and what the
+   device type requires (`OnOffServer.with("Lighting")` on lights), what the mappings imply and what the
    config asks for. No table of device types lives here (study §2.1). */
 
 import type {Behavior, EndpointType} from '@matter/main';
@@ -17,7 +17,7 @@ import {familyFor} from '../families/index.ts';
 import {CLUSTER_DEFAULTS} from './cluster-defaults.ts';
 import {type ClusterInfo, cluster as clusterInfo, deviceType as deviceTypeInfo, upperCamel} from '../model/catalog.ts';
 import type {Options} from '../model/options.ts';
-import {type EndpointConfig, bindingTarget} from '../model/schema.ts';
+import {type EndpointConfig, mappingTarget} from '../model/schema.ts';
 
 interface DeviceDefinition {
     name: string;
@@ -148,11 +148,11 @@ export interface BuiltEndpoint {
     clusters: ReadonlyMap<string, string>;
 }
 
-/** the keys every binding of the endpoint names (`Cluster.attribute`, `Cluster.command`, `Cluster`) */
+/** the keys every mapping of the endpoint names (`Cluster.attribute`, `Cluster.command`, `Cluster`) */
 export function boundKeys(endpoint: EndpointConfig): Set<string> {
     const keys = new Set<string>();
-    for (const binding of endpoint.bindings) {
-        keys.add(bindingTarget(binding).name);
+    for (const mapping of endpoint.mappings) {
+        keys.add(mappingTarget(mapping).name);
     }
     return keys;
 }

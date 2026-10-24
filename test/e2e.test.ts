@@ -51,7 +51,7 @@ function config(): ReturnType<typeof parseConfig> {
                 endpoints: [
                     {
                         deviceTypes: ['OnOffPlugInUnit'],
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'OnOff.onOff',
                                 status: {topic: 'stat/plug1/POWER', map: {ON: true, OFF: false}},
@@ -66,7 +66,7 @@ function config(): ReturnType<typeof parseConfig> {
                 endpoints: [
                     {
                         deviceTypes: ['OnOffPlugInUnit'],
-                        bindings: [
+                        mappings: [
                             {
                                 attribute: 'OnOff.onOff',
                                 command: {topic: 'cmnd/plug2/POWER', format: {true: 'ON', false: 'OFF'}},
@@ -135,7 +135,7 @@ describe('one plug end to end', () => {
         expect(plug.state.onOff!.onOff).toBe(true);
     });
 
-    it('applies a command locally when the binding has no status half', async () => {
+    it('applies a command locally when the mapping has no status half', async () => {
         const plug = app.nodes.handle('plug-2')!;
         received.length = 0;
         expect(plug.state.onOff!.onOff).toBe(false);

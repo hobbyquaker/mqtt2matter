@@ -21,7 +21,7 @@
       "endpoints": [
         {
           "deviceTypes": ["OnOffPlugInUnit"],
-          "bindings": [
+          "mappings": [
             {
               "attribute": "OnOff.onOff",
               "status": {"topic": "stat/s26/RESULT", "extract": "$.POWER", "map": {"ON": true, "OFF": false}},
@@ -40,7 +40,7 @@
         {
           "deviceTypes": ["ColorTemperatureLight"],
           "options": {"light": {"onCommandType": "last", "minMireds": 153, "maxMireds": 500}},
-          "bindings": [
+          "mappings": [
             {
               "attribute": "OnOff.onOff",
               "status": {"topic": "stat/b1/RESULT", "extract": "$.POWER", "map": {"ON": true, "OFF": false}},
@@ -69,7 +69,7 @@
         {
           "deviceTypes": ["ExtendedColorLight"],
           "coalesce": 50,
-          "bindings": [
+          "mappings": [
             {
               "attribute": "OnOff.onOff",
               "status": {"topic": "zigbee2mqtt/kitchen-light", "extract": "state", "map": {"ON": true, "OFF": false}},
@@ -111,7 +111,7 @@
         {
           "deviceTypes": ["WindowCovering", "PowerSource"],
           "options": {"cover": {"echoFilter": true, "reportTimeout": 30}},
-          "bindings": [
+          "mappings": [
             {
               "attribute": "WindowCovering.currentPositionLiftPercent100ths",
               "status": {
@@ -147,7 +147,7 @@
         {
           "deviceTypes": ["Thermostat"],
           "options": {"climate": {"minHeat": 5, "maxHeat": 30}},
-          "bindings": [
+          "mappings": [
             {
               "attribute": "Thermostat.localTemperature",
               "status": {"topic": "zigbee2mqtt/hallway-trv", "extract": "local_temperature", "unit": "celsius"}
@@ -192,7 +192,7 @@
       "endpoints": [
         {
           "deviceTypes": ["DoorLock"],
-          "bindings": [
+          "mappings": [
             {
               "attribute": "DoorLock.lockState",
               "status": {
@@ -215,7 +215,7 @@
       "endpoints": [
         {
           "deviceTypes": ["GenericSwitch", "PowerSource"],
-          "bindings": [
+          "mappings": [
             {
               "event": "Switch",
               "status": {
@@ -238,7 +238,7 @@
       "endpoints": [
         {
           "deviceTypes": ["TemperatureSensor"],
-          "bindings": [
+          "mappings": [
             {
               "attribute": "TemperatureMeasurement.measuredValue",
               "status": {
@@ -253,7 +253,7 @@
         {
           "id": "humidity",
           "deviceTypes": ["HumiditySensor"],
-          "bindings": [
+          "mappings": [
             {
               "attribute": "RelativeHumidityMeasurement.measuredValue",
               "status": {"topic": "greenhouse/sensor/humidity/state", "type": "number", "unit": "percent100ths"}
@@ -263,7 +263,7 @@
         {
           "id": "door",
           "deviceTypes": ["ContactSensor"],
-          "bindings": [
+          "mappings": [
             {
               "attribute": "BooleanState.stateValue",
               "status": {"topic": "greenhouse/binary_sensor/door/state", "map": {"ON": false, "OFF": true}}

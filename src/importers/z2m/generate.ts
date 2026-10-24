@@ -1,5 +1,5 @@
 /* zigbee2mqtt → the manual model. One `bridge/devices` entry becomes one device: its exposes decide the
-   device types, clusters and bindings per zigbee2mqtt endpoint (`l1`, `l2`, … become child endpoints),
+   device types, clusters and mappings per zigbee2mqtt endpoint (`l1`, `l2`, … become child endpoints),
    `action` enums become GenericSwitch children, `battery` a power source, and every device gets its
    availability topic. A `bridge/groups` entry becomes one endpoint with the union of its members' light,
    switch or cover features. What is generated is the *baseline*; `source.raw` keeps what is needed to
@@ -14,7 +14,7 @@ import {createHash} from 'node:crypto';
 import type {z} from 'zod';
 
 import type {
-    BindingInput,
+    MappingInput,
     CoverOptionsSchema,
     DeviceInput,
     EndpointInput,
@@ -142,7 +142,7 @@ interface Draft {
     z2mEndpoint: string;
     id: string;
     types: string[];
-    bindings: BindingInput[];
+    mappings: MappingInput[];
     features: Record<string, string[]>;
     options: OptionsInput;
     coalesce: number;
@@ -207,7 +207,7 @@ class Builder {
     draft(z2mEndpoint: string, id = z2mEndpoint): Draft {
         let draft = this.drafts.get(id);
         if (draft === undefined) {
-            draft = {z2mEndpoint, id, types: [], bindings: [], features: {}, options: {}, coalesce: 0, hasGet: false};
+            draft = {z2mEndpoint, id, types: [], mappings: [], features: {}, options: {}, coalesce: 0, hasGet: false};
             this.drafts.set(id, draft);
         }
         return draft;
@@ -244,31 +244,31 @@ class Builder {
         return {topic: this.setTopic, wrap: this.property(expose), ...extra};
     }
 
-    /** a binding from a feature's access bits; `get` on the endpoint's first gettable feature */
+    /** a mapping from a feature's access bits; `get` on the endpoint's first gettable feature */
     bind(
         draft: Draft,
         attribute: string,
         expose: Expose,
         statusExtra: Partial<StatusInput> = {},
         commandExtra: Record<string, unknown> = {},
-    ): BindingInput | undefined {
-        const binding: Record<string, unknown> = {attribute};
+    ): MappingInput | undefined {
+        const mapping: Record<string, unknown> = {attribute};
         if (canRead(expose)) {
             const status = this.status(expose, statusExtra);
             if (canGet(expose) && !draft.hasGet) {
                 draft.hasGet = true;
                 status.get = {topic: this.getTopic, payload: JSON.stringify({[this.property(expose)]: ''})};
             }
-            binding.status = status;
+            mapping.status = status;
         }
         if (canSet(expose)) {
-            binding.command = this.command(expose, commandExtra);
+            mapping.command = this.command(expose, commandExtra);
         }
-        if (binding.status === undefined && binding.command === undefined) {
+        if (mapping.status === undefined && mapping.command === undefined) {
             return undefined;
         }
-        draft.bindings.push(binding as BindingInput);
-        return binding as BindingInput;
+        draft.mappings.push(mapping as MappingInput);
+        return mapping as MappingInput;
     }
 
     skip(expose: Expose): void {
@@ -330,7 +330,7 @@ class Builder {
         if ((xy !== undefined || hs !== undefined) && colorTemp !== undefined) {
             // zigbee2mqtt reports which representation is current; without it the last report would win
             const property = endpoint === '' ? 'color_mode' : `color_mode_${endpoint}`;
-            draft.bindings.push({
+            draft.mappings.push({
                 attribute: 'ColorControl.colorMode',
                 status: {
                     topic: this.stateTopic,
@@ -389,26 +389,26 @@ class Builder {
                     draft.hasGet = true;
                     status.get = {topic: this.getTopic, payload: JSON.stringify({[this.property(position)]: ''})};
                 }
-                draft.bindings.push({attribute: 'WindowCovering.currentPositionLiftPercent100ths', status});
+                draft.mappings.push({attribute: 'WindowCovering.currentPositionLiftPercent100ths', status});
             }
             if (canSet(position)) {
-                draft.bindings.push({
+                draft.mappings.push({
                     attribute: 'WindowCovering.targetPositionLiftPercent100ths',
-                    command: this.command(position, {scale, round: 0}) as BindingInput['command'],
+                    command: this.command(position, {scale, round: 0}) as MappingInput['command'],
                 });
             }
         }
         if (tilt !== undefined) {
             if (canRead(tilt)) {
-                draft.bindings.push({
+                draft.mappings.push({
                     attribute: 'WindowCovering.currentPositionTiltPercent100ths',
                     status: this.status(tilt, {scale}),
                 });
             }
             if (canSet(tilt)) {
-                draft.bindings.push({
+                draft.mappings.push({
                     attribute: 'WindowCovering.targetPositionTiltPercent100ths',
-                    command: this.command(tilt, {scale, round: 0}) as BindingInput['command'],
+                    command: this.command(tilt, {scale, round: 0}) as MappingInput['command'],
                 });
             }
         }
@@ -421,22 +421,22 @@ class Builder {
             const stop = find('STOP');
             if (position === undefined) {
                 if (open !== undefined) {
-                    draft.bindings.push({
+                    draft.mappings.push({
                         invoke: 'WindowCovering.upOrOpen',
-                        command: this.command(state, {payload: open}) as BindingInput['command'],
+                        command: this.command(state, {payload: open}) as MappingInput['command'],
                     });
                 }
                 if (close !== undefined) {
-                    draft.bindings.push({
+                    draft.mappings.push({
                         invoke: 'WindowCovering.downOrClose',
-                        command: this.command(state, {payload: close}) as BindingInput['command'],
+                        command: this.command(state, {payload: close}) as MappingInput['command'],
                     });
                 }
             }
             if (stop !== undefined) {
-                draft.bindings.push({
+                draft.mappings.push({
                     invoke: 'WindowCovering.stopMotion',
-                    command: this.command(state, {payload: stop}) as BindingInput['command'],
+                    command: this.command(state, {payload: stop}) as MappingInput['command'],
                 });
             }
         }
@@ -452,7 +452,7 @@ class Builder {
         this.covers.push({draft, state, positionAware: position !== undefined});
     }
 
-    /** the covers of the walk; their movement binding is decided when every expose was seen */
+    /** the covers of the walk; their movement mapping is decided when every expose was seen */
     private readonly covers: {draft: Draft; state: Expose | undefined; positionAware: boolean}[] = [];
 
     /** `moving` / `motor_state` enums seen on the walk, per zigbee2mqtt endpoint; the cover takes them */
@@ -478,7 +478,7 @@ class Builder {
                         map[value] = kind;
                     }
                 }
-                draft.bindings.push({attribute: 'WindowCovering.motion', status: this.status(motion, {map})});
+                draft.mappings.push({attribute: 'WindowCovering.motion', status: this.status(motion, {map})});
                 this.unmapped.splice(this.unmapped.indexOf(this.property(motion)), 1);
                 continue;
             }
@@ -494,7 +494,7 @@ class Builder {
                         map[value] = 'stopped';
                     }
                 }
-                draft.bindings.push({attribute: 'WindowCovering.motion', status: this.status(state, {map})});
+                draft.mappings.push({attribute: 'WindowCovering.motion', status: this.status(state, {map})});
             }
         }
     }
@@ -515,18 +515,18 @@ class Builder {
         const lockState = by.get('lock_state');
         const on = text(state.value_on, 'LOCK');
         const off = text(state.value_off, 'UNLOCK');
-        const binding: Record<string, unknown> = {attribute: 'DoorLock.lockState'};
+        const mapping: Record<string, unknown> = {attribute: 'DoorLock.lockState'};
         if (lockState !== undefined && canRead(lockState)) {
-            binding.status = this.status(lockState, {
+            mapping.status = this.status(lockState, {
                 map: {locked: 'Locked', unlocked: 'Unlocked', not_fully_locked: 'NotFullyLocked'},
             });
         } else if (canRead(state)) {
-            binding.status = this.status(state, {map: {[on]: 'Locked', [off]: 'Unlocked'}});
+            mapping.status = this.status(state, {map: {[on]: 'Locked', [off]: 'Unlocked'}});
         }
         if (canSet(state)) {
-            binding.command = this.command(state, {format: {Locked: on, Unlocked: off}});
+            mapping.command = this.command(state, {format: {Locked: on, Unlocked: off}});
         }
-        draft.bindings.push(binding as BindingInput);
+        draft.mappings.push(mapping as MappingInput);
         for (const feature of features) {
             if (!['state', 'lock_state'].includes(feature.name ?? '')) {
                 this.skip(feature);
@@ -596,7 +596,7 @@ class Builder {
             for (const value of (running.values ?? []).map(String)) {
                 map[value] = value === 'heat' ? 'heat' : value === 'cool' ? 'cool' : value === 'fan_only' ? 'fan' : '';
             }
-            draft.bindings.push({attribute: 'Thermostat.thermostatRunningState', status: this.status(running, {map})});
+            draft.mappings.push({attribute: 'Thermostat.thermostatRunningState', status: this.status(running, {map})});
         }
         const mapped = [
             'local_temperature',
@@ -722,7 +722,7 @@ class Builder {
             case 'illuminance':
                 if (name === 'illuminance_lux' || unit === 'lx') {
                     if (
-                        draft.bindings.some(
+                        draft.mappings.some(
                             (b) => 'attribute' in b && b.attribute === 'IlluminanceMeasurement.measuredValue',
                         )
                     ) {
@@ -811,7 +811,7 @@ class Builder {
                 return;
             case 'occupancy':
             case 'presence':
-                if (draft.bindings.some((b) => 'attribute' in b && b.attribute === 'OccupancySensing.occupancy')) {
+                if (draft.mappings.some((b) => 'attribute' in b && b.attribute === 'OccupancySensing.occupancy')) {
                     return;
                 }
                 this.addType(draft, 'OccupancySensor');
@@ -898,7 +898,7 @@ class Builder {
             const draft = this.draft(expose.endpoint ?? '', id);
             this.addType(draft, 'GenericSwitch');
             draft.options.switch = {multiPressMax: Math.max(2, multiPressMax(button))};
-            draft.bindings.push({
+            draft.mappings.push({
                 event: 'Switch',
                 status: this.status(expose, {map: Object.fromEntries(button.kinds)}),
             });
@@ -960,7 +960,7 @@ class Builder {
         }
         if (power !== undefined) {
             this.addType(main, 'PowerSource');
-            main.bindings.push(...power.bindings);
+            main.mappings.push(...power.mappings);
         }
         const ordered = [main, ...real.filter((d) => d !== main)];
         main = ordered[0];
@@ -973,7 +973,7 @@ class Builder {
         }
         let tag = 0;
         return ordered.map((draft, i) => {
-            const endpoint: EndpointInput = {deviceTypes: draft.types, bindings: draft.bindings};
+            const endpoint: EndpointInput = {deviceTypes: draft.types, mappings: draft.mappings};
             if (i > 0) {
                 endpoint.id = endpointId(draft.id);
                 if ((typeCount.get(draft.types[0] ?? '') ?? 0) > 1) {
@@ -1215,9 +1215,9 @@ export function generateGroup(raw: RawGroup): Generated | undefined {
     }
     // a group has no `/get`; zigbee2mqtt answers for its members
     for (const endpoint of endpoints) {
-        for (const binding of endpoint.bindings ?? []) {
-            if (binding.status !== undefined) {
-                delete binding.status.get;
+        for (const mapping of endpoint.mappings ?? []) {
+            if (mapping.status !== undefined) {
+                delete mapping.status.get;
             }
         }
     }

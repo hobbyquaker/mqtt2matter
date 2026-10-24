@@ -3,7 +3,7 @@
    enum choices of those options, and the clean-up of a half before it is saved (empty strings are
    absent fields). */
 
-import type {Binding, CommandHalf, Device, Endpoint, StatusHalf} from './api.ts';
+import type {Mapping, CommandHalf, Device, Endpoint, StatusHalf} from './api.ts';
 import {isRecord} from './format.ts';
 
 export interface Suggestion {
@@ -89,19 +89,19 @@ export function clusterOf(target: string): string {
     return target.split('.')[0] ?? target;
 }
 
-export function bindingTarget(binding: Binding): Suggestion {
-    if (binding.attribute !== undefined) {
-        return {kind: 'attribute', name: binding.attribute};
+export function mappingTarget(mapping: Mapping): Suggestion {
+    if (mapping.attribute !== undefined) {
+        return {kind: 'attribute', name: mapping.attribute};
     }
-    if (binding.invoke !== undefined) {
-        return {kind: 'invoke', name: binding.invoke};
+    if (mapping.invoke !== undefined) {
+        return {kind: 'invoke', name: mapping.invoke};
     }
-    return {kind: 'event', name: binding.event ?? ''};
+    return {kind: 'event', name: mapping.event ?? ''};
 }
 
-/** the clusters an endpoint's bindings name */
+/** the clusters an endpoint's mappings name */
 export function boundClusters(endpoint: Endpoint): Set<string> {
-    return new Set(endpoint.bindings.map((b) => clusterOf(bindingTarget(b).name)));
+    return new Set(endpoint.mappings.map((b) => clusterOf(mappingTarget(b).name)));
 }
 
 /** the families whose options apply to an endpoint with these clusters */
@@ -113,19 +113,19 @@ export function familiesFor(clusters: Iterable<string>): string[] {
 }
 
 export function emptyEndpoint(id: string, deviceTypes: string[]): Endpoint {
-    return {id, deviceTypes, bindings: [], options: {}, coalesce: 0};
+    return {id, deviceTypes, mappings: [], options: {}, coalesce: 0};
 }
 
-export function emptyBinding(target: Suggestion): Binding {
-    const binding: Binding = {};
+export function emptyMapping(target: Suggestion): Mapping {
+    const mapping: Mapping = {};
     if (target.kind === 'attribute') {
-        binding.attribute = target.name;
+        mapping.attribute = target.name;
     } else if (target.kind === 'invoke') {
-        binding.invoke = target.name;
+        mapping.invoke = target.name;
     } else {
-        binding.event = target.name;
+        mapping.event = target.name;
     }
-    return binding;
+    return mapping;
 }
 
 /** drop empty strings, empty objects and NaN so the half saves as the user meant it */
@@ -153,8 +153,8 @@ export function cleanHalf<T extends StatusHalf | CommandHalf>(half: T): T {
     return out as T;
 }
 
-export function cleanBinding(binding: Binding): Binding {
-    const out: Binding = {...binding};
+export function cleanMapping(mapping: Mapping): Mapping {
+    const out: Mapping = {...mapping};
     if (out.status !== undefined) {
         out.status = cleanHalf(out.status);
     }
@@ -171,7 +171,7 @@ export function cleanBinding(binding: Binding): Binding {
 export function cleanDevice(device: Device): Device {
     const out = JSON.parse(JSON.stringify(device)) as Device;
     for (const endpoint of out.endpoints) {
-        endpoint.bindings = endpoint.bindings.map(cleanBinding);
+        endpoint.mappings = endpoint.mappings.map(cleanMapping);
         if (endpoint.features !== undefined && Object.keys(endpoint.features).length === 0) {
             delete endpoint.features;
         }

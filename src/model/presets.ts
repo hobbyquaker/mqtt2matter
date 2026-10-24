@@ -1,4 +1,4 @@
-/* Presets: a device template — the endpoints and bindings of a kind of device (a Tasmota relay, a Shelly
+/* Presets: a device template — the endpoints and mappings of a kind of device (a Tasmota relay, a Shelly
    cover, an ESPHome sensor) with placeholders — that becomes a device entry by substituting the user's
    values. The format is fixed here; the shipped presets for Tasmota, Shelly and ESPHome come later and
    users add their own as JSON files. A placeholder is `%name%`; `variables` declares each with a label

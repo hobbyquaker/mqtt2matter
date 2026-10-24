@@ -2,7 +2,7 @@
    attributes map onto MQTT. This file is the schema of `config.devices`; docs/config.md describes it
    in prose and is the contract the importers and the UI build on. Objects are strict: a misspelt key is
    an error, not a silently ignored option. The shape: device = bridged node with endpoints; endpoint =
-   device type names + cluster features + family options; binding = one attribute, command or event ↔
+   device type names + cluster features + family options; mapping = one attribute, command or event ↔
    MQTT with independent `status` (device → Matter) and `command` (Matter → device) halves. */
 
 import {z} from 'zod';
@@ -148,57 +148,57 @@ export const CommandHalfSchema = z
     .strict();
 export type CommandHalf = z.infer<typeof CommandHalfSchema>;
 
-const BindingBase = {
+const MappingBase = {
     status: StatusHalfSchema.optional(),
     command: CommandHalfSchema.optional(),
     /** free text for the user; importers put the source field here */
     comment: z.string().optional(),
 };
 
-export const AttributeBindingSchema = z
+export const AttributeMappingSchema = z
     .object({
         attribute: z.string().regex(ATTRIBUTE_PATTERN, 'an attribute is written Cluster.attribute, e.g. OnOff.onOff'),
-        ...BindingBase,
+        ...MappingBase,
     })
     .strict();
 
-export const CommandBindingSchema = z
+export const CommandMappingSchema = z
     .object({
         /** a command that is not an attribute write; the command half publishes `payload` or `template` */
         invoke: z
             .string()
             .regex(COMMAND_PATTERN, 'a command is written Cluster.command, e.g. WindowCovering.stopMotion'),
-        ...BindingBase,
+        ...MappingBase,
     })
     .strict();
 
-export const EventBindingSchema = z
+export const EventMappingSchema = z
     .object({
         /** a family's event channel: `Switch` — the status half yields a press kind */
         event: z.string().regex(EVENT_PATTERN, 'an event channel is a cluster name, e.g. Switch'),
-        ...BindingBase,
+        ...MappingBase,
     })
     .strict();
 
-export const BindingSchema = z
-    .union([AttributeBindingSchema, CommandBindingSchema, EventBindingSchema])
+export const MappingSchema = z
+    .union([AttributeMappingSchema, CommandMappingSchema, EventMappingSchema])
     .refine((b) => b.status !== undefined || b.command !== undefined, {
-        message: 'a binding needs a status half, a command half or both',
+        message: 'a mapping needs a status half, a command half or both',
     });
-export type Binding = z.infer<typeof BindingSchema>;
-export type AttributeBinding = z.infer<typeof AttributeBindingSchema>;
-export type CommandBinding = z.infer<typeof CommandBindingSchema>;
-export type EventBinding = z.infer<typeof EventBindingSchema>;
+export type Mapping = z.infer<typeof MappingSchema>;
+export type AttributeMapping = z.infer<typeof AttributeMappingSchema>;
+export type CommandMapping = z.infer<typeof CommandMappingSchema>;
+export type EventMapping = z.infer<typeof EventMappingSchema>;
 
-/** `attribute`, `invoke` or `event` — what the binding is about */
-export function bindingTarget(binding: Binding): {kind: 'attribute' | 'invoke' | 'event'; name: string} {
-    if ('attribute' in binding) {
-        return {kind: 'attribute', name: binding.attribute};
+/** `attribute`, `invoke` or `event` — what the mapping is about */
+export function mappingTarget(mapping: Mapping): {kind: 'attribute' | 'invoke' | 'event'; name: string} {
+    if ('attribute' in mapping) {
+        return {kind: 'attribute', name: mapping.attribute};
     }
-    if ('invoke' in binding) {
-        return {kind: 'invoke', name: binding.invoke};
+    if ('invoke' in mapping) {
+        return {kind: 'invoke', name: mapping.invoke};
     }
-    return {kind: 'event', name: binding.event};
+    return {kind: 'event', name: mapping.event};
 }
 
 export const EndpointSchema = z
@@ -211,7 +211,7 @@ export const EndpointSchema = z
         features: z.record(z.string(), z.array(z.string())).optional(),
         /** attribute defaults and fixed values, e.g. `{PowerSource: {description: 'AA'}}` */
         attributes: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
-        bindings: z.array(BindingSchema).default([]),
+        mappings: z.array(MappingSchema).default([]),
         /** family options (light, cover, climate, fan, switch …), see options.ts */
         options: OptionsSchema.prefault({}),
         /** ms: command payloads to one topic within this window are merged into one message */
@@ -282,7 +282,7 @@ export type DeviceConfig = z.infer<typeof DeviceSchema>;
 /** a device as written in the file — no defaults filled in; what importers generate and the UI edits */
 export type DeviceInput = z.input<typeof DeviceSchema>;
 export type EndpointInput = z.input<typeof EndpointSchema>;
-export type BindingInput = z.input<typeof BindingSchema>;
+export type MappingInput = z.input<typeof MappingSchema>;
 export type SourceInput = z.input<typeof SourceSchema>;
 
 export const DevicesSchema = z.record(

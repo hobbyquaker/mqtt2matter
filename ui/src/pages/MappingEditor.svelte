@@ -1,26 +1,26 @@
 <script lang="ts">
     import {onMount} from 'svelte';
 
-    import {type Binding, type Catalog, type ClusterInfo, type CommandHalf, type Preview, type StatusHalf, api, errorMessage} from '../lib/api.ts';
+    import {type Mapping, type Catalog, type ClusterInfo, type CommandHalf, type Preview, type StatusHalf, api, errorMessage} from '../lib/api.ts';
     import Checkbox from '../lib/components/Checkbox.svelte';
     import Dialog from '../lib/components/Dialog.svelte';
     import {debounce, formatValue} from '../lib/format.ts';
     import {t} from '../lib/i18n.svelte.ts';
-    import {type Suggestion, bindingTarget, cleanBinding, clusterOf, scalarOf, valueOf} from '../lib/model.ts';
+    import {type Suggestion, mappingTarget, cleanMapping, clusterOf, scalarOf, valueOf} from '../lib/model.ts';
     import {notices} from '../lib/notices.svelte.ts';
     import TopicPicker from './TopicPicker.svelte';
 
     interface Props {
         open: boolean;
-        binding: Binding;
+        mapping: Mapping;
         catalog: Catalog;
         /** the clusters of the endpoint's device types, offered first */
         endpointClusters: string[];
-        onsave: (binding: Binding) => void;
+        onsave: (mapping: Mapping) => void;
         onclose: () => void;
     }
 
-    let {open, binding, catalog, endpointClusters, onsave, onclose}: Props = $props();
+    let {open, mapping, catalog, endpointClusters, onsave, onclose}: Props = $props();
 
     // the editable copy
     let kind = $state<Suggestion['kind']>('attribute');
@@ -67,21 +67,21 @@
         if (!open) {
             return;
         }
-        const current = bindingTarget(binding);
+        const current = mappingTarget(mapping);
         kind = current.kind;
         cluster = current.kind === 'event' ? current.name || 'Switch' : clusterOf(current.name);
         member = current.kind === 'event' ? 'Switch' : (current.name.split('.')[1] ?? '');
-        comment = binding.comment ?? '';
-        status = binding.status === undefined ? undefined : structuredClone($state.snapshot(binding.status));
-        command = binding.command === undefined ? undefined : structuredClone($state.snapshot(binding.command));
-        mapRows = Object.entries(binding.status?.map ?? {}).map(([key, value]) => ({key, value: String(value)}));
-        formatRows = Object.entries(binding.command?.format ?? {}).map(([key, value]) => ({key, value}));
-        optimistic = binding.command?.optimistic === undefined ? 'auto' : binding.command.optimistic ? 'true' : 'false';
+        comment = mapping.comment ?? '';
+        status = mapping.status === undefined ? undefined : structuredClone($state.snapshot(mapping.status));
+        command = mapping.command === undefined ? undefined : structuredClone($state.snapshot(mapping.command));
+        mapRows = Object.entries(mapping.status?.map ?? {}).map(([key, value]) => ({key, value: String(value)}));
+        formatRows = Object.entries(mapping.command?.format ?? {}).map(([key, value]) => ({key, value}));
+        optimistic = mapping.command?.optimistic === undefined ? 'auto' : mapping.command.optimistic ? 'true' : 'false';
         statusPreview = undefined;
         commandPreview = undefined;
         commandValue = '';
         statusPayload = '';
-        void loadLastPayload(binding.status?.topic);
+        void loadLastPayload(mapping.status?.topic);
     });
 
     $effect(() => {
@@ -118,8 +118,8 @@
         }
     }
 
-    function assemble(): Binding {
-        const out: Binding = {};
+    function assemble(): Mapping {
+        const out: Mapping = {};
         if (kind === 'attribute') {
             out.attribute = target;
         } else if (kind === 'invoke') {
@@ -158,7 +158,7 @@
             }
             out.command = half;
         }
-        return cleanBinding(out);
+        return cleanMapping(out);
     }
 
     const runStatusPreview = debounce(() => {
@@ -260,7 +260,7 @@
     onMount(() => () => undefined);
 </script>
 
-<Dialog {open} title={target === '' ? t('Binding') : target} width="980px" {onclose} testId="binding-editor">
+<Dialog {open} title={target === '' ? t('Mapping') : target} width="980px" {onclose} testId="mapping-editor">
     <div class="ui-form compact">
         <span class="ui-form-label">{t('Kind')}</span>
         <div class="ui-form-field">
@@ -272,7 +272,7 @@
                     if (kind === 'event') cluster = 'Switch';
                     changed();
                 }}
-                data-testid="binding-kind"
+                data-testid="mapping-kind"
             >
                 <option value="attribute">{t('attribute')}</option>
                 <option value="invoke">{t('command (invoke)')}</option>
@@ -290,12 +290,12 @@
                         member = '';
                         changed();
                     }}
-                    data-testid="binding-cluster"
+                    data-testid="mapping-cluster"
                 >
                     <option value="">{t('— cluster —')}</option>
                     {#each clusters as name (name)}<option value={name}>{name}</option>{/each}
                 </select>
-                <select class="ui-select" bind:value={member} onchange={changed} data-testid="binding-member">
+                <select class="ui-select" bind:value={member} onchange={changed} data-testid="mapping-member">
                     <option value="">{kind === 'invoke' ? t('— command —') : t('— attribute —')}</option>
                     {#each members as m (m.name)}<option value={m.name}>{m.name} — {m.hint}</option>{/each}
                 </select>
@@ -312,8 +312,8 @@
                 {#if attributeInfo.bitFields}· {attributeInfo.bitFields.map((f) => f.name).join(', ')}{/if}
             </div>
         {/if}
-        <label class="ui-form-label" for="binding-comment">{t('Comment')}</label>
-        <div class="ui-form-field"><input id="binding-comment" class="ui-input" bind:value={comment} /></div>
+        <label class="ui-form-label" for="mapping-comment">{t('Comment')}</label>
+        <div class="ui-form-field"><input id="mapping-comment" class="ui-input" bind:value={comment} /></div>
     </div>
 
     <div class="halves">
@@ -785,7 +785,7 @@
             class="ui-button ui-button-primary"
             disabled={target === '' || (status === undefined && command === undefined)}
             onclick={save}
-            data-testid="binding-save"
+            data-testid="mapping-save"
         >
             {t('Apply')}
         </button>

@@ -5,13 +5,14 @@ import {join} from 'node:path';
 import {afterEach, describe, expect, it} from 'vitest';
 
 import {applyEnv, ConfigError, configPath, loadConfig, parseConfig} from '../src/config/load.ts';
+import {migrateDevices} from '../src/model/migrate.ts';
 
 const plug = {
     name: 'Plug',
     endpoints: [
         {
             deviceTypes: ['OnOffPlugInUnit'],
-            bindings: [
+            mappings: [
                 {
                     attribute: 'OnOff.onOff',
                     status: {topic: 'stat/plug/POWER', map: {ON: true, OFF: false}},
@@ -39,7 +40,7 @@ describe('parseConfig', () => {
         expect(device.enabled).toBe(true);
         expect(device.source).toEqual({kind: 'manual'});
         expect(device.endpoints[0]!.id).toBe('main');
-        expect(device.endpoints[0]!.bindings[0]!.command).toEqual({
+        expect(device.endpoints[0]!.mappings[0]!.command).toEqual({
             topic: 'cmnd/plug/POWER',
             format: {true: 'ON', false: 'OFF'},
             retain: false,
@@ -47,13 +48,13 @@ describe('parseConfig', () => {
         });
     });
 
-    it('rejects unknown keys, bad device keys, bad attribute names and empty bindings', () => {
+    it('rejects unknown keys, bad device keys, bad attribute names and empty mappings', () => {
         expect(() => parseConfig({mqtt: {host: 'x'}})).toThrow(ConfigError);
         expect(() => parseConfig({devices: {'bad key': plug}})).toThrow(/devices\["bad key"\]/);
         expect(() =>
             parseConfig({
                 devices: {
-                    p: {...plug, endpoints: [{deviceTypes: ['OnOffPlugInUnit'], bindings: [{attribute: 'onoff'}]}]},
+                    p: {...plug, endpoints: [{deviceTypes: ['OnOffPlugInUnit'], mappings: [{attribute: 'onoff'}]}]},
                 },
             }),
         ).toThrow(/Cluster\.attribute/);
@@ -62,7 +63,7 @@ describe('parseConfig', () => {
                 devices: {
                     p: {
                         ...plug,
-                        endpoints: [{deviceTypes: ['OnOffPlugInUnit'], bindings: [{attribute: 'OnOff.onOff'}]}],
+                        endpoints: [{deviceTypes: ['OnOffPlugInUnit'], mappings: [{attribute: 'OnOff.onOff'}]}],
                     },
                 },
             }),
@@ -158,5 +159,21 @@ describe('loadConfig', () => {
         const file = join(dir, 'c.json');
         await writeFile(file, '{');
         await expect(loadConfig({path: file, env: {}})).rejects.toThrow(/not valid JSON/);
+    });
+
+    it('migrates the field an earlier version called "bindings" to "mappings"', async () => {
+        dir = await mkdtemp(join(tmpdir(), 'mqtt2matter-config-'));
+        const file = join(dir, 'c.json');
+        const [endpoint] = plug.endpoints;
+        const old = {...plug, endpoints: [{deviceTypes: endpoint!.deviceTypes, bindings: endpoint!.mappings}]};
+        await writeFile(file, JSON.stringify({devices: {old, plug}}));
+        const loaded = await loadConfig({path: file, env: {}});
+        expect(loaded.migrated).toEqual(['old']);
+        expect(loaded.config.devices.old!.endpoints[0]!.mappings).toHaveLength(1);
+        // the raw view, which the UI writes back, carries the new form
+        const raw = loaded.raw.devices as Record<string, {endpoints: Record<string, unknown>[]}>;
+        expect(Object.keys(raw.old!.endpoints[0]!)).toEqual(['deviceTypes', 'mappings']);
+        // a second migration changes nothing
+        expect(migrateDevices(loaded.raw.devices)).toEqual([]);
     });
 });

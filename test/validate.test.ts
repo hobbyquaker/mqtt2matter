@@ -60,7 +60,7 @@ describe('validateDevice', () => {
             device([
                 {
                     deviceTypes: ['ColorTemperatureLight'],
-                    bindings: [
+                    mappings: [
                         {
                             attribute: 'OnOff.onOff',
                             status: {topic: 's', extract: 'POWER', map: {ON: true, OFF: false}},
@@ -90,7 +90,7 @@ describe('validateDevice', () => {
                     deviceTypes: ['Nonsense', 'OnOffLight'],
                     features: {OnOff: ['Sparkle'], Nope: ['X']},
                     attributes: {OnOff: {colour: 1}},
-                    bindings: [
+                    mappings: [
                         {attribute: 'OnOff.brightness', status: {topic: 's'}},
                         {attribute: 'Nope.x', status: {topic: 's'}},
                         {invoke: 'OnOff.explode', command: {topic: 'c', payload: 'x'}},
@@ -105,10 +105,10 @@ describe('validateDevice', () => {
             expect.stringContaining('features.OnOff: OnOff has no feature "Sparkle"'),
             expect.stringContaining('features.Nope: cluster "Nope"'),
             expect.stringContaining('attributes.OnOff.colour: OnOff has no attribute colour'),
-            expect.stringContaining('bindings[0]: OnOff has no attribute brightness'),
-            expect.stringContaining('bindings[1]: cluster "Nope"'),
-            expect.stringContaining('bindings[2]: OnOff has no command explode'),
-            expect.stringContaining('bindings[3]: event channel "DoorLock" is unknown'),
+            expect.stringContaining('mappings[0]: OnOff has no attribute brightness'),
+            expect.stringContaining('mappings[1]: cluster "Nope"'),
+            expect.stringContaining('mappings[2]: OnOff has no command explode'),
+            expect.stringContaining('mappings[3]: event channel "DoorLock" is unknown'),
         ]);
     });
 
@@ -117,7 +117,7 @@ describe('validateDevice', () => {
             device([
                 {
                     deviceTypes: ['Thermostat'],
-                    bindings: [
+                    mappings: [
                         {attribute: 'Thermostat.occupiedCoolingSetpoint', status: {topic: 's'}},
                         {attribute: 'Thermostat.absMinHeatSetpointLimit', status: {topic: 's'}},
                     ],
@@ -131,7 +131,7 @@ describe('validateDevice', () => {
             device([
                 {
                     deviceTypes: ['Thermostat'],
-                    bindings: [
+                    mappings: [
                         {attribute: 'Thermostat.occupiedHeatingSetpoint', status: {topic: 's'}},
                         {attribute: 'Thermostat.absMinHeatSetpointLimit', status: {topic: 's'}},
                     ],
@@ -142,7 +142,7 @@ describe('validateDevice', () => {
         const heatingEndpoint = device([
             {
                 deviceTypes: ['Thermostat'],
-                bindings: [{attribute: 'Thermostat.occupiedHeatingSetpoint', status: {topic: 's'}}],
+                mappings: [{attribute: 'Thermostat.occupiedHeatingSetpoint', status: {topic: 's'}}],
             },
         ]).endpoints[0]!;
         expect(
@@ -152,14 +152,14 @@ describe('validateDevice', () => {
             device([
                 {
                     deviceTypes: ['ColorTemperatureLight'],
-                    bindings: [{attribute: 'ColorControl.currentHue', status: {topic: 's'}}],
+                    mappings: [{attribute: 'ColorControl.currentHue', status: {topic: 's'}}],
                 },
             ]),
         );
         expect(hsOnCt.ok).toBe(true);
         const compositeWithoutFeature = validateDevice(
             device([
-                {deviceTypes: ['DimmableLight'], bindings: [{attribute: 'ColorControl.colorXy', status: {topic: 's'}}]},
+                {deviceTypes: ['DimmableLight'], mappings: [{attribute: 'ColorControl.colorXy', status: {topic: 's'}}]},
             ]),
         );
         expect(compositeWithoutFeature.warnings.map((w) => w.message)).toEqual([
@@ -173,7 +173,7 @@ describe('validateDevice', () => {
             device([
                 {
                     deviceTypes: ['Thermostat', 'OnOffLight'],
-                    bindings: [
+                    mappings: [
                         {attribute: 'OnOff.onOff', status: {topic: 's', map: {ON: 1}}},
                         {
                             attribute: 'Thermostat.systemMode',
@@ -199,26 +199,26 @@ describe('validateDevice', () => {
         );
         const errors = result.errors.map((e) => `${e.path}: ${e.message}`);
         expect(errors).toEqual([
-            expect.stringContaining('bindings[0].status.map["ON"]: map value 1: the attribute is a boolean'),
-            expect.stringContaining('bindings[1].status.map["heat"]: map value "Warm" is not one of'),
-            expect.stringContaining('bindings[1].command.format: "Toasty" is not one of'),
-            expect.stringContaining('bindings[2].status.map["heat"]: map value "grill" is not one of'),
-            expect.stringContaining('bindings[3].status.type: type boolean, but the attribute is a integer'),
-            expect.stringContaining('bindings[6].status.template'),
+            expect.stringContaining('mappings[0].status.map["ON"]: map value 1: the attribute is a boolean'),
+            expect.stringContaining('mappings[1].status.map["heat"]: map value "Warm" is not one of'),
+            expect.stringContaining('mappings[1].command.format: "Toasty" is not one of'),
+            expect.stringContaining('mappings[2].status.map["heat"]: map value "grill" is not one of'),
+            expect.stringContaining('mappings[3].status.type: type boolean, but the attribute is a integer'),
+            expect.stringContaining('mappings[6].status.template'),
         ]);
         const warnings = result.warnings.map((w) => `${w.path}: ${w.message}`);
         expect(warnings).toEqual([
-            expect.stringContaining('bindings[4].status.map["a"]: map value 2.5 is rounded'),
-            expect.stringContaining('bindings[5].command.optimistic'),
-            expect.stringContaining('bindings[6]: OnOff.onOff is bound twice'),
-            expect.stringContaining('bindings[7]: cluster WindowCovering is not part of'),
-            expect.stringContaining('bindings[7].command: no payload, template or format'),
+            expect.stringContaining('mappings[4].status.map["a"]: map value 2.5 is rounded'),
+            expect.stringContaining('mappings[5].command.optimistic'),
+            expect.stringContaining('mappings[6]: OnOff.onOff is bound twice'),
+            expect.stringContaining('mappings[7]: cluster WindowCovering is not part of'),
+            expect.stringContaining('mappings[7].command: no payload, template or format'),
         ]);
     });
 
     it('warns about utility-only endpoints and refuses equal availability payloads', () => {
         const result = validateDevice(
-            device([{deviceTypes: ['PowerSource'], bindings: []}], {
+            device([{deviceTypes: ['PowerSource'], mappings: []}], {
                 availability: {topic: 'a', online: 'x', offline: 'x'},
             }),
         );

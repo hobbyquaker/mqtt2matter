@@ -6,6 +6,7 @@ import {resolve} from 'node:path';
 
 import {z} from 'zod';
 
+import {migrateDevices} from '../model/migrate.ts';
 import {type Config, ConfigSchema} from './schema.ts';
 
 export const DEFAULT_CONFIG_FILE = 'mqtt2matter.json';
@@ -121,6 +122,13 @@ export interface Loaded {
     raw: Record<string, unknown>;
     /** the config paths the environment overrides (`mqtt.url`), which an editor must not write back */
     overridden: string[];
+    /** the devices brought from an earlier format to the current one in `raw`; the file is unchanged until saved */
+    migrated: string[];
+}
+
+/** bring a raw file content written by an earlier version to the current format, in place; the migrated devices */
+export function migrateRaw(raw: Record<string, unknown>): string[] {
+    return migrateDevices(raw.devices);
 }
 
 export async function loadConfig(options: LoadOptions = {}): Promise<Loaded> {
@@ -148,11 +156,13 @@ export async function loadConfig(options: LoadOptions = {}): Promise<Loaded> {
     if (fromFile && !isRecord(raw)) {
         throw new ConfigError(`${located.path} must hold a JSON object`);
     }
+    const migrated = isRecord(raw) ? migrateRaw(raw) : [];
     return {
         config: parseConfig(applyEnv(raw, env)),
         path: located.path,
         fromFile,
         raw: isRecord(raw) ? raw : {},
         overridden: envOverrides(env),
+        migrated,
     };
 }

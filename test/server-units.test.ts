@@ -18,7 +18,7 @@ describe('compactDevice', () => {
                     deviceTypes: ['WindowCovering'],
                     options: {cover: {echoFilter: true}},
                     coalesce: 100,
-                    bindings: [
+                    mappings: [
                         {
                             attribute: 'WindowCovering.currentPositionLiftPercent100ths',
                             status: {
@@ -46,7 +46,7 @@ describe('compactDevice', () => {
                     deviceTypes: ['WindowCovering'],
                     options: {cover: {echoFilter: true}},
                     coalesce: 100,
-                    bindings: [
+                    mappings: [
                         {
                             attribute: 'WindowCovering.currentPositionLiftPercent100ths',
                             status: {

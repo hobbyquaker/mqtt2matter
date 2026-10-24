@@ -17,7 +17,7 @@ import {type FamilyContext, familyFor, forgetContext, registerContext} from '../
 import type {Logger} from '../log.ts';
 import type {AttributeRef} from '../model/attribute.ts';
 import {COMPOSITE_ATTRIBUTES, cluster as clusterInfo} from '../model/catalog.ts';
-import {type DeviceConfig, type EndpointConfig, bindingTarget} from '../model/schema.ts';
+import {type DeviceConfig, type EndpointConfig, mappingTarget} from '../model/schema.ts';
 import {type BuiltEndpoint, buildEndpoint} from './device-types.ts';
 import {childEndpointId, deviceEndpointId, label32, randomDiscriminator, randomPasscode, uniqueId} from './ids.ts';
 
@@ -87,9 +87,9 @@ export class EndpointHandle implements EndpointTarget {
         this.built = built;
         this.log = log;
         const statuses = new Set<string>();
-        for (const binding of config.bindings) {
-            if (binding.status !== undefined) {
-                statuses.add(bindingTarget(binding).name);
+        for (const mapping of config.mappings) {
+            if (mapping.status !== undefined) {
+                statuses.add(mappingTarget(mapping).name);
             }
         }
         this.context = {

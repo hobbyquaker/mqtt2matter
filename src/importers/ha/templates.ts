@@ -1,9 +1,9 @@
 /* Can the payload engine run a Home Assistant template? The engine renders Jinja through
    `@huggingface/jinja` with Home Assistant's filters added (docs/config.md, "Templates"); what it cannot
    do — `states()`, `now()`, `this`, the time and regex helpers, `int(base=…)`, macros — must not become a
-   binding that fails at runtime. The importer parses the template with the same library and walks the
+   mapping that fails at runtime. The importer parses the template with the same library and walks the
    program: every filter, test, called function and free name has to be one the engine provides; a
-   `*_template` that is not leaves its binding unadopted, listed with the template. The names here mirror
+   `*_template` that is not leaves its mapping unadopted, listed with the template. The names here mirror
    the engine's (test/ha-templates.test.ts checks that the two agree). */
 
 import * as jinjaModule from '@huggingface/jinja';

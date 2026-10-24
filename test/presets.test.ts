@@ -18,7 +18,7 @@ const relay = {
         endpoints: [
             {
                 deviceTypes: ['OnOffPlugInUnit'],
-                bindings: [
+                mappings: [
                     {
                         attribute: 'OnOff.onOff',
                         status: {topic: 'stat/%topic%/RESULT', extract: '$.POWER%index%', map: {ON: true, OFF: false}},
@@ -51,13 +51,13 @@ describe('presets', () => {
             topics: [{topic: 'tele/sonoff-1/LWT', online: 'Online', offline: 'Offline'}],
             mode: 'latest',
         });
-        const binding = device.endpoints[0]!.bindings[0]!;
-        expect(binding.status?.topic).toBe('stat/sonoff-1/RESULT');
-        expect(binding.status?.extract).toBe('$.POWER');
-        expect(binding.command?.topic).toBe('cmnd/sonoff-1/POWER');
+        const mapping = device.endpoints[0]!.mappings[0]!;
+        expect(mapping.status?.topic).toBe('stat/sonoff-1/RESULT');
+        expect(mapping.status?.extract).toBe('$.POWER');
+        expect(mapping.command?.topic).toBe('cmnd/sonoff-1/POWER');
         expect(device.source).toEqual({kind: 'preset', key: 'tasmota/relay', version: '1'});
         expect(
-            applyPreset(parsePreset(relay), {topic: 't', index: '2'}).endpoints[0]!.bindings[0]!.command?.topic,
+            applyPreset(parsePreset(relay), {topic: 't', index: '2'}).endpoints[0]!.mappings[0]!.command?.topic,
         ).toBe('cmnd/t/POWER2');
     });
 

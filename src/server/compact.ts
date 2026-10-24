@@ -45,16 +45,16 @@ function compactEndpoint(endpoint: EndpointConfig, first: boolean): Record<strin
     if (first && endpoint.id === 'main') {
         delete out.id;
     }
-    if (endpoint.bindings.length === 0) {
-        delete out.bindings;
+    if (endpoint.mappings.length === 0) {
+        delete out.mappings;
     } else {
-        out.bindings = endpoint.bindings.map((binding) => {
-            const b: Record<string, unknown> = {...binding};
-            if (binding.status !== undefined) {
-                b.status = compactStatus(binding.status);
+        out.mappings = endpoint.mappings.map((mapping) => {
+            const b: Record<string, unknown> = {...mapping};
+            if (mapping.status !== undefined) {
+                b.status = compactStatus(mapping.status);
             }
-            if (binding.command !== undefined) {
-                b.command = compactCommand(binding.command);
+            if (mapping.command !== undefined) {
+                b.command = compactCommand(mapping.command);
             }
             return dropUndefined(b);
         });
