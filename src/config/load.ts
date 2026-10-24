@@ -1,0 +1,128 @@
+/* Loading the configuration: a JSON file, then the environment on top of it. The environment wins
+   because that is how a container is configured; the file is what the UI edits (phase 3). */
+
+import {readFile} from 'node:fs/promises';
+import {resolve} from 'node:path';
+
+import {z} from 'zod';
+
+import {type Config, ConfigSchema} from './schema.ts';
+
+export const DEFAULT_CONFIG_FILE = 'mqtt2matter.json';
+
+/** the environment variables and the config paths they override */
+export const ENV = {
+    /** the config file; also the first command line argument */
+    MQTT2MATTER_CONFIG: 'config file',
+    MQTT2MATTER_MQTT_URL: 'mqtt.url',
+    MQTT2MATTER_MQTT_USERNAME: 'mqtt.username',
+    MQTT2MATTER_MQTT_PASSWORD: 'mqtt.password',
+    MQTT2MATTER_MQTT_CLIENT_ID: 'mqtt.clientId',
+    MQTT2MATTER_STORAGE: 'storage',
+    MQTT2MATTER_LOG_LEVEL: 'log.level',
+    MQTT2MATTER_MATTER_LOG_LEVEL: 'log.matter',
+} as const;
+
+export type Env = Record<string, string | undefined>;
+
+export class ConfigError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'ConfigError';
+    }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function setPath(target: Record<string, unknown>, path: string, value: string): void {
+    const keys = path.split('.');
+    const last = keys.pop() ?? path;
+    let cursor = target;
+    for (const key of keys) {
+        const next = cursor[key];
+        if (!isRecord(next)) {
+            cursor[key] = {};
+        }
+        cursor = cursor[key] as Record<string, unknown>;
+    }
+    cursor[last] = value;
+}
+
+/** a copy of `raw` with the environment's overrides written in */
+export function applyEnv(raw: unknown, env: Env): Record<string, unknown> {
+    const result: Record<string, unknown> = isRecord(raw) ? structuredClone(raw) : {};
+    for (const [name, path] of Object.entries(ENV)) {
+        if (path === 'config file') {
+            continue;
+        }
+        const value = env[name];
+        if (value !== undefined && value !== '') {
+            setPath(result, path, value);
+        }
+    }
+    return result;
+}
+
+/** validate a raw object; the error message lists every problem with its path */
+export function parseConfig(raw: unknown): Config {
+    const result = ConfigSchema.safeParse(raw);
+    if (!result.success) {
+        throw new ConfigError(`invalid configuration:\n${z.prettifyError(result.error)}`);
+    }
+    return result.data;
+}
+
+/** the config file to read: the first argument, else the environment, else the default in the cwd */
+export function configPath(argv: readonly string[], env: Env): {path: string; explicit: boolean} {
+    const fromArgs = argv[2];
+    if (fromArgs !== undefined && fromArgs !== '') {
+        return {path: resolve(fromArgs), explicit: true};
+    }
+    const fromEnv = env.MQTT2MATTER_CONFIG;
+    if (fromEnv !== undefined && fromEnv !== '') {
+        return {path: resolve(fromEnv), explicit: true};
+    }
+    return {path: resolve(DEFAULT_CONFIG_FILE), explicit: false};
+}
+
+export interface LoadOptions {
+    /** the file; default: `configPath(process.argv, process.env)` */
+    path?: string;
+    /** a missing file is an error (true) or an empty configuration (false, the default for the default path) */
+    explicit?: boolean;
+    env?: Env;
+}
+
+export interface Loaded {
+    config: Config;
+    path: string;
+    /** false when the file did not exist and the defaults were used */
+    fromFile: boolean;
+}
+
+export async function loadConfig(options: LoadOptions = {}): Promise<Loaded> {
+    const env = options.env ?? process.env;
+    const located = options.path === undefined ? configPath(process.argv, env) : {path: options.path, explicit: true};
+    const explicit = options.explicit ?? located.explicit;
+    let raw: unknown = {};
+    let fromFile = false;
+    try {
+        const text = await readFile(located.path, 'utf8');
+        try {
+            raw = JSON.parse(text);
+        } catch (error) {
+            throw new ConfigError(`${located.path} is not valid JSON: ${(error as Error).message}`);
+        }
+        fromFile = true;
+    } catch (error) {
+        if (error instanceof ConfigError) {
+            throw error;
+        }
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT' || explicit) {
+            throw new ConfigError(`cannot read ${located.path}: ${(error as Error).message}`);
+        }
+    }
+    return {config: parseConfig(applyEnv(raw, env)), path: located.path, fromFile};
+}
