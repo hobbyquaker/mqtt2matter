@@ -489,7 +489,12 @@ class Builder {
         stateOn = on,
         stateOff = off,
     ): void {
-        const status = this.status(entity, stateTopic, stateTemplate, {map: {[stateOn]: true, [stateOff]: false}});
+        // lights and fans document `state_value_template`; the older `value_template` is still what Tasmota sends
+        const templateField =
+            entity.config[stateTemplate] === undefined && typeof entity.config.value_template === 'string'
+                ? 'value_template'
+                : stateTemplate;
+        const status = this.status(entity, stateTopic, templateField, {map: {[stateOn]: true, [stateOff]: false}});
         const command = this.command(
             entity,
             'command_topic',
