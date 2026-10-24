@@ -8,8 +8,10 @@ import {createRequire} from 'node:module';
 import type {Config} from './config/schema.ts';
 import {BindingRuntime, type Codec} from './engine/runtime.ts';
 import {type Logger, silentLogger} from './log.ts';
+import type {DeviceHandle} from './matter/bridge.ts';
 import {NodeManager} from './matter/node-manager.ts';
-import {validateDevices} from './model/validate.ts';
+import type {DeviceConfig} from './model/schema.ts';
+import {validateDevice, validateDevices} from './model/validate.ts';
 import {MqttClient} from './mqtt/client.ts';
 
 const pkg = createRequire(import.meta.url)('../package.json') as {version: string};
@@ -118,6 +120,47 @@ export class App {
                 );
             }
         }
+    }
+
+    get running(): boolean {
+        return this.started;
+    }
+
+    /**
+     * Add or replace a device while running: its old endpoint and bindings go, the new entry is validated,
+     * built in its bridge and wired. A device with errors is kept in the configuration but not built.
+     */
+    async applyDevice(key: string, device: DeviceConfig): Promise<DeviceHandle | undefined> {
+        this.runtime.unbind(key);
+        await this.nodes.removeDevice(key);
+        this.config.devices[key] = device;
+        if (!this.started) {
+            return undefined;
+        }
+        const result = validateDevice(device);
+        for (const issue of result.issues) {
+            this.log[issue.level === 'error' ? 'error' : 'warn'](`${key} ${issue.path}: ${issue.message}`);
+        }
+        if (!device.enabled) {
+            return undefined;
+        }
+        if (!result.ok) {
+            this.log.error(`${key}: not built, the configuration has errors`);
+            return undefined;
+        }
+        const handle = await this.nodes.addDevice(key, device);
+        if (handle !== undefined) {
+            this.runtime.bind(key, device, handle.targets());
+        }
+        return handle;
+    }
+
+    /** remove a device while running */
+    async removeDevice(key: string): Promise<void> {
+        this.runtime.unbind(key);
+        await this.nodes.removeDevice(key);
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete this.config.devices[key];
     }
 
     async stop(): Promise<void> {

@@ -145,6 +145,26 @@ export class NodeManager {
         await bridge.addDevice(key, device);
     }
 
+    /** add or replace a device while running: placed by the shard map, installed into its bridge at once */
+    async addDevice(key: string, device: DeviceConfig): Promise<DeviceHandle | undefined> {
+        if (this.shards === undefined) {
+            throw new Error('prepare() first');
+        }
+        await this.removeDevice(key);
+        await this.place(key, device);
+        await this.shards.save();
+        return this.handle(key);
+    }
+
+    /** take a device out of its bridge; the shard map keeps the assignment for a later return */
+    async removeDevice(key: string): Promise<void> {
+        const bridgeId = this.placement.get(key);
+        this.placement.delete(key);
+        if (bridgeId !== undefined) {
+            await this.bridges.get(bridgeId)?.removeDevice(key);
+        }
+    }
+
     /** start the bridges one after the other */
     async start(): Promise<void> {
         if (this.shards === undefined) {
