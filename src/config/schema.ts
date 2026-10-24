@@ -52,6 +52,20 @@ export const ServerConfigSchema = z
     .strict();
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;
 
+export const ImportersConfigSchema = z
+    .object({
+        z2m: z
+            .object({
+                /** watch zigbee2mqtt's bridge topics and offer its devices on the UI's adopt page */
+                enabled: z.boolean().default(true),
+                baseTopic: z.string().min(1).default('zigbee2mqtt'),
+            })
+            .strict()
+            .prefault({}),
+    })
+    .strict();
+export type ImportersConfig = z.infer<typeof ImportersConfigSchema>;
+
 export const ConfigSchema = z
     .object({
         mqtt: MqttConfigSchema.prefault({}),
@@ -73,6 +87,7 @@ export const ConfigSchema = z
         server: ServerConfigSchema.prefault({}),
         /** directories with the user's preset files, on top of the shipped ones */
         presets: z.array(z.string().min(1)).default([]),
+        importers: ImportersConfigSchema.prefault({}),
     })
     .strict();
 

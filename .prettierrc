@@ -5,27 +5,18 @@
     "printWidth": 120,
     "overrides": [
         {
-            "files": [
-                "*.json",
-                "*.yml",
-                "*.yaml",
-                "*.md"
-            ],
+            "files": ["*.json", "*.yml", "*.yaml", "*.md"],
             "options": {
                 "tabWidth": 2
             }
         },
         {
-            "files": [
-                "*.svelte"
-            ],
+            "files": ["*.svelte"],
             "options": {
                 "parser": "svelte",
                 "printWidth": 160
             }
         }
     ],
-    "plugins": [
-        "prettier-plugin-svelte"
-    ]
+    "plugins": ["prettier-plugin-svelte"]
 }

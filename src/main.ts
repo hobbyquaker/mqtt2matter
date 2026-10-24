@@ -6,7 +6,7 @@ import {importZ2m, parseImportArgs} from './commands/import-z2m.ts';
 import {ConfigError, loadConfig} from './config/load.ts';
 import {createLogger, describeError} from './log.ts';
 import {checkConfig, formatCheck} from './matter/check.ts';
-import {ConfigStore, LogBuffer, Server} from './server/index.ts';
+import {ConfigStore, type Importer, LogBuffer, Server, Z2mImporter} from './server/index.ts';
 
 async function main(): Promise<void> {
     const arg = process.argv[2];
@@ -50,6 +50,10 @@ async function main(): Promise<void> {
     const app = new App(config, {log});
     let server: Server | undefined;
     if (config.server.enabled) {
+        const importers: Importer[] = [];
+        if (config.importers.z2m.enabled) {
+            importers.push(new Z2mImporter(config.importers.z2m.baseTopic, log.child('z2m')));
+        }
         server = new Server({
             app,
             store: new ConfigStore({path, raw, config, overridden}),
@@ -59,6 +63,7 @@ async function main(): Promise<void> {
             host: config.server.host,
             port: config.server.port,
             topics: config.server.topics,
+            importers,
         });
         // the UI is reachable before the broker and the bridges are up, so a wrong setting can be fixed there
         await server.listen();
