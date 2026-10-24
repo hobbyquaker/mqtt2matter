@@ -1,0 +1,8 @@
+mqtt2matter
+Copyright 2026 Sebastian Raff
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product builds on matter.js (https://github.com/matter-js/matter.js, Apache-2.0) and
+MQTT.js (https://github.com/mqttjs/MQTT.js, MIT) as dependencies; it contains no copied code
+from either, nor from matterbridge or its plugins.
