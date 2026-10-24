@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- One Zigbee device is no longer adopted twice by accident, natively from zigbee2mqtt and a second time through
+  zigbee2mqtt's Home Assistant discovery: the discovery entry is reported as a duplicate (`covered`) of the
+  native description, and a zigbee2mqtt device whose discovery twin was adopted first is a duplicate of that
+  twin. Adopting a duplicate takes an explicit confirmation — in the API too (`force`), not only on the Adopt
+  page — and the native side can replace its twin, which is then disabled and kept until it is deleted. The
+  twin is also recognised without zigbee2mqtt's `origin` (older versions) and by a Zigbee address among a
+  device's connections.
+
 - The join of a Matter attribute, command or event with MQTT is called a **mapping** (German "Zuordnung"), no
   longer a binding — Matter's own Binding cluster means device-to-device control, which mqtt2matter does not
   configure. The configuration field `bindings` of an endpoint became `mappings`, the UI's binding editor the

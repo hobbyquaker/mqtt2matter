@@ -77,7 +77,8 @@ describe('the corpus', () => {
     });
 
     it('every baseline passes the strict matter.js dry run', async () => {
-        const {devices: adopted} = ha.adopt({}, discovery);
+        const keys = discovery.items.map((item) => item.key);
+        const {devices: adopted} = ha.adopt({}, discovery, {keys, force: true});
         expect(Object.keys(adopted)).toHaveLength(36);
         const result = await checkConfig(parseConfig({log: {matter: 'error'}, devices: adopted}));
         expect(formatCheck(result).filter((l) => l.startsWith('ERROR'))).toEqual([]);

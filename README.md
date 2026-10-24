@@ -65,7 +65,8 @@ OpenMQTTGateway, the device-based form with components — appears on the Adopt 
 its own endpoint, the other entities as children, a suggested area as a Matter area tag, templates through
 the payload engine where it can run them and listed with the template where it cannot. What has no Matter
 equivalent (`number`, `select`, `button`, settings and diagnostics) is listed, not dropped. A device that
-zigbee2mqtt announces itself is marked: its native description is the better one.
+zigbee2mqtt announces itself is marked as a duplicate of its native description, which is the better one: the
+bridge adopts one device twice only when you confirm it.
 
 [docs/config.md](docs/config.md) describes the configuration, [docs/architecture.md](docs/architecture.md)
 the module layout and its rules.

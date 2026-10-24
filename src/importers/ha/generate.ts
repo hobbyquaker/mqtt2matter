@@ -87,18 +87,54 @@ export function endpointId(name: string): string {
     return /^[A-Za-z0-9]/.test(cleaned) ? cleaned : `e${cleaned}`;
 }
 
-/** the key of the zigbee2mqtt importer's native description when this device is zigbee2mqtt's own discovery */
-export function nativeKey(identity: string, origin: Origin | undefined): string | undefined {
-    if (origin?.name !== 'Zigbee2MQTT') {
-        return undefined;
+const IEEE = /^(?:0x)?([0-9a-fA-F]{16})$/;
+const IEEE_COLONS = /^([0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){7})$/;
+
+/** an IEEE address in zigbee2mqtt's form (`0x` and 16 lower-case hex digits), or undefined */
+function ieeeOf(value: string): string | undefined {
+    const plain = IEEE.exec(value)?.[1] ?? IEEE_COLONS.exec(value)?.[1]?.replaceAll(':', '');
+    return plain === undefined ? undefined : `0x${plain.toLowerCase()}`;
+}
+
+/**
+ * The key of the zigbee2mqtt importer's native description of the same device, when there is one: the
+ * identifiers zigbee2mqtt's own discovery uses (`zigbee2mqtt_<ieee>`, `zigbee2mqtt_<n>_<group id>` — with or
+ * without an `origin`, which older versions do not send), else a Zigbee IEEE address among the connections
+ * (`["zigbee", "0x…"]`, `["ieee", "…"]`) or the identifiers of another source describing a Zigbee device.
+ */
+export function nativeKey(identity: string, device?: DeviceInfo): string | undefined {
+    const identifiers = [
+        identity,
+        ...(typeof device?.identifiers === 'string' ? [device.identifiers] : []),
+        ...(Array.isArray(device?.identifiers) ? device.identifiers : []),
+    ].filter((id): id is string => typeof id === 'string');
+    for (const id of identifiers) {
+        const own = /^zigbee2mqtt_(0x[0-9a-fA-F]{16})$/.exec(id);
+        if (own?.[1] !== undefined) {
+            return `z2m:${own[1].toLowerCase()}`;
+        }
+        const group = /^zigbee2mqtt_\d+_(\d+)$/.exec(id);
+        if (group?.[1] !== undefined) {
+            return `z2m:group:${group[1]}`;
+        }
     }
-    const device = /^zigbee2mqtt_(0x[0-9a-fA-F]{16})$/.exec(identity);
-    if (device !== null) {
-        return `z2m:${device[1] ?? ''}`;
+    for (const connection of Array.isArray(device?.connections) ? device.connections : []) {
+        // the payload is foreign JSON: the declared tuple type is not checked when it is parsed
+        const [type, value] = Array.isArray(connection) ? (connection as unknown[]) : [];
+        if (typeof type === 'string' && typeof value === 'string') {
+            const zigbee = type.toLowerCase() === 'zigbee' || type.toLowerCase() === 'ieee';
+            const ieee = zigbee ? ieeeOf(value) : undefined;
+            if (ieee !== undefined) {
+                return `z2m:${ieee}`;
+            }
+        }
     }
-    const group = /^zigbee2mqtt_\d+_(\d+)$/.exec(identity);
-    if (group !== null) {
-        return `z2m:group:${group[1] ?? ''}`;
+    for (const id of identifiers) {
+        // a bare address only in its 0x form: 16 hex digits alone could be any serial number
+        const ieee = id.startsWith('0x') ? ieeeOf(id) : undefined;
+        if (ieee !== undefined) {
+            return `z2m:${ieee}`;
+        }
     }
     return undefined;
 }

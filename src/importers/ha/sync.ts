@@ -113,7 +113,7 @@ export function discover(input: DiscoverInput): Discovery {
     for (const [identity, entities] of byIdentity) {
         const raw = rawDevice(prefix, identity, entities);
         const area = typeof raw.device.suggested_area === 'string' ? raw.device.suggested_area.trim() : '';
-        const native = nativeKey(identity, raw.origin);
+        const native = nativeKey(identity, raw.device);
         const base = {
             key: deviceKey(identity),
             kind: 'device' as const,

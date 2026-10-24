@@ -95,7 +95,9 @@ const discovery = source.discover();               // or z2m.discover({devices, 
 const report = z2m.diff(discovery, config.devices);        // SyncEntry[]: what adopting would do, nothing touched
 const {devices, report} = z2m.adopt(config.devices, discovery, {keys?, resync?, orphan?});
 //   SyncEntry {key, kind, name, status, device?, conflicts: Conflict[], edits, unmapped, notes}
-//   status: 'new' | 'unchanged' | 'updated' | 'orphaned' | 'restored' | 'invalid' | 'unsupported'
+//   status: 'new' | 'unchanged' | 'updated' | 'orphaned' | 'restored' | 'invalid' | 'unsupported' | 'covered'
+//   covered?: the key that covers a `covered` entry; twins?: configured devices for the same physical device
+// adopt(devices, discovery, {keys?, resync?, orphan?, force?, replace?}) — `force` takes the covered ones in `keys`
 z2m.orphaned(devices);                                      // the keys marked orphaned
 z2m.edits(device);                                          // the user's edits against the baseline
 z2m.generate(raw);                                          // the baseline for a stored `source.raw`
@@ -139,9 +141,23 @@ a sibling carry a number tag as the zigbee2mqtt importer's do. An entity without
 unsupported (Home Assistant itself needs `device` and `unique_id` to group entities). A `suggested_area`
 travels in the report (`area`) and, when the name matches one of Matter's Common Area tags (English, or
 German through a synonym table — `Küche`, `Wohnzimmer`, `Bad`, …), becomes a `Descriptor` tag of namespace
-`0x10` on the device's own endpoint. A device zigbee2mqtt announces itself (`origin.name: Zigbee2MQTT`,
-identifier `zigbee2mqtt_<ieee>`) is reported with `native: "z2m:<ieee>"`: the native description is
-preferred, the Adopt page's "Adopt all new" leaves it to the zigbee2mqtt importer.
+`0x10` on the device's own endpoint.
+
+### One device, two descriptions
+
+zigbee2mqtt describes its devices natively and, with its Home Assistant integration on, a second time through
+discovery; adopting both would put the same device twice on the bridge. A discovered HA device is reported
+with `native: "z2m:<ieee>"` (or `z2m:group:<id>`) when its identifiers are zigbee2mqtt's own
+(`zigbee2mqtt_<ieee>`, `zigbee2mqtt_<n>_<group id>` — with or without `origin`, which older versions do not
+send), or when a Zigbee IEEE address is among its connections (`["zigbee", …]`, `["ieee", …]`) or its
+identifiers (`0x…`). The shared sync makes it a rule for both importers, the API and the command line alike:
+
+- an HA entry with a native key is `covered` (by that key): the native description is preferred;
+- a zigbee2mqtt entry whose HA twin is already adopted (and neither disabled nor orphaned) is `covered` by the
+  twin, `twins: [<ha key>]`;
+- `adopt` never takes a `covered` entry, not even when it is named in `keys`, unless the call says `force`;
+  with `replace` as well, the twins are disabled (`enabled: false`) — kept in the file, removed by a click;
+- an adopted device whose twin is adopted too is reported with `twins` and a note.
 
 ### What becomes what
 

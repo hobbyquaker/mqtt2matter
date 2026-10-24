@@ -512,6 +512,61 @@ describe('the web server', () => {
         expect((await api('DELETE', `/api/devices/${encodeURIComponent(KEY)}`)).status).toBe(204);
     }, 60_000);
 
+    it('never adopts one Zigbee device twice without being told: natively and through its HA discovery', async () => {
+        const IEEE = '0x00158d00091e7bd6';
+        const NATIVE = `z2m:${IEEE}`;
+        const HA = `ha:zigbee2mqtt_${IEEE}`;
+        const topic = `homeassistant/binary_sensor/${IEEE}/contact/config`;
+        const entryOf = async (key: string): Promise<any> =>
+            (await api('GET', '/api/adopt')).json.entries.find((e: any) => e.key === key);
+        await observer.publishAsync('zigbee2mqtt/bridge/devices', await readFile(fixture, 'utf8'), {retain: true});
+        await observer.publishAsync(
+            topic,
+            JSON.stringify({
+                name: null,
+                unique_id: `${IEEE}_contact`,
+                device_class: 'door',
+                state_topic: 'zigbee2mqtt/contact',
+                value_template: '{{ value_json.contact }}',
+                payload_on: false,
+                payload_off: true,
+                device: {identifiers: [`zigbee2mqtt_${IEEE}`], name: 'Contact'},
+                origin: {name: 'Zigbee2MQTT', sw: '2.9.2'},
+            }),
+            {retain: true},
+        );
+        await waitFor(async () => (await entryOf(HA)) !== undefined, 10_000, 'discovery');
+        expect(await entryOf(HA)).toMatchObject({status: 'covered', covered: NATIVE, native: NATIVE});
+        expect(await entryOf(NATIVE)).toMatchObject({status: 'new'});
+
+        // the HA side: refused without force, adopted when forced
+        const refused = await api('POST', `/api/adopt/ha-discovery/${encodeURIComponent(HA)}`, {});
+        expect(refused.status).toBe(409);
+        expect(refused.json.details).toEqual({covered: NATIVE, twins: []});
+        const forced = await api('POST', `/api/adopt/ha-discovery/${encodeURIComponent(HA)}`, {force: true});
+        expect(forced.status).toBe(200);
+
+        // the native side is now covered by the adopted twin: refused, then replacing it
+        expect(await entryOf(NATIVE)).toMatchObject({status: 'covered', covered: HA, twins: [HA]});
+        expect((await api('POST', `/api/adopt/z2m/${encodeURIComponent(NATIVE)}`, {})).status).toBe(409);
+        const replaced = await api('POST', `/api/adopt/z2m/${encodeURIComponent(NATIVE)}`, {
+            force: true,
+            replace: true,
+        });
+        expect(replaced.status).toBe(200);
+        expect(replaced.json.built).toBe(true);
+        const twin = await api('GET', `/api/devices/${encodeURIComponent(HA)}`);
+        expect(twin.json.device.enabled).toBe(false);
+        expect(twin.json.built).toBe(false);
+        const file = JSON.parse(await readFile(join(dir, 'mqtt2matter.json'), 'utf8'));
+        expect(file.devices[HA].enabled).toBe(false);
+        expect(file.devices[NATIVE]).toBeDefined();
+
+        await observer.publishAsync(topic, '', {retain: true});
+        expect((await api('DELETE', `/api/devices/${encodeURIComponent(HA)}`)).status).toBe(204);
+        expect((await api('DELETE', `/api/devices/${encodeURIComponent(NATIVE)}`)).status).toBe(204);
+    }, 60_000);
+
     it('exports and imports', async () => {
         const all = await fetch(`${base}/api/export`);
         expect(all.headers.get('content-disposition')).toContain('mqtt2matter.json');

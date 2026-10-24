@@ -240,7 +240,7 @@ export interface AdoptEntry {
     key: string;
     kind: 'device' | 'group';
     name: string;
-    status: 'new' | 'unchanged' | 'updated' | 'orphaned' | 'restored' | 'invalid' | 'unsupported';
+    status: 'new' | 'unchanged' | 'updated' | 'orphaned' | 'restored' | 'invalid' | 'unsupported' | 'covered';
     conflicts: Conflict[];
     edits: number;
     unmapped: string[];
@@ -249,6 +249,10 @@ export interface AdoptEntry {
     area?: string;
     /** another importer describes the same device natively (its key): native preferred */
     native?: string;
+    /** for `covered`: the description that covers it — the native one or an adopted twin */
+    covered?: string;
+    /** configured devices that stand for the same physical device */
+    twins?: string[];
 }
 
 export interface LogEntry {
@@ -328,11 +332,11 @@ export const api = {
         request<void>('DELETE', `/api/bridges/${encodeURIComponent(id)}/fabrics/${index}`),
     adopt: () => request<{importers: string[]; entries: AdoptEntry[]}>('GET', '/api/adopt'),
     resync: () => request<{importers: string[]; entries: AdoptEntry[]; written: string[]}>('POST', '/api/adopt/resync'),
-    adoptDevice: (kind: string, key: string) =>
+    adoptDevice: (kind: string, key: string, options: {force?: boolean; replace?: boolean} = {}) =>
         request<DeviceDetail & {entry: AdoptEntry}>(
             'POST',
             `/api/adopt/${encodeURIComponent(kind)}/${encodeURIComponent(key)}`,
-            {},
+            options,
         ),
     exportAll: () => request<Record<string, unknown>>('GET', '/api/export'),
     exportDevice: (key: string) =>

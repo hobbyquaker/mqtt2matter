@@ -80,7 +80,8 @@ beforeAll(async () => {
 
     const source = new ha.HaSource();
     loadCorpus(source, ...CORPUS);
-    const {devices} = ha.adopt({}, source.discover(), {keys: KEYS});
+    // zigbee2mqtt's own discovery is among them: adopted although covered by its native description
+    const {devices} = ha.adopt({}, source.discover(), {keys: KEYS, force: true});
     const config = parseConfig({
         mqtt: {url: broker.url},
         storage,

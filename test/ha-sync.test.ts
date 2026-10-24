@@ -36,7 +36,10 @@ function corpusSource(): ha.HaSource {
 
 function adoptedCorpus(): {source: ha.HaSource; devices: DevicesInput} {
     const source = corpusSource();
-    return {source, devices: ha.adopt({}, source.discover()).devices};
+    // zigbee2mqtt's own discovery is covered by its native description: adopted here on purpose (force)
+    const discovery = source.discover();
+    const keys = discovery.items.map((item) => item.key);
+    return {source, devices: ha.adopt({}, discovery, {keys, force: true}).devices};
 }
 
 describe('adopt', () => {
@@ -49,12 +52,17 @@ describe('adopt', () => {
         };
         const source = corpusSource();
         const {devices, report} = ha.adopt({manual, z2m}, source.discover());
-        expect(Object.keys(devices)).toHaveLength(38);
+        expect(Object.keys(devices)).toHaveLength(33);
         expect(devices.manual).toBe(manual);
         expect(devices.z2m).toBe(z2m);
-        expect(statuses(report)).toEqual({new: 36, unsupported: 7});
+        expect(statuses(report)).toEqual({new: 31, covered: 5, unsupported: 7});
         expect(entry(report, RELAY)).toMatchObject({status: 'new', area: 'Küche', kind: 'device'});
-        expect(entry(report, HUE).native).toBe('z2m:0x00124b0000000001');
+        expect(entry(report, HUE)).toMatchObject({
+            status: 'covered',
+            native: 'z2m:0x00124b0000000001',
+            covered: 'z2m:0x00124b0000000001',
+        });
+        expect(devices[HUE]).toBeUndefined();
         expect(entry(report, 'ha:cam00001').status).toBe('unsupported');
         expect(entry(report, 'ha:cam00001').device).toBeUndefined();
         expect(entry(report, 'ha:cam00001').notes).toEqual(['nothing of its entities maps onto Matter']);
@@ -64,7 +72,7 @@ describe('adopt', () => {
         const source = corpusSource();
         const {devices, report} = ha.adopt({}, source.discover(), {keys: [RELAY]});
         expect(Object.keys(devices)).toEqual([RELAY]);
-        expect(statuses(report).new).toBe(36);
+        expect(statuses(report).new).toBe(31);
     });
 
     it('a second adopt over the same discovery changes nothing', () => {

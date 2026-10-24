@@ -19,7 +19,16 @@
     let showUnsupported = $state(false);
     let detailsOf = $state<AdoptEntry | undefined>(undefined);
 
-    const ORDER: Record<AdoptEntry['status'], number> = {new: 0, updated: 1, restored: 1, orphaned: 2, invalid: 3, unchanged: 4, unsupported: 5};
+    const ORDER: Record<AdoptEntry['status'], number> = {
+        new: 0,
+        updated: 1,
+        restored: 1,
+        orphaned: 2,
+        invalid: 3,
+        covered: 4,
+        unchanged: 5,
+        unsupported: 6,
+    };
 
     const shown = $derived.by(() => {
         const needle = filter.trim().toLowerCase();
@@ -83,7 +92,40 @@
         }
     }
 
+    /** a covered entry: the same device as another importer's; adopted only after the user said so */
+    async function confirmCovered(entry: AdoptEntry): Promise<{force: boolean; replace: boolean} | undefined> {
+        const twins = entry.twins ?? [];
+        if (entry.native === undefined && twins.length > 0) {
+            // the native description of a device adopted through HA discovery: replace the twin
+            const ok = await dialogs.confirm(
+                t(
+                    '{name} is already adopted as {key}. Replace it: the native description is adopted and {key} is disabled — it stays in the configuration until you delete it. Controllers see a new device.',
+                    {name: entry.name, key: twins.join(', ')},
+                ),
+                {confirm: t('Replace')},
+            );
+            return ok ? {force: true, replace: true} : undefined;
+        }
+        const key = entry.covered ?? entry.native ?? '';
+        const ok = await dialogs.confirm(
+            t(
+                '{name} is the same device as {key}, which {source} describes natively. Adopting it here makes a second Matter device for one device: controllers show it twice. Adopt it anyway?',
+                {name: entry.name, key, source: kindLabel(key.split(':')[0] ?? '')},
+            ),
+            {confirm: t('Adopt anyway'), danger: true},
+        );
+        return ok ? {force: true, replace: false} : undefined;
+    }
+
     async function adopt(entry: AdoptEntry): Promise<void> {
+        let options = {};
+        if (entry.status === 'covered') {
+            const confirmed = await confirmCovered(entry);
+            if (confirmed === undefined) {
+                return;
+            }
+            options = confirmed;
+        }
         if (entry.status === 'updated' || entry.status === 'restored') {
             const ok = await dialogs.confirm(
                 entry.conflicts.length > 0
@@ -99,7 +141,7 @@
             }
         }
         try {
-            const detail = await api.adoptDevice(entry.importer, entry.key);
+            const detail = await api.adoptDevice(entry.importer, entry.key, options);
             notices.info(t('{name} adopted as {key}', {name: entry.name, key: detail.key}));
             detailsOf = undefined;
             await load();
@@ -108,13 +150,9 @@
         }
     }
 
-    /** a device another importer describes natively is left to that importer */
-    function nativeElsewhere(entry: AdoptEntry): boolean {
-        return entry.native !== undefined && importers.some((kind) => entry.native?.startsWith(`${kind}:`) === true);
-    }
-
     async function adoptAllNew(): Promise<void> {
-        const fresh = entries.filter((e) => e.status === 'new' && !nativeElsewhere(e));
+        // a covered entry (the same device as another importer's) is never among them: the server says so too
+        const fresh = entries.filter((e) => e.status === 'new');
         if (!(await dialogs.confirm(t('Adopt {count} new devices?', {count: fresh.length}), {confirm: t('Adopt')}))) {
             return;
         }
@@ -155,6 +193,7 @@
             orphaned: t('orphaned'),
             invalid: t('invalid'),
             unsupported: t('unsupported'),
+            covered: t('duplicate'),
         }[status];
     }
 
@@ -192,7 +231,9 @@
                 {
                     count: counts.orphaned ?? 0,
                 },
-            )} · {t('{count} adopted', {count: counts.unchanged ?? 0})} · {t('{count} unsupported', {count: counts.unsupported ?? 0})}
+            )} · {t('{count} adopted', {count: counts.unchanged ?? 0})} · {t('{count} duplicates', {count: counts.covered ?? 0})} · {t('{count} unsupported', {
+                count: counts.unsupported ?? 0,
+            })}
         </div>
     </div>
     <div class="ui-page-scroll">
@@ -246,6 +287,10 @@
                                     <button type="button" class="ui-button" disabled={busy} onclick={() => adopt(entry)} data-testid="adopt"
                                         >{t('Adopt')}</button
                                     >
+                                {:else if entry.status === 'covered'}
+                                    <button type="button" class="ui-button" disabled={busy} onclick={() => adopt(entry)} data-testid="adopt"
+                                        >{entry.native === undefined && (entry.twins ?? []).length > 0 ? t('Replace') : t('Adopt anyway')}</button
+                                    >
                                 {:else if entry.status === 'updated' || entry.status === 'restored'}
                                     <button type="button" class="ui-button" disabled={busy} onclick={() => adopt(entry)} data-testid="update"
                                         >{t('Update')}</button
@@ -287,6 +332,10 @@
                     })}
                 </dd>
             {/if}
+            {#if (detailsOf.twins ?? []).length > 0}
+                <dt>{t('Twins')}</dt>
+                <dd><code>{(detailsOf.twins ?? []).join(', ')}</code></dd>
+            {/if}
             {#if detailsOf.notes.length > 0}
                 <dt>{t('Notes')}</dt>
                 <dd>{detailsOf.notes.join('; ')}</dd>
@@ -323,6 +372,10 @@
                 {#if entry.status === 'new' || entry.status === 'updated' || entry.status === 'restored'}
                     <button type="button" class="ui-button ui-button-primary" onclick={() => adopt(entry)}>
                         {entry.status === 'new' ? t('Adopt') : t('Update')}
+                    </button>
+                {:else if entry.status === 'covered'}
+                    <button type="button" class="ui-button" onclick={() => adopt(entry)}>
+                        {entry.native === undefined && (entry.twins ?? []).length > 0 ? t('Replace') : t('Adopt anyway')}
                     </button>
                 {/if}
             {/if}

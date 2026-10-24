@@ -61,6 +61,7 @@ const MARK: Record<z2m.SyncStatus, string> = {
     orphaned: '-',
     invalid: '!',
     unsupported: '?',
+    covered: '*',
 };
 
 /** one line per device, the way the report reads on a terminal */
@@ -69,7 +70,11 @@ export function formatReport(report: readonly z2m.SyncEntry[]): string[] {
     for (const entry of report) {
         const types = entry.device?.endpoints.map((e) => `${e.id ?? 'main'}: ${e.deviceTypes.join('+')}`).join(', ');
         const detail =
-            entry.status === 'unsupported' || entry.status === 'invalid' ? entry.notes.join('; ') : (types ?? '');
+            entry.status === 'unsupported' || entry.status === 'invalid'
+                ? entry.notes.join('; ')
+                : entry.status === 'covered'
+                  ? `the same device as ${entry.covered ?? '?'}: not adopted (the UI can replace it)`
+                  : (types ?? '');
         lines.push(`${MARK[entry.status]} ${entry.status.padEnd(11)} ${entry.key}  ${entry.name}  ${detail}`);
         for (const conflict of entry.conflicts) {
             lines.push(

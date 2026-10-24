@@ -6,6 +6,7 @@
 
 import {type DeviceInput, type DevicesInput, DeviceSchema, type SourceInput} from '../model/index.ts';
 import {type Conflict, deepEqual, editsOf, resync} from './patch.ts';
+import {isLive, twinsOf} from './twins.ts';
 
 export interface Generated {
     device: DeviceInput;
@@ -46,7 +47,10 @@ export type SyncStatus =
     /** the merge of baseline and edits does not validate; the device was left as it was */
     | 'invalid'
     /** the source describes it, but it cannot be adopted (or no longer can) */
-    | 'unsupported';
+    | 'unsupported'
+    /** not in the config, and another importer describes the same device natively or has it adopted already:
+        adopting it would make a second Matter device for one device, so `adopt` takes it only with `force` */
+    | 'covered';
 
 export interface SyncEntry {
     key: string;
@@ -63,6 +67,10 @@ export interface SyncEntry {
     notes: string[];
     area?: string;
     native?: string;
+    /** for `covered`: the key of the description that covers it — the native one, or the adopted twin */
+    covered?: string;
+    /** the configured devices (not disabled, not orphaned) that stand for the same physical device */
+    twins?: string[];
 }
 
 export interface AdoptOptions {
@@ -72,6 +80,11 @@ export interface AdoptOptions {
     resync?: boolean | undefined;
     /** mark the devices the source no longer describes (default true) */
     orphan?: boolean | undefined;
+    /** adopt the `covered` entries among `keys` too — a second Matter device for one device, asked for */
+    force?: boolean | undefined;
+    /** with `force`: disable the twins of the forced entries, so the new one replaces them on the bridge
+        (they stay in the config; removing them is the user's click) */
+    replace?: boolean | undefined;
 }
 
 export interface AdoptResult {
@@ -107,6 +120,28 @@ function withoutSource(device: DeviceInput): Omit<DeviceInput, 'source'> {
 function validationNotes(device: DeviceInput): string[] {
     const parsed = DeviceSchema.safeParse(device);
     return parsed.success ? [] : parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`);
+}
+
+/** the configured twins of `key` that are live on the bridge */
+function liveTwins(key: string, devices: DevicesInput, native?: string): string[] {
+    return twinsOf(key, devices, native).filter((twin) => {
+        const device = devices[twin];
+        return device !== undefined && isLive(device);
+    });
+}
+
+/** an adopted device whose twin is adopted too: two Matter devices for one device, said in the report */
+function withTwins(entry: SyncEntry, devices: DevicesInput): SyncEntry {
+    const current = devices[entry.key];
+    const twins = current !== undefined && isLive(current) ? liveTwins(entry.key, devices, entry.native) : [];
+    if (twins.length === 0) {
+        return entry;
+    }
+    return {
+        ...entry,
+        twins,
+        notes: [...entry.notes, `the same device is adopted as ${twins.join(', ')} too: two Matter devices`],
+    };
 }
 
 export class Sync<Raw> {
@@ -202,7 +237,7 @@ export class Sync<Raw> {
             }
             const item = byKey.get(key);
             if (item !== undefined) {
-                entries.push(this.syncOne(key, current, item));
+                entries.push(withTwins(this.syncOne(key, current, item), devices));
                 byKey.delete(key);
                 continue;
             }
@@ -226,11 +261,15 @@ export class Sync<Raw> {
             });
         }
         for (const item of byKey.values()) {
+            const twins = liveTwins(item.key, devices, item.native);
+            const covered = item.native ?? twins[0];
             entries.push({
                 key: item.key,
                 kind: item.kind,
                 name: item.name,
-                status: item.supported ? 'new' : 'unsupported',
+                status: !item.supported ? 'unsupported' : covered === undefined ? 'new' : 'covered',
+                ...(item.supported && covered !== undefined ? {covered} : {}),
+                ...(twins.length > 0 ? {twins} : {}),
                 ...(item.baseline === undefined ? {} : {device: item.baseline}),
                 conflicts: [],
                 edits: 0,
@@ -268,13 +307,29 @@ export class Sync<Raw> {
             result[key] = entry.device;
         }
         for (const entry of report) {
-            if (entry.status !== 'new' || entry.device === undefined) {
+            if (entry.device === undefined) {
                 continue;
             }
             if (wanted !== undefined && !wanted.has(entry.key)) {
                 continue;
             }
+            if (entry.status === 'new') {
+                result[entry.key] = entry.device;
+                continue;
+            }
+            // a covered entry only when it was named and forced: never by "adopt everything"
+            if (entry.status !== 'covered' || wanted === undefined || options.force !== true) {
+                continue;
+            }
             result[entry.key] = entry.device;
+            if (options.replace === true) {
+                for (const twin of entry.twins ?? []) {
+                    const device = result[twin];
+                    if (device !== undefined) {
+                        result[twin] = {...device, enabled: false};
+                    }
+                }
+            }
         }
         return {devices: result, report};
     }

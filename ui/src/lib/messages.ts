@@ -254,6 +254,21 @@ export const MESSAGES: Record<string, Message> = {
     'back again': m('wieder da', 'back again'),
     invalid: m('ungültig', 'invalid'),
     unsupported: m('nicht unterstützt', 'unsupported'),
+    duplicate: m('doppelt', 'duplicate'),
+    Twins: m('Doppelt übernommen', 'Twins'),
+    'Adopt anyway': m('Trotzdem übernehmen', 'Adopt anyway'),
+    Replace: m('Ersetzen', 'Replace'),
+    '{name} is the same device as {key}, which {source} describes natively. Adopting it here makes a second Matter device for one device: controllers show it twice. Adopt it anyway?':
+        m(
+            '{name} ist dasselbe Gerät wie {key}, das {source} nativ beschreibt. Hier übernommen wird es ein zweites Matter-Gerät für ein Gerät: Controller zeigen es doppelt. Trotzdem übernehmen?',
+            '{name} is the same device as {key}, which {source} describes natively. Adopting it here makes a second Matter device for one device: controllers show it twice. Adopt it anyway?',
+        ),
+    '{name} is already adopted as {key}. Replace it: the native description is adopted and {key} is disabled — it stays in the configuration until you delete it. Controllers see a new device.':
+        m(
+            '{name} ist schon als {key} übernommen. Ersetzen: die native Beschreibung wird übernommen und {key} abgeschaltet — es bleibt in der Konfiguration, bis du es löschst. Controller sehen ein neues Gerät.',
+            '{name} is already adopted as {key}. Replace it: the native description is adopted and {key} is disabled — it stays in the configuration until you delete it. Controllers see a new device.',
+        ),
+    '{count} duplicates': m('{count} doppelt', '{count} duplicates'),
     group: m('Gruppe', 'group'),
     Notes: m('Hinweise', 'Notes'),
     Details: m('Details', 'Details'),

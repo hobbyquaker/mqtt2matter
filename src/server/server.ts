@@ -483,10 +483,14 @@ export class Server {
     }
 
     /** write the devices an adoption changed into the file and the bridge; returns the keys written */
-    private async applyAdoption(before: DevicesInput, after: DevicesInput, only?: string): Promise<string[]> {
+    private async applyAdoption(
+        before: DevicesInput,
+        after: DevicesInput,
+        only?: ReadonlySet<string>,
+    ): Promise<string[]> {
         const written: string[] = [];
         for (const [key, device] of Object.entries(after)) {
-            if (only !== undefined && key !== only) {
+            if (only !== undefined && !only.has(key)) {
                 continue;
             }
             if (JSON.stringify(before[key]) === JSON.stringify(device)) {
@@ -707,8 +711,17 @@ export class Server {
         r.add('POST', '/api/adopt/:kind/:key', async (request) => {
             const importer = this.importer(request.params.kind ?? '');
             const key = request.params.key ?? '';
+            const b = body(request);
+            const force = b.force === true;
+            const replace = force && b.replace === true;
             const before = structuredClone(this.store.rawDevices) as DevicesInput;
-            const {devices, report} = importer.adopt(before, {keys: [key], resync: true, orphan: false});
+            const {devices, report} = importer.adopt(before, {
+                keys: [key],
+                resync: true,
+                orphan: false,
+                force,
+                replace,
+            });
             const entry = report.find((e) => e.key === key);
             if (entry === undefined) {
                 throw new HttpError(404, `${importer.kind} does not know ${key}`);
@@ -716,7 +729,15 @@ export class Server {
             if (entry.status === 'unsupported' || entry.status === 'invalid') {
                 throw new HttpError(409, `${key} cannot be adopted: ${entry.notes.join('; ')}`);
             }
-            await this.applyAdoption(before, devices, key);
+            if (entry.status === 'covered' && !force) {
+                throw new HttpError(
+                    409,
+                    `${key} is the same device as ${entry.covered ?? '?'}: adopting it makes a second Matter device ` +
+                        '(force: true adopts it anyway, replace: true also disables the twin)',
+                    {covered: entry.covered, twins: entry.twins ?? []},
+                );
+            }
+            await this.applyAdoption(before, devices, new Set([key, ...(replace ? (entry.twins ?? []) : [])]));
             return {...(this.deviceJson(key) as object), entry};
         });
 
