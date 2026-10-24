@@ -226,32 +226,58 @@ export const MESSAGES: Record<string, Message> = {
     // adopt
     'Re-sync': m('Neu abgleichen', 'Re-sync'),
     'Adopt all new': m('Alle neuen übernehmen', 'Adopt all new'),
+    'show unsupported': m('nicht unterstützte zeigen', 'show unsupported'),
     '{count} new': m('{count} neu', '{count} new'),
     '{count} changed': m('{count} geändert', '{count} changed'),
     '{count} orphaned': m('{count} verwaist', '{count} orphaned'),
     '{count} adopted': m('{count} übernommen', '{count} adopted'),
+    '{count} unsupported': m('{count} nicht unterstützt', '{count} unsupported'),
     'No importer is configured. Discovered devices from Zigbee2MQTT and Home Assistant discovery appear here.': m(
         'Kein Importer ist eingerichtet. Entdeckte Geräte aus Zigbee2MQTT und Home-Assistant-Discovery erscheinen hier.',
         'No importer is configured. Discovered devices from Zigbee2MQTT and Home Assistant discovery appear here.',
     ),
-    'Nothing discovered yet.': m('Noch nichts entdeckt.', 'Nothing discovered yet.'),
+    'Nothing discovered yet. Zigbee2MQTT publishes its devices on <base>/bridge/devices; the bridge subscribes it.': m(
+        'Noch nichts entdeckt. Zigbee2MQTT veröffentlicht seine Geräte auf <base>/bridge/devices; die Bridge abonniert es.',
+        'Nothing discovered yet. Zigbee2MQTT publishes its devices on <base>/bridge/devices; the bridge subscribes it.',
+    ),
     new: m('neu', 'new'),
     changed: m('geändert', 'changed'),
     adopted: m('übernommen', 'adopted'),
-    Diff: m('Unterschiede', 'Diff'),
-    'Device key for {name}': m('Geräteschlüssel für {name}', 'Device key for {name}'),
-    "Take the source's version of {name}? Your own edits of its bindings are replaced.": m(
-        'Die Version der Quelle für {name} übernehmen? Eigene Änderungen an den Bindungen werden ersetzt.',
-        "Take the source's version of {name}? Your own edits of its bindings are replaced.",
+    'back again': m('wieder da', 'back again'),
+    invalid: m('ungültig', 'invalid'),
+    unsupported: m('nicht unterstützt', 'unsupported'),
+    group: m('Gruppe', 'group'),
+    Notes: m('Hinweise', 'Notes'),
+    Details: m('Details', 'Details'),
+    '{count} conflicts': m('{count} Konflikte', '{count} conflicts'),
+    '{count} edits': m('{count} eigene Änderungen', '{count} edits'),
+    '{count} unmapped': m('{count} nicht abgebildet', '{count} unmapped'),
+    'Not mapped': m('Nicht abgebildet', 'Not mapped'),
+    'Your edits': m('Eigene Änderungen', 'Your edits'),
+    'Your edit': m('Eigene Änderung', 'Your edit'),
+    Conflicts: m('Konflikte', 'Conflicts'),
+    'Your edit and the new description changed the same value; your edit stays.': m(
+        'Eigene Änderung und neue Beschreibung ändern denselben Wert; die eigene Änderung bleibt.',
+        'Your edit and the new description changed the same value; your edit stays.',
+    ),
+    'Re-sync every adopted device? {count} entries change: updated ones take the new description (your edits are kept, conflicts reported), orphans are marked.':
+        m(
+            'Jedes übernommene Gerät neu abgleichen? {count} Einträge ändern sich: geänderte übernehmen die neue Beschreibung (eigene Änderungen bleiben, Konflikte werden gemeldet), verwaiste werden markiert.',
+            'Re-sync every adopted device? {count} entries change: updated ones take the new description (your edits are kept, conflicts reported), orphans are marked.',
+        ),
+    '{count} devices written': m('{count} Geräte geschrieben', '{count} devices written'),
+    'Update {name}? {count} of your edits conflict with the new description; your edits win, the conflicts are listed in the details.':
+        m(
+            '{name} aktualisieren? {count} eigene Änderungen stehen im Konflikt mit der neuen Beschreibung; die eigenen Änderungen gewinnen, die Konflikte stehen in den Details.',
+            'Update {name}? {count} of your edits conflict with the new description; your edits win, the conflicts are listed in the details.',
+        ),
+    'Update {name} from the source? Your own edits are kept.': m(
+        '{name} aus der Quelle aktualisieren? Eigene Änderungen bleiben erhalten.',
+        'Update {name} from the source? Your own edits are kept.',
     ),
     '{name} adopted as {key}': m('{name} übernommen als {key}', '{name} adopted as {key}'),
-    'Adopt {count} new devices with their proposed keys?': m(
-        '{count} neue Geräte mit den vorgeschlagenen Schlüsseln übernehmen?',
-        'Adopt {count} new devices with their proposed keys?',
-    ),
-    'Changes for {name}': m('Änderungen für {name}', 'Changes for {name}'),
+    'Adopt {count} new devices?': m('{count} neue Geräte übernehmen?', 'Adopt {count} new devices?'),
     Path: m('Pfad', 'Path'),
-    Configured: m('Konfiguriert', 'Configured'),
 
     // bridges
     commissioned: m('gekoppelt', 'commissioned'),

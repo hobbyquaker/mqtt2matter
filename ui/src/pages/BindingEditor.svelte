@@ -81,7 +81,7 @@
         commandPreview = undefined;
         commandValue = '';
         statusPayload = '';
-        void loadLastPayload();
+        void loadLastPayload(binding.status?.topic);
     });
 
     $effect(() => {
@@ -102,8 +102,8 @@
         );
     });
 
-    async function loadLastPayload(): Promise<void> {
-        const topic = binding.status?.topic;
+    /** the last payload seen on the status topic, as the preview's input while the box is empty */
+    async function loadLastPayload(topic: string | undefined): Promise<void> {
         if (topic === undefined || topic === '') {
             return;
         }
@@ -236,6 +236,7 @@
             if (extract !== undefined) {
                 status.extract = extract;
             }
+            void loadLastPayload(topic);
         } else if (picker === 'command' && command !== undefined) {
             command.topic = topic;
         } else if (picker === 'get' && status !== undefined) {
@@ -813,7 +814,7 @@
     }
 
     .compact {
-        --ui-form-label-width: 130px;
+        --ui-form-label-width: 150px;
     }
 
     .rows {

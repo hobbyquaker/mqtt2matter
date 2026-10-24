@@ -3,6 +3,7 @@
 
     import {type Catalog, type DeviceListEntry, api, errorMessage} from '../lib/api.ts';
     import Dialog from '../lib/components/Dialog.svelte';
+    import Icon from '../lib/components/Icon.svelte';
     import {dialogs} from '../lib/dialogs.svelte.ts';
     import {events} from '../lib/events.svelte.ts';
     import {download, pretty} from '../lib/format.ts';
@@ -213,12 +214,16 @@
                                         title={entry.enabled ? t('Disable') : t('Enable')}
                                         onclick={() => toggle(entry)}
                                     >
-                                        {entry.enabled ? '⏸' : '▶'}
+                                        {#if entry.enabled}<Icon name="pause" />{:else}<Icon name="play" />{/if}
                                     </button>
-                                    <button type="button" class="ui-icon-button" title={t('Duplicate')} onclick={() => duplicate(entry)}>⧉</button>
-                                    <button type="button" class="ui-icon-button" title={t('Export')} onclick={() => exportOne(entry)}>⤓</button>
+                                    <button type="button" class="ui-icon-button" title={t('Duplicate')} onclick={() => duplicate(entry)}
+                                        ><Icon name="copy" /></button
+                                    >
+                                    <button type="button" class="ui-icon-button" title={t('Export')} onclick={() => exportOne(entry)}
+                                        ><Icon name="download" /></button
+                                    >
                                     <button type="button" class="ui-icon-button" title={t('Delete')} onclick={() => remove(entry)} data-testid="delete-device"
-                                        >🗑</button
+                                        ><Icon name="trash" /></button
                                     >
                                 </td>
                             </tr>

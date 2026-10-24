@@ -27,6 +27,9 @@ export function formatValue(value: unknown): string {
     if (typeof value === 'object') {
         return JSON.stringify(value);
     }
+    if (typeof value === 'number' && !Number.isInteger(value)) {
+        return String(Number(value.toFixed(6)));
+    }
     return String(value);
 }
 

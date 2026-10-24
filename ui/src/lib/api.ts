@@ -226,15 +226,25 @@ export interface PresetEntry {
     file: string;
 }
 
+export interface Conflict {
+    path: string;
+    user: unknown;
+    before: unknown;
+    now: unknown;
+    applied: boolean;
+}
+
+/** the importer's report entry (docs/importers.md), tagged with the importer */
 export interface AdoptEntry {
-    kind: Source['kind'];
-    sourceKey: string;
+    importer: string;
+    key: string;
+    kind: 'device' | 'group';
     name: string;
-    vendor?: string;
-    model?: string;
-    state: 'new' | 'adopted' | 'changed' | 'orphaned';
-    deviceKey: string;
-    changes?: {path: string; before: unknown; after: unknown}[];
+    status: 'new' | 'unchanged' | 'updated' | 'orphaned' | 'restored' | 'invalid' | 'unsupported';
+    conflicts: Conflict[];
+    edits: number;
+    unmapped: string[];
+    notes: string[];
 }
 
 export interface LogEntry {
@@ -313,9 +323,13 @@ export const api = {
     removeFabric: (id: string, index: number) =>
         request<void>('DELETE', `/api/bridges/${encodeURIComponent(id)}/fabrics/${index}`),
     adopt: () => request<{importers: string[]; entries: AdoptEntry[]}>('GET', '/api/adopt'),
-    resync: () => request<{importers: string[]; entries: AdoptEntry[]}>('POST', '/api/adopt/resync'),
-    adoptDevice: (kind: string, sourceKey: string, key?: string) =>
-        request<DeviceDetail>('POST', `/api/adopt/${encodeURIComponent(kind)}/${encodeURIComponent(sourceKey)}`, {key}),
+    resync: () => request<{importers: string[]; entries: AdoptEntry[]; written: string[]}>('POST', '/api/adopt/resync'),
+    adoptDevice: (kind: string, key: string) =>
+        request<DeviceDetail & {entry: AdoptEntry}>(
+            'POST',
+            `/api/adopt/${encodeURIComponent(kind)}/${encodeURIComponent(key)}`,
+            {},
+        ),
     exportAll: () => request<Record<string, unknown>>('GET', '/api/export'),
     exportDevice: (key: string) =>
         request<Record<string, unknown>>('GET', `/api/export?device=${encodeURIComponent(key)}`),

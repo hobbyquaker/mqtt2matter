@@ -2,6 +2,7 @@
     import {onMount} from 'svelte';
 
     import {type BridgeInfo, api, errorMessage} from '../lib/api.ts';
+    import Icon from '../lib/components/Icon.svelte';
     import QrCode from '../lib/components/QrCode.svelte';
     import {dialogs} from '../lib/dialogs.svelte.ts';
     import {events} from '../lib/events.svelte.ts';
@@ -111,8 +112,12 @@
                                     {t('Open for 15 minutes')}
                                 </button>
                             {:else}
-                                <button type="button" class="ui-button" disabled={busy === bridge.id} onclick={() => window_(bridge, false)}
-                                    >{t('Close')}</button
+                                <button
+                                    type="button"
+                                    class="ui-button"
+                                    disabled={busy === bridge.id}
+                                    onclick={() => window_(bridge, false)}
+                                    data-testid="close-window">{t('Close')}</button
                                 >
                             {/if}
                         </div>
@@ -140,7 +145,7 @@
                                             <td><code>{fabric.nodeId}</code></td>
                                             <td class="ui-actions">
                                                 <button type="button" class="ui-icon-button" title={t('Remove')} onclick={() => removeFabric(bridge, fabric)}
-                                                    >🗑</button
+                                                    ><Icon name="trash" /></button
                                                 >
                                             </td>
                                         </tr>

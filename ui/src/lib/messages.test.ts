@@ -15,7 +15,11 @@ function sources(dir: string): string[] {
         const path = join(dir, name);
         if (statSync(path).isDirectory()) {
             files.push(...sources(path));
-        } else if ((name.endsWith('.svelte') || name.endsWith('.ts')) && !name.endsWith('.test.ts') && name !== 'messages.ts') {
+        } else if (
+            (name.endsWith('.svelte') || name.endsWith('.ts')) &&
+            !name.endsWith('.test.ts') &&
+            name !== 'messages.ts'
+        ) {
             files.push(path);
         }
     }

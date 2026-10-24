@@ -1,11 +1,11 @@
 /* The stack the browser tests and a developer's look at the UI run against: an in-process broker on
    an ephemeral port, the application with a small configuration in a temporary directory, a real
-   matter.js node on a free UDP port, the web server on an ephemeral port — and an importer double
-   with two discovered devices, so the adopt page has something to show. Prints `PORT <n>` once it
+   matter.js node on a free UDP port, the web server on an ephemeral port — and zigbee2mqtt's bridge
+   topics from the test corpus, so the adopt page has something to show. Prints `PORT <n>` once it
    listens; stops on SIGTERM/SIGINT (and when stdin closes, with UI_SERVE_STDIN=1). Node ≥ 22.18 runs it
    directly: `node ui/test/serve.ts`, then open the port it prints. */
 
-import {mkdtemp, rm, writeFile} from 'node:fs/promises';
+import {mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
@@ -14,74 +14,12 @@ import mqtt from 'mqtt';
 import {App} from '../../src/app.ts';
 import {parseConfig} from '../../src/config/load.ts';
 import {createLogger} from '../../src/log.ts';
-import type {DeviceConfig} from '../../src/model/schema.ts';
 import {ConfigStore} from '../../src/server/config-store.ts';
-import type {DiscoveredDevice, Importer} from '../../src/server/importers.ts';
+import {Z2mImporter} from '../../src/server/importers.ts';
 import {LogBuffer} from '../../src/server/log-buffer.ts';
 import {Server} from '../../src/server/server.ts';
 import {startBroker} from '../../test/helpers/broker.ts';
 import {freeUdpPort} from '../../test/helpers/util.ts';
-
-class DoubleImporter implements Importer {
-    readonly kind = 'z2m' as const;
-    private devices: DiscoveredDevice[] = [];
-    private readonly listeners = new Set<() => void>();
-
-    discovered(): readonly DiscoveredDevice[] {
-        return this.devices;
-    }
-
-    async resync(): Promise<void> {
-        await Promise.resolve();
-    }
-
-    onChange(listener: () => void): () => void {
-        this.listeners.add(listener);
-        return () => {
-            this.listeners.delete(listener);
-        };
-    }
-
-    set(devices: DiscoveredDevice[]): void {
-        this.devices = devices;
-        for (const listener of this.listeners) {
-            listener();
-        }
-    }
-}
-
-function bulb(key: string, name: string, friendly: string): DiscoveredDevice {
-    const device = parseConfig({
-        devices: {
-            x: {
-                name,
-                vendor: 'IKEA',
-                model: 'LED1545G12',
-                source: {kind: 'z2m', key, version: '2.0.0'},
-                availability: {topic: `zigbee2mqtt/${friendly}/availability`, extract: 'state'},
-                endpoints: [
-                    {
-                        deviceTypes: ['DimmableLight'],
-                        coalesce: 50,
-                        bindings: [
-                            {
-                                attribute: 'OnOff.onOff',
-                                status: {topic: `zigbee2mqtt/${friendly}`, extract: 'state', map: {ON: true, OFF: false}},
-                                command: {topic: `zigbee2mqtt/${friendly}/set`, format: {true: 'ON', false: 'OFF'}, wrap: 'state'},
-                            },
-                            {
-                                attribute: 'LevelControl.currentLevel',
-                                status: {topic: `zigbee2mqtt/${friendly}`, extract: 'brightness', unit: 'byteLevel'},
-                                command: {topic: `zigbee2mqtt/${friendly}/set`, unit: 'byteLevel', wrap: 'brightness'},
-                            },
-                        ],
-                    },
-                ],
-            },
-        },
-    }).devices.x as DeviceConfig;
-    return {key, name, vendor: 'IKEA', model: 'LED1545G12', device};
-}
 
 async function main(): Promise<void> {
     const broker = await startBroker();
@@ -172,7 +110,7 @@ async function main(): Promise<void> {
         }
     });
     const app = new App(config, {log, mqttConnectTimeout: 5000});
-    const importer = new DoubleImporter();
+    const importer = new Z2mImporter('zigbee2mqtt', log.child('z2m'));
     const server = new Server({
         app,
         store: new ConfigStore({path, raw, config, overridden: ['mqtt.url']}),
@@ -187,18 +125,29 @@ async function main(): Promise<void> {
     await server.listen();
     await app.start();
     await server.start();
-    importer.set([
-        bulb('0x00124b00bbbb0001', 'Kitchen bulb', 'kitchen_bulb'),
-        bulb('0x00124b00bbbb0002', 'Bedroom bulb', 'bedroom_bulb'),
-    ]);
-
     // some retained traffic, so the topic tree and the previews have payloads
     const client = await mqtt.connectAsync(broker.url);
     await client.publishAsync('tele/b1/LWT', 'Online', {retain: true});
     await client.publishAsync('stat/b1/RESULT', '{"POWER":"ON","Dimmer":42,"CT":326}', {retain: true});
-    await client.publishAsync('zigbee2mqtt/hall_window', '{"contact":true,"battery":87,"linkquality":120}', {retain: true});
-    await client.publishAsync('zigbee2mqtt/kitchen_bulb', '{"state":"ON","brightness":200}', {retain: true});
-    await client.publishAsync('zigbee2mqtt/kitchen_bulb/availability', '{"state":"online"}', {retain: true});
+    await client.publishAsync('zigbee2mqtt/hall_window', '{"contact":true,"battery":87,"linkquality":120}', {
+        retain: true,
+    });
+    // zigbee2mqtt's description of a home, for the adopt page
+    await client.publishAsync(
+        'zigbee2mqtt/bridge/devices',
+        await readFile(join(import.meta.dirname, '..', '..', 'test', 'fixtures', 'z2m', 'bridge-devices.json')),
+        {retain: true},
+    );
+    await client.publishAsync(
+        'zigbee2mqtt/bridge/groups',
+        await readFile(join(import.meta.dirname, '..', '..', 'test', 'fixtures', 'z2m', 'bridge-groups.json')),
+        {retain: true},
+    );
+    await client.publishAsync(
+        'zigbee2mqtt/Gledopto RGBCTT light I',
+        '{"state":"ON","brightness":200,"color_temp":300}',
+        {retain: true},
+    );
     let tick = 0;
     const ticker = setInterval(() => {
         tick++;

@@ -14,6 +14,7 @@
         errorMessage,
     } from '../lib/api.ts';
     import Checkbox from '../lib/components/Checkbox.svelte';
+    import Icon from '../lib/components/Icon.svelte';
     import Issues from '../lib/components/Issues.svelte';
     import {dialogs} from '../lib/dialogs.svelte.ts';
     import {events} from '../lib/events.svelte.ts';
@@ -121,7 +122,7 @@
     async function load(): Promise<void> {
         try {
             detail = await api.device(key);
-            device = structuredClone(detail.device);
+            device = JSON.parse(JSON.stringify(detail.device)) as Device;
             issues = detail.issues;
             liveState = detail.state;
             availabilityOn = device.availability !== undefined;
@@ -155,7 +156,7 @@
         try {
             const saved = await api.saveDevice(key, cleanDevice(device));
             detail = saved;
-            device = structuredClone(saved.device);
+            device = JSON.parse(JSON.stringify(saved.device)) as Device;
             issues = saved.issues;
             liveState = saved.state;
             dirty = false;
@@ -472,7 +473,7 @@
                                             onclick={() => {
                                                 device?.availability?.topics.splice(index, 1);
                                                 changed();
-                                            }}>✕</button
+                                            }}><Icon name="close" size={12} /></button
                                         >
                                     </div>
                                 {/each}
@@ -519,7 +520,9 @@
                                     bind:value={endpoint.coalesce}
                                     oninput={changed}
                                 />
-                                {#if ei > 0}<button type="button" class="ui-icon-button" title={t('Remove')} onclick={() => removeEndpoint(ei)}>🗑</button>{/if}
+                                {#if ei > 0}<button type="button" class="ui-icon-button" title={t('Remove')} onclick={() => removeEndpoint(ei)}
+                                        ><Icon name="trash" /></button
+                                    >{/if}
                             </div>
                         </div>
                         <div class="types">
@@ -531,7 +534,7 @@
                                             type="button"
                                             class="chip-remove"
                                             title={t('Remove')}
-                                            onclick={() => removeDeviceType(ei, name)}>✕</button
+                                            onclick={() => removeDeviceType(ei, name)}><Icon name="close" size={12} /></button
                                         >{/if}
                                 </span>
                             {/each}
@@ -599,14 +602,14 @@
                                         <td><code>{formatValue(live)}</code></td>
                                         <td class="ui-actions" onclick={(event) => event.stopPropagation()}>
                                             <button type="button" class="ui-icon-button" title={t('Duplicate')} onclick={() => duplicateBinding(ei, bi)}
-                                                >⧉</button
+                                                ><Icon name="copy" /></button
                                             >
                                             <button
                                                 type="button"
                                                 class="ui-icon-button"
                                                 title={t('Remove')}
                                                 onclick={() => removeBinding(ei, bi)}
-                                                data-testid="remove-binding">🗑</button
+                                                data-testid="remove-binding"><Icon name="trash" /></button
                                             >
                                         </td>
                                     </tr>

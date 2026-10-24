@@ -2,13 +2,26 @@ import {describe, expect, it} from 'vitest';
 
 import type {Device} from './api.ts';
 import {debounce, jsonPaths, tryJson} from './format.ts';
-import {bindingTarget, cleanBinding, cleanDevice, cleanHalf, clusterOf, emptyBinding, familiesFor, scalarOf, valueOf} from './model.ts';
+import {
+    bindingTarget,
+    cleanBinding,
+    cleanDevice,
+    cleanHalf,
+    clusterOf,
+    emptyBinding,
+    familiesFor,
+    scalarOf,
+    valueOf,
+} from './model.ts';
 import {hashFor, parseHash} from './router.svelte.ts';
 
 describe('the model helpers', () => {
     it('reads a binding target', () => {
         expect(bindingTarget({attribute: 'OnOff.onOff'})).toEqual({kind: 'attribute', name: 'OnOff.onOff'});
-        expect(bindingTarget({invoke: 'WindowCovering.stopMotion'})).toEqual({kind: 'invoke', name: 'WindowCovering.stopMotion'});
+        expect(bindingTarget({invoke: 'WindowCovering.stopMotion'})).toEqual({
+            kind: 'invoke',
+            name: 'WindowCovering.stopMotion',
+        });
         expect(bindingTarget({event: 'Switch'})).toEqual({kind: 'event', name: 'Switch'});
         expect(clusterOf('LevelControl.currentLevel')).toBe('LevelControl');
         expect(emptyBinding({kind: 'invoke', name: 'Identify.identify'})).toEqual({invoke: 'Identify.identify'});
@@ -49,7 +62,17 @@ describe('the model helpers', () => {
             enabled: true,
             source: {kind: 'manual'},
             availability: {mode: 'latest', topics: [{topic: '', online: 'online', offline: 'offline'}]},
-            endpoints: [{id: 'main', deviceTypes: ['OnOffLight'], bindings: [], options: {}, coalesce: 0, features: {}, attributes: {}}],
+            endpoints: [
+                {
+                    id: 'main',
+                    deviceTypes: ['OnOffLight'],
+                    bindings: [],
+                    options: {},
+                    coalesce: 0,
+                    features: {},
+                    attributes: {},
+                },
+            ],
         };
         expect(cleanDevice(device)).toEqual({
             name: 'X',
