@@ -40,6 +40,18 @@ export const LogConfigSchema = z
     })
     .strict();
 
+export const ServerConfigSchema = z
+    .object({
+        /** the web UI and its API; off for a headless bridge */
+        enabled: z.boolean().default(true),
+        host: z.string().min(1).default('0.0.0.0'),
+        port: z.number().int().min(0).max(65535).default(8282),
+        /** the MQTT subscriptions for the UI's topic tree and live view, on top of the bindings' topics */
+        topics: z.array(z.string().min(1)).default(['#']),
+    })
+    .strict();
+export type ServerConfig = z.infer<typeof ServerConfigSchema>;
+
 export const ConfigSchema = z
     .object({
         mqtt: MqttConfigSchema.prefault({}),
@@ -58,6 +70,9 @@ export const ConfigSchema = z
             .refine((bridges) => Object.keys(bridges).length > 0, {message: 'at least one bridge is needed'})
             .prefault({default: {}}),
         devices: DevicesSchema.prefault({}),
+        server: ServerConfigSchema.prefault({}),
+        /** directories with the user's preset files, on top of the shipped ones */
+        presets: z.array(z.string().min(1)).default([]),
     })
     .strict();
 

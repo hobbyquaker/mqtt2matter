@@ -21,20 +21,26 @@ change it migrates files on load. Additions are allowed; renames and removals ar
 | `MQTT2MATTER_STORAGE`          | `storage`       |
 | `MQTT2MATTER_LOG_LEVEL`        | `log.level`     |
 | `MQTT2MATTER_MATTER_LOG_LEVEL` | `log.matter`    |
+| `MQTT2MATTER_SERVER_HOST`      | `server.host`   |
+| `MQTT2MATTER_SERVER_PORT`      | `server.port`   |
 
 ## Top level
 
-| Key                                               | Default                 | Meaning                                                         |
-| ------------------------------------------------- | ----------------------- | --------------------------------------------------------------- |
-| `mqtt.url`                                        | `mqtt://localhost:1883` | `mqtt://`, `mqtts://`, `ws://`, `wss://` as mqtt.js takes it    |
-| `mqtt.username`, `mqtt.password`, `mqtt.clientId` | —                       | credentials; a random client id when unset                      |
-| `storage`                                         | `./data`                | matter.js storage (fabrics, endpoint numbers) and `shards.json` |
-| `log.level`                                       | `info`                  | `debug`, `info`, `warn`, `error`                                |
-| `log.matter`                                      | `warn`                  | matter.js' own log level                                        |
-| `vendorId`                                        | `0xFFF1`                | the Matter test vendor id                                       |
-| `productId`                                       | `0x8000`                | bridge n gets `productId + n`                                   |
-| `bridges`                                         | `{"default": {}}`       | one entry per Matter bridge, see below; at least one            |
-| `devices`                                         | `{}`                    | one entry per device, keyed by the **device key**               |
+| Key                                               | Default                 | Meaning                                                                                        |
+| ------------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------- |
+| `mqtt.url`                                        | `mqtt://localhost:1883` | `mqtt://`, `mqtts://`, `ws://`, `wss://` as mqtt.js takes it                                   |
+| `mqtt.username`, `mqtt.password`, `mqtt.clientId` | —                       | credentials; a random client id when unset                                                     |
+| `storage`                                         | `./data`                | matter.js storage (fabrics, endpoint numbers) and `shards.json`                                |
+| `log.level`                                       | `info`                  | `debug`, `info`, `warn`, `error`                                                               |
+| `log.matter`                                      | `warn`                  | matter.js' own log level                                                                       |
+| `vendorId`                                        | `0xFFF1`                | the Matter test vendor id                                                                      |
+| `productId`                                       | `0x8000`                | bridge n gets `productId + n`                                                                  |
+| `bridges`                                         | `{"default": {}}`       | one entry per Matter bridge, see below; at least one                                           |
+| `devices`                                         | `{}`                    | one entry per device, keyed by the **device key**                                              |
+| `server.enabled`                                  | `true`                  | the web UI and its API (`docs/api.md`); `false` for headless                                   |
+| `server.host`, `server.port`                      | `0.0.0.0`, `8282`       | where the UI listens; it has no login — keep it on a trusted network or behind a reverse proxy |
+| `server.topics`                                   | `["#"]`                 | MQTT subscriptions for the UI's topic tree and live view, on top of the bindings' topics       |
+| `presets`                                         | `[]`                    | directories with the user's preset files (`*.json`), on top of the shipped ones                |
 
 ## Bridges
 

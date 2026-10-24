@@ -21,7 +21,12 @@ export const ENV = {
     MQTT2MATTER_STORAGE: 'storage',
     MQTT2MATTER_LOG_LEVEL: 'log.level',
     MQTT2MATTER_MATTER_LOG_LEVEL: 'log.matter',
+    MQTT2MATTER_SERVER_HOST: 'server.host',
+    MQTT2MATTER_SERVER_PORT: 'server.port',
 } as const;
+
+/** the environment paths whose values are numbers in the schema */
+const NUMERIC_PATHS: ReadonlySet<string> = new Set(['server.port']);
 
 export type Env = Record<string, string | undefined>;
 
@@ -36,7 +41,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function setPath(target: Record<string, unknown>, path: string, value: string): void {
+function setPath(target: Record<string, unknown>, path: string, value: string | number): void {
     const keys = path.split('.');
     const last = keys.pop() ?? path;
     let cursor = target;
@@ -50,6 +55,18 @@ function setPath(target: Record<string, unknown>, path: string, value: string): 
     cursor[last] = value;
 }
 
+/** the config paths the environment sets */
+export function envOverrides(env: Env): string[] {
+    const paths: string[] = [];
+    for (const [name, path] of Object.entries(ENV)) {
+        const value = env[name];
+        if (path !== 'config file' && value !== undefined && value !== '') {
+            paths.push(path);
+        }
+    }
+    return paths;
+}
+
 /** a copy of `raw` with the environment's overrides written in */
 export function applyEnv(raw: unknown, env: Env): Record<string, unknown> {
     const result: Record<string, unknown> = isRecord(raw) ? structuredClone(raw) : {};
@@ -59,7 +76,7 @@ export function applyEnv(raw: unknown, env: Env): Record<string, unknown> {
         }
         const value = env[name];
         if (value !== undefined && value !== '') {
-            setPath(result, path, value);
+            setPath(result, path, NUMERIC_PATHS.has(path) && /^\d+$/.test(value) ? Number(value) : value);
         }
     }
     return result;
@@ -100,6 +117,10 @@ export interface Loaded {
     path: string;
     /** false when the file did not exist and the defaults were used */
     fromFile: boolean;
+    /** the file's content as written, without the environment and without defaults — what an editor saves back */
+    raw: Record<string, unknown>;
+    /** the config paths the environment overrides (`mqtt.url`), which an editor must not write back */
+    overridden: string[];
 }
 
 export async function loadConfig(options: LoadOptions = {}): Promise<Loaded> {
@@ -124,5 +145,14 @@ export async function loadConfig(options: LoadOptions = {}): Promise<Loaded> {
             throw new ConfigError(`cannot read ${located.path}: ${(error as Error).message}`);
         }
     }
-    return {config: parseConfig(applyEnv(raw, env)), path: located.path, fromFile};
+    if (fromFile && !isRecord(raw)) {
+        throw new ConfigError(`${located.path} must hold a JSON object`);
+    }
+    return {
+        config: parseConfig(applyEnv(raw, env)),
+        path: located.path,
+        fromFile,
+        raw: isRecord(raw) ? raw : {},
+        overridden: envOverrides(env),
+    };
 }
