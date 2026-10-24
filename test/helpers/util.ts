@@ -18,6 +18,26 @@ export async function waitFor(
     }
 }
 
+/**
+ * retry `assertions` until all of them pass; after `timeout` ms the last failure is thrown as it is. For the
+ * attributes one MQTT message sets: the bindings are applied one after the other, so waiting for the first of
+ * them says nothing about the others yet.
+ */
+export async function settled(assertions: () => void, timeout = 5000): Promise<void> {
+    const deadline = Date.now() + timeout;
+    for (;;) {
+        try {
+            assertions();
+            return;
+        } catch (error) {
+            if (Date.now() > deadline) {
+                throw error;
+            }
+        }
+        await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+}
+
 /** a UDP port nothing listens on right now (matter.js binds its operational port without reuse) */
 export async function freeUdpPort(): Promise<number> {
     return await new Promise<number>((resolve, reject) => {

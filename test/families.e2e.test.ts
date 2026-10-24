@@ -23,7 +23,7 @@ import {
 import {createLogger} from '../src/log.ts';
 import type {DeviceHandle} from '../src/matter/bridge.ts';
 import {startBroker, type Broker} from './helpers/broker.ts';
-import {freeUdpPort, waitFor} from './helpers/util.ts';
+import {freeUdpPort, settled, waitFor} from './helpers/util.ts';
 
 let broker: Broker;
 let storage: string;
@@ -457,21 +457,28 @@ describe('light', () => {
     it('status: level, colour temperature and xy with colour mode arbitration', async () => {
         const light = device('light');
         await publish('z/light', JSON.stringify({state: 'ON', brightness: 255, color_temp: 370}));
-        await waitFor(() => light.state.levelControl!.currentLevel === 254, 5000, 'level');
-        expect(light.state.onOff!.onOff).toBe(true);
-        expect(light.state.colorControl!.colorTemperatureMireds).toBe(370);
-        expect(light.state.colorControl!.colorMode).toBe(2);
+        await settled(() => {
+            expect(light.state.levelControl!.currentLevel).toBe(254);
+            expect(light.state.onOff!.onOff).toBe(true);
+            expect(light.state.colorControl!.colorTemperatureMireds).toBe(370);
+            expect(light.state.colorControl!.colorMode).toBe(2);
+        });
         await publish('z/light', JSON.stringify({color: {x: 0.3, y: 0.6}}));
-        await waitFor(() => light.state.colorControl!.currentX === Math.round(0.3 * 65535), 5000, 'x');
-        expect(light.state.colorControl!.currentY).toBe(Math.round(0.6 * 65535));
-        expect(light.state.colorControl!.colorMode).toBe(1);
+        await settled(() => {
+            expect(light.state.colorControl!.currentX).toBe(Math.round(0.3 * 65535));
+            expect(light.state.colorControl!.currentY).toBe(Math.round(0.6 * 65535));
+            expect(light.state.colorControl!.colorMode).toBe(1);
+        });
     });
 
     it('commands: level with on/off ordering, coalesced into one message', async () => {
         const light = device('light');
         published.length = 0;
         await publish('z/light', JSON.stringify({state: 'OFF', brightness: 10}));
-        await waitFor(() => light.state.onOff!.onOff === false, 5000, 'off');
+        await settled(() => {
+            expect(light.state.onOff!.onOff).toBe(false);
+            expect(light.state.levelControl!.currentLevel).toBe(10);
+        });
         await light.endpoint.act((agent) =>
             commands(agent.get(LevelControlServer)).moveToLevelWithOnOff!({
                 level: 127,
@@ -485,7 +492,10 @@ describe('light', () => {
         expect(light.state.levelControl!.currentLevel).toBe(10);
         expect(light.state.onOff!.onOff).toBe(false);
         await publish('z/light', JSON.stringify({state: 'ON', brightness: 128}));
-        await waitFor(() => light.state.levelControl!.currentLevel === 127, 5000, 'reported level');
+        await settled(() => {
+            expect(light.state.onOff!.onOff).toBe(true);
+            expect(light.state.levelControl!.currentLevel).toBe(127);
+        });
     });
 
     it('commands: colour temperature and xy', async () => {
@@ -521,13 +531,12 @@ describe('light', () => {
         const light = device('hsLight');
         published.length = 0;
         await publish('stat/hs/RESULT', JSON.stringify({POWER: 'ON', Dimmer: 50, Color: '255,0,0'}));
-        await waitFor(
-            () => light.state.colorControl!.currentHue === 0 && light.state.colorControl!.currentSaturation === 254,
-            5000,
-            'red',
-        );
-        expect(light.state.colorControl!.colorMode).toBe(0);
-        expect(light.state.levelControl!.currentLevel).toBe(127);
+        await settled(() => {
+            expect(light.state.colorControl!.currentHue).toBe(0);
+            expect(light.state.colorControl!.currentSaturation).toBe(254);
+            expect(light.state.colorControl!.colorMode).toBe(0);
+            expect(light.state.levelControl!.currentLevel).toBe(127);
+        });
         await light.endpoint.act((agent) =>
             commands(agent.get(ColorControlServer)).moveToHueAndSaturation!({
                 hue: 85,
@@ -571,8 +580,10 @@ describe('cover', () => {
 
     it('position reports set current and target; a controller target publishes and moves until reported', async () => {
         await publish('z/cover', JSON.stringify({position: 100}));
-        await waitFor(() => wc().currentPositionLiftPercent100ths === 0, 5000, 'open');
-        expect(wc().targetPositionLiftPercent100ths).toBe(0);
+        await settled(() => {
+            expect(wc().currentPositionLiftPercent100ths).toBe(0);
+            expect(wc().targetPositionLiftPercent100ths).toBe(0);
+        });
         published.length = 0;
         await device('cover').endpoint.act((agent) =>
             commands(agent.get(WindowCoveringServer)).goToLiftPercentage!({liftPercent100thsValue: 5000}),
@@ -586,21 +597,29 @@ describe('cover', () => {
         expect(wc().currentPositionLiftPercent100ths).toBe(0);
         expect(status()).toBe(2);
         await publish('z/cover', JSON.stringify({position: 70}));
-        await waitFor(() => wc().currentPositionLiftPercent100ths === 3000, 5000, 'moving');
-        expect(status()).toBe(2);
+        await settled(() => {
+            expect(wc().currentPositionLiftPercent100ths).toBe(3000);
+            expect(status()).toBe(2);
+        });
         await publish('z/cover', JSON.stringify({position: 50}));
-        await waitFor(() => status() === 0, 5000, 'stopped');
-        expect(wc().currentPositionLiftPercent100ths).toBe(5000);
-        expect(wc().targetPositionLiftPercent100ths).toBe(5000);
+        await settled(() => {
+            expect(status()).toBe(0);
+            expect(wc().currentPositionLiftPercent100ths).toBe(5000);
+            expect(wc().targetPositionLiftPercent100ths).toBe(5000);
+        });
     });
 
     it('an external move predicts the target and ends with the report timeout', async () => {
         await publish('z/cover', JSON.stringify({position: 40}));
-        await waitFor(() => wc().currentPositionLiftPercent100ths === 6000, 5000, 'external');
-        expect(wc().targetPositionLiftPercent100ths).toBe(10000);
-        expect(status()).toBe(2);
-        await waitFor(() => status() === 0, 5000, 'timeout stop');
-        expect(wc().targetPositionLiftPercent100ths).toBe(6000);
+        await settled(() => {
+            expect(wc().currentPositionLiftPercent100ths).toBe(6000);
+            expect(wc().targetPositionLiftPercent100ths).toBe(10000);
+            expect(status()).toBe(2);
+        });
+        await settled(() => {
+            expect(status()).toBe(0);
+            expect(wc().targetPositionLiftPercent100ths).toBe(6000);
+        });
     });
 
     it('stop publishes the command binding and snaps the target', async () => {
@@ -611,8 +630,10 @@ describe('cover', () => {
         await expectPublished('z/cover/set', '{"position":100}');
         await device('cover').endpoint.act((agent) => agent.get(WindowCoveringServer).stopMotion());
         await expectPublished('z/cover/set', '{"state":"STOP"}');
-        await waitFor(() => status() === 0, 5000, 'stopped after stop');
-        expect(wc().targetPositionLiftPercent100ths).toBe(6000);
+        await settled(() => {
+            expect(status()).toBe(0);
+            expect(wc().targetPositionLiftPercent100ths).toBe(6000);
+        });
     });
 
     it('a state-only cover: up/down/stop commands and motion reports', async () => {
@@ -646,13 +667,17 @@ describe('thermostat', () => {
                 running_state: 'heat',
             }),
         );
-        await waitFor(() => trv.state.thermostat!.localTemperature === 2150, 5000, 'temperature');
-        expect(trv.state.thermostat!.occupiedHeatingSetpoint).toBe(2200);
-        expect(trv.state.thermostat!.systemMode).toBe(4);
-        expect(trv.state.thermostat!.thermostatRunningState).toMatchObject({heat: true});
+        await settled(() => {
+            expect(trv.state.thermostat!.localTemperature).toBe(2150);
+            expect(trv.state.thermostat!.occupiedHeatingSetpoint).toBe(2200);
+            expect(trv.state.thermostat!.systemMode).toBe(4);
+            expect(trv.state.thermostat!.thermostatRunningState).toMatchObject({heat: true});
+        });
         await publish('z/trv', JSON.stringify({running_state: 'idle', system_mode: 'off'}));
-        await waitFor(() => trv.state.thermostat!.systemMode === 0, 5000, 'off');
-        expect((trv.state.thermostat!.thermostatRunningState as {heat?: boolean}).heat).not.toBe(true);
+        await settled(() => {
+            expect(trv.state.thermostat!.systemMode).toBe(0);
+            expect((trv.state.thermostat!.thermostatRunningState as {heat?: boolean}).heat).not.toBe(true);
+        });
     });
 
     it("a controller's write is applied by matter.js and published from the change", async () => {
@@ -691,9 +716,11 @@ describe('fan', () => {
     it('a percent report sets setting, current and mode; a mode write publishes the percent', async () => {
         const fan = device('fan');
         await publish('fan/state', '50');
-        await waitFor(() => fan.state.fanControl!.percentCurrent === 50, 5000, 'percent');
-        expect(fan.state.fanControl!.percentSetting).toBe(50);
-        expect(fan.state.fanControl!.fanMode).toBe(2);
+        await settled(() => {
+            expect(fan.state.fanControl!.percentCurrent).toBe(50);
+            expect(fan.state.fanControl!.percentSetting).toBe(50);
+            expect(fan.state.fanControl!.fanMode).toBe(2);
+        });
         published.length = 0;
         const events = (fan.endpoint.events as unknown as Emitters).fanControl!;
         await fan.endpoint.set({fanControl: {fanMode: 3}} as never);
@@ -703,8 +730,10 @@ describe('fan', () => {
         await fan.endpoint.set({fanControl: {percentSetting: 20}} as never);
         events.percentSetting$Changed!.emit(20, 100, {offline: false});
         await expectPublished('fan/set', '20');
-        await waitFor(() => fan.state.fanControl!.fanMode === 1, 5000, 'low');
-        expect(fan.state.fanControl!.percentCurrent).toBe(20);
+        await settled(() => {
+            expect(fan.state.fanControl!.fanMode).toBe(1);
+            expect(fan.state.fanControl!.percentCurrent).toBe(20);
+        });
     });
 });
 
@@ -765,18 +794,18 @@ describe('switch', () => {
             'longPress{"newPosition":1}',
             'longRelease{"previousPosition":1}',
         ]);
-        expect(device('button').state.switch!.currentPosition).toBe(0);
+        await settled(() => {
+            expect(device('button').state.switch!.currentPosition).toBe(0);
+        });
     });
 
     it('a latching switch takes the value as its position', async () => {
         const seen = record('button', 'b2');
         await publish('z/button', JSON.stringify({toggle: true}));
-        await waitFor(
-            () => device('button').endpoints.get('b2')!.state.switch!.currentPosition === 1,
-            5000,
-            'position 1',
-        );
-        expect(seen).toEqual(['switchLatched{"newPosition":1}']);
+        await settled(() => {
+            expect(device('button').endpoints.get('b2')!.state.switch!.currentPosition).toBe(1);
+            expect(seen).toEqual(['switchLatched{"newPosition":1}']);
+        });
     });
 });
 
@@ -784,11 +813,13 @@ describe('sensors and power source', () => {
     it('temperature, humidity on the child, battery with derived charge level, voltage', async () => {
         const sensor = device('sensor');
         await publish('z/sensor', JSON.stringify({temperature: 21.45, humidity: 55.5, battery: 25, voltage: 2.9}));
-        await waitFor(() => sensor.state.temperatureMeasurement!.measuredValue === 2145, 5000, 'temperature');
-        expect(sensor.endpoints.get('humidity')!.state.relativeHumidityMeasurement!.measuredValue).toBe(5550);
-        expect(sensor.state.powerSource!.batPercentRemaining).toBe(50);
-        expect(sensor.state.powerSource!.batChargeLevel).toBe(1);
-        expect(sensor.state.powerSource!.batVoltage).toBe(2900);
+        await settled(() => {
+            expect(sensor.state.temperatureMeasurement!.measuredValue).toBe(2145);
+            expect(sensor.endpoints.get('humidity')!.state.relativeHumidityMeasurement!.measuredValue).toBe(5550);
+            expect(sensor.state.powerSource!.batPercentRemaining).toBe(50);
+            expect(sensor.state.powerSource!.batChargeLevel).toBe(1);
+            expect(sensor.state.powerSource!.batVoltage).toBe(2900);
+        });
         await publish('z/sensor', JSON.stringify({battery: 5}));
         await waitFor(() => sensor.state.powerSource!.batChargeLevel === 2, 5000, 'critical');
     });
@@ -804,16 +835,16 @@ describe('sensors and power source', () => {
         await publish('z/contact', JSON.stringify({contact: false}));
         await waitFor(() => device('contact').state.booleanState!.stateValue === false, 5000, 'contact');
         await publish('z/motion', JSON.stringify({occupancy: true, illuminance_lux: 100}));
-        await waitFor(
-            () => (device('motion').state.occupancySensing!.occupancy as {occupied: boolean}).occupied,
-            5000,
-            'occupied',
-        );
-        expect(device('motion').state.illuminanceMeasurement!.measuredValue).toBe(20001);
+        await settled(() => {
+            expect(device('motion').state.occupancySensing!.occupancy).toMatchObject({occupied: true});
+            expect(device('motion').state.illuminanceMeasurement!.measuredValue).toBe(20001);
+        });
         await publish('z/air', JSON.stringify({air_quality: 'poor', co2: 812, pm25: 7.5}));
-        await waitFor(() => device('air').state.airQuality!.airQuality === 4, 5000, 'air quality');
-        expect(device('air').state.carbonDioxideConcentrationMeasurement!.measuredValue).toBe(812);
-        expect(device('air').state.pm25ConcentrationMeasurement!.measuredValue).toBe(7.5);
+        await settled(() => {
+            expect(device('air').state.airQuality!.airQuality).toBe(4);
+            expect(device('air').state.carbonDioxideConcentrationMeasurement!.measuredValue).toBe(812);
+            expect(device('air').state.pm25ConcentrationMeasurement!.measuredValue).toBe(7.5);
+        });
     });
 });
 

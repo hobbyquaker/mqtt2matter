@@ -17,7 +17,7 @@ import {z2m} from '../src/importers/index.ts';
 import {createLogger} from '../src/log.ts';
 import type {DeviceHandle} from '../src/matter/bridge.ts';
 import {startBroker, type Broker} from './helpers/broker.ts';
-import {freeUdpPort, waitFor} from './helpers/util.ts';
+import {freeUdpPort, settled, waitFor} from './helpers/util.ts';
 
 const fixtures = join(import.meta.dirname, 'fixtures', 'z2m');
 
@@ -129,18 +129,22 @@ describe('light', () => {
                 color: {x: 0.3, y: 0.3},
             }),
         );
-        await waitFor(() => light.state.levelControl!.currentLevel === 254, 5000, 'level');
-        expect(light.state.onOff!.onOff).toBe(true);
-        expect(light.state.colorControl!.colorTemperatureMireds).toBe(300);
-        expect(light.state.colorControl!.colorMode).toBe(2);
+        await settled(() => {
+            expect(light.state.levelControl!.currentLevel).toBe(254);
+            expect(light.state.onOff!.onOff).toBe(true);
+            expect(light.state.colorControl!.colorTemperatureMireds).toBe(300);
+            expect(light.state.colorControl!.colorMode).toBe(2);
+        });
         expect(light.state.colorControl!.colorTempPhysicalMinMireds).toBe(158);
         expect(light.state.colorControl!.colorTempPhysicalMaxMireds).toBe(495);
         await publish(
             'zigbee2mqtt/Gledopto RGBCTT light I',
             JSON.stringify({color_mode: 'xy', color: {x: 0.5, y: 0.4}}),
         );
-        await waitFor(() => light.state.colorControl!.currentX === Math.round(0.5 * 65535), 5000, 'x');
-        expect(light.state.colorControl!.colorMode).toBe(1);
+        await settled(() => {
+            expect(light.state.colorControl!.currentX).toBe(Math.round(0.5 * 65535));
+            expect(light.state.colorControl!.colorMode).toBe(1);
+        });
     });
 
     it('commands as one coalesced /set message', async () => {
@@ -181,8 +185,10 @@ describe('relay channels', () => {
     it('status per property suffix, commands with the suffix on the device topic', async () => {
         const relay = device(RELAY);
         await publish('zigbee2mqtt/Aqara Dual relay module T2', JSON.stringify({state_l1: 'ON', state_l2: 'OFF'}));
-        await waitFor(() => relay.main.state.onOff!.onOff === true, 5000, 'l1 on');
-        expect(relay.endpoints.get('l2')!.state.onOff!.onOff).toBe(false);
+        await settled(() => {
+            expect(relay.main.state.onOff!.onOff).toBe(true);
+            expect(relay.endpoints.get('l2')!.state.onOff!.onOff).toBe(false);
+        });
         published.length = 0;
         await relay.endpoints.get('l2')!.endpoint.act((agent) => commands(agent.get(OnOffServer)).on!({}));
         await expectPublished('zigbee2mqtt/Aqara Dual relay module T2/set', '{"state_l2":"ON"}');
@@ -241,9 +247,11 @@ describe('thermostat and sensors', () => {
                 running_state: 'heat',
             }),
         );
-        await waitFor(() => thermo.state.thermostat!.localTemperature === 2150, 5000, 'temperature');
-        expect(thermo.state.thermostat!.occupiedHeatingSetpoint).toBe(2300);
-        expect(thermo.state.thermostat!.systemMode).toBe(4);
+        await settled(() => {
+            expect(thermo.state.thermostat!.localTemperature).toBe(2150);
+            expect(thermo.state.thermostat!.occupiedHeatingSetpoint).toBe(2300);
+            expect(thermo.state.thermostat!.systemMode).toBe(4);
+        });
         expect(thermo.state.thermostat!.minHeatSetpointLimit).toBe(500);
         expect(thermo.state.thermostat!.maxHeatSetpointLimit).toBe(4500);
     });
@@ -254,12 +262,14 @@ describe('thermostat and sensors', () => {
             'zigbee2mqtt/Climate sensor',
             JSON.stringify({temperature: 19.25, humidity: 55.5, pressure: 1013.2, battery: 80, voltage: 2950}),
         );
-        await waitFor(() => climate.state.temperatureMeasurement!.measuredValue === 1925, 5000, 'temperature');
-        expect(climate.state.relativeHumidityMeasurement!.measuredValue).toBe(5550);
-        expect(climate.state.pressureMeasurement!.measuredValue).toBe(1013);
-        expect(climate.state.powerSource!.batPercentRemaining).toBe(160);
-        expect(climate.state.powerSource!.batVoltage).toBe(2950);
-        expect(climate.state.bridgedDeviceBasicInformation!.reachable).toBe(true);
+        await settled(() => {
+            expect(climate.state.temperatureMeasurement!.measuredValue).toBe(1925);
+            expect(climate.state.relativeHumidityMeasurement!.measuredValue).toBe(5550);
+            expect(climate.state.pressureMeasurement!.measuredValue).toBe(1013);
+            expect(climate.state.powerSource!.batPercentRemaining).toBe(160);
+            expect(climate.state.powerSource!.batVoltage).toBe(2950);
+            expect(climate.state.bridgedDeviceBasicInformation!.reachable).toBe(true);
+        });
         await publish('zigbee2mqtt/Climate sensor/availability', '{"state":"offline"}');
         await waitFor(() => climate.state.bridgedDeviceBasicInformation!.reachable === false, 5000, 'unreachable');
         await publish('zigbee2mqtt/Climate sensor/availability', 'online');
