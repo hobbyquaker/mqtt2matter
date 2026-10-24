@@ -5,3 +5,4 @@ export * from './patch.ts';
 export * from './sync.ts';
 export * from './actions.ts';
 export * as z2m from './z2m/index.ts';
+export * as ha from './ha/index.ts';

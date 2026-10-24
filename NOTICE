@@ -11,3 +11,10 @@ The test fixtures test/fixtures/z2m/bridge-devices.json and bridge-groups.json a
 unchanged from matterbridge-zigbee2mqtt (https://github.com/Luligu/matterbridge-zigbee2mqtt,
 src/mock/, commit c72dd312d0899e930aec220e67b8959f10221eb0), Copyright 2023-2025 Luca Liguori,
 licensed under the Apache License, Version 2.0. They are used as a test corpus only.
+
+The Home Assistant MQTT discovery test corpus in test/fixtures/ha/ is documented in
+test/fixtures/ha/README.md: captures of the maintainer's own devices (ESPHome, zigbee2mqtt's own
+discovery, his MQTT adapters), anonymised, and payloads written by hand in the shape the documentation
+of Tasmota, Shelly, Z-Wave JS UI and OpenMQTTGateway describes; nothing is copied from those projects.
+The abbreviation tables in src/importers/ha/types.ts list the key names of Home Assistant's MQTT
+integration (https://github.com/home-assistant/core, Apache-2.0), which are the protocol, not code.

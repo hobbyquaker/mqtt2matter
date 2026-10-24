@@ -186,7 +186,8 @@ export class Sync<Raw> {
                 notes,
             };
         }
-        const changed = !deepEqual(withoutSource(device), withoutSource(current));
+        // a conflict means the baseline moved under an edit: reported as updated even when the edit kept its value
+        const changed = !deepEqual(withoutSource(device), withoutSource(current)) || result.conflicts.length > 0;
         const status: SyncStatus = wasOrphaned ? 'restored' : changed ? 'updated' : 'unchanged';
         return {...base, status, device, conflicts: result.conflicts, edits: result.edits.length};
     }
