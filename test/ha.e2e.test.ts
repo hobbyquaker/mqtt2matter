@@ -154,8 +154,8 @@ describe('Tasmota (default-schema light with templates)', () => {
             JSON.stringify({POWER: 'ON', Dimmer: 50, CT: 300, Color: '255,0,0,0,0'}),
         );
         await waitFor(() => light.state.onOff!.onOff === true, 5000, 'on');
-        expect(light.state.levelControl!.currentLevel).toBe(126);
-        expect(light.state.colorControl!.colorTemperatureMireds).toBe(300);
+        await waitFor(() => light.state.levelControl!.currentLevel === 126, 5000, 'level');
+        await waitFor(() => light.state.colorControl!.colorTemperatureMireds === 300, 5000, 'colour temperature');
         published.length = 0;
         await light.endpoint.act((agent) =>
             commands(agent.get(LevelControlServer)).moveToLevelWithOnOff!({
@@ -210,8 +210,9 @@ describe("zigbee2mqtt's own discovery (json schema)", () => {
                 color: {x: 0.3, y: 0.3},
             }),
         );
+        // one message sets both; the attributes are applied one after the other
         await waitFor(() => light.state.levelControl!.currentLevel === 254, 5000, 'level');
-        expect(light.state.colorControl!.colorTemperatureMireds).toBe(300);
+        await waitFor(() => light.state.colorControl!.colorTemperatureMireds === 300, 5000, 'colour temperature');
         published.length = 0;
         await light.endpoint.act((agent) =>
             commands(agent.get(LevelControlServer)).moveToLevelWithOnOff!({
