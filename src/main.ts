@@ -2,6 +2,7 @@
 /* `mqtt2matter [config.json]`: load the configuration, start, stop on SIGINT/SIGTERM. */
 
 import {App, VERSION} from './app.ts';
+import {importZ2m, parseImportArgs} from './commands/import-z2m.ts';
 import {ConfigError, loadConfig} from './config/load.ts';
 import {createLogger, describeError} from './log.ts';
 import {checkConfig, formatCheck} from './matter/check.ts';
@@ -10,9 +11,18 @@ async function main(): Promise<void> {
     const arg = process.argv[2];
     if (arg === '--help' || arg === '-h') {
         console.log(
-            `mqtt2matter ${VERSION}\nusage: mqtt2matter [config.json]\n       mqtt2matter --check [config.json]   validate the devices against the Matter model and matter.js (strict), no network\n  the file defaults to $MQTT2MATTER_CONFIG, then ./mqtt2matter.json`,
+            `mqtt2matter ${VERSION}\nusage: mqtt2matter [config.json]\n       mqtt2matter --check [config.json]   validate the devices against the Matter model and matter.js (strict), no network\n       mqtt2matter --import-z2m [config.json] [--base-topic zigbee2mqtt] [--dry-run] [--no-groups] [--timeout 15]\n                                           adopt the devices and groups zigbee2mqtt describes into the file, re-sync the adopted ones\n  the file defaults to $MQTT2MATTER_CONFIG, then ./mqtt2matter.json`,
         );
         return;
+    }
+    if (arg === '--import-z2m') {
+        const code = await importZ2m(parseImportArgs(process.argv.slice(3)), {
+            out: (line) => {
+                console.log(line);
+            },
+            log: createLogger('warn'),
+        });
+        process.exit(code);
     }
     if (arg === '--check') {
         const {config, path} = await loadConfig({
