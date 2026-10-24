@@ -17,36 +17,256 @@
       "name": "Living room plug",
       "vendor": "Tasmota",
       "model": "Sonoff S26",
+      "availability": {"topic": "tele/s26/LWT", "online": "Online", "offline": "Offline"},
       "endpoints": [
         {
           "deviceTypes": ["OnOffPlugInUnit"],
           "bindings": [
             {
               "attribute": "OnOff.onOff",
+              "status": {"topic": "stat/s26/RESULT", "extract": "$.POWER", "map": {"ON": true, "OFF": false}},
+              "command": {"topic": "cmnd/s26/POWER", "format": {"true": "ON", "false": "OFF"}}
+            }
+          ]
+        }
+      ]
+    },
+    "floor-lamp": {
+      "name": "Floor lamp",
+      "vendor": "Tasmota",
+      "model": "Sonoff B1",
+      "availability": {"topic": "tele/b1/LWT", "online": "Online", "offline": "Offline"},
+      "endpoints": [
+        {
+          "deviceTypes": ["ColorTemperatureLight"],
+          "options": {"light": {"onCommandType": "last", "minMireds": 153, "maxMireds": 500}},
+          "bindings": [
+            {
+              "attribute": "OnOff.onOff",
+              "status": {"topic": "stat/b1/RESULT", "extract": "$.POWER", "map": {"ON": true, "OFF": false}},
+              "command": {"topic": "cmnd/b1/POWER", "format": {"true": "ON", "false": "OFF"}}
+            },
+            {
+              "attribute": "LevelControl.currentLevel",
+              "status": {"topic": "stat/b1/RESULT", "extract": "$.Dimmer", "unit": "percentLevel"},
+              "command": {"topic": "cmnd/b1/Dimmer", "unit": "percentLevel", "round": 0}
+            },
+            {
+              "attribute": "ColorControl.colorTemperatureMireds",
+              "status": {"topic": "stat/b1/RESULT", "extract": "$.CT"},
+              "command": {"topic": "cmnd/b1/CT"}
+            }
+          ]
+        }
+      ]
+    },
+    "kitchen-light": {
+      "name": "Kitchen light",
+      "vendor": "IKEA",
+      "model": "TRADFRI bulb E27 CWS",
+      "availability": {"topic": "zigbee2mqtt/kitchen-light/availability", "extract": "state"},
+      "endpoints": [
+        {
+          "deviceTypes": ["ExtendedColorLight"],
+          "coalesce": 50,
+          "bindings": [
+            {
+              "attribute": "OnOff.onOff",
+              "status": {"topic": "zigbee2mqtt/kitchen-light", "extract": "state", "map": {"ON": true, "OFF": false}},
+              "command": {
+                "topic": "zigbee2mqtt/kitchen-light/set",
+                "wrap": "state",
+                "format": {"true": "ON", "false": "OFF"}
+              }
+            },
+            {
+              "attribute": "LevelControl.currentLevel",
+              "status": {"topic": "zigbee2mqtt/kitchen-light", "extract": "brightness", "unit": "byteLevel"},
+              "command": {
+                "topic": "zigbee2mqtt/kitchen-light/set",
+                "wrap": "brightness",
+                "unit": "byteLevel",
+                "round": 0
+              }
+            },
+            {
+              "attribute": "ColorControl.colorTemperatureMireds",
+              "status": {"topic": "zigbee2mqtt/kitchen-light", "extract": "color_temp"},
+              "command": {"topic": "zigbee2mqtt/kitchen-light/set", "wrap": "color_temp"}
+            },
+            {
+              "attribute": "ColorControl.colorXy",
+              "status": {"topic": "zigbee2mqtt/kitchen-light", "extract": "color"},
+              "command": {"topic": "zigbee2mqtt/kitchen-light/set", "wrap": "color"}
+            }
+          ]
+        }
+      ]
+    },
+    "bedroom-blind": {
+      "name": "Bedroom blind",
+      "vendor": "IKEA",
+      "model": "FYRTUR",
+      "endpoints": [
+        {
+          "deviceTypes": ["WindowCovering", "PowerSource"],
+          "options": {"cover": {"echoFilter": true, "reportTimeout": 30}},
+          "bindings": [
+            {
+              "attribute": "WindowCovering.currentPositionLiftPercent100ths",
               "status": {
-                "topic": "stat/s26/RESULT",
-                "extract": "$.POWER",
-                "map": {"ON": true, "OFF": false}
+                "topic": "zigbee2mqtt/bedroom-blind",
+                "extract": "position",
+                "scale": {"from": [0, 100], "to": [10000, 0]}
+              }
+            },
+            {
+              "attribute": "WindowCovering.targetPositionLiftPercent100ths",
+              "command": {
+                "topic": "zigbee2mqtt/bedroom-blind/set",
+                "wrap": "position",
+                "scale": {"from": [0, 100], "to": [10000, 0]},
+                "round": 0
+              }
+            },
+            {
+              "invoke": "WindowCovering.stopMotion",
+              "command": {"topic": "zigbee2mqtt/bedroom-blind/set", "wrap": "state", "payload": "STOP"}
+            },
+            {
+              "attribute": "PowerSource.batPercentRemaining",
+              "status": {"topic": "zigbee2mqtt/bedroom-blind", "extract": "battery", "unit": "halfPercent"}
+            }
+          ]
+        }
+      ]
+    },
+    "hallway-thermostat": {
+      "name": "Hallway radiator",
+      "endpoints": [
+        {
+          "deviceTypes": ["Thermostat"],
+          "options": {"climate": {"minHeat": 5, "maxHeat": 30}},
+          "bindings": [
+            {
+              "attribute": "Thermostat.localTemperature",
+              "status": {"topic": "zigbee2mqtt/hallway-trv", "extract": "local_temperature", "unit": "celsius"}
+            },
+            {
+              "attribute": "Thermostat.occupiedHeatingSetpoint",
+              "status": {"topic": "zigbee2mqtt/hallway-trv", "extract": "current_heating_setpoint", "unit": "celsius"},
+              "command": {
+                "topic": "zigbee2mqtt/hallway-trv/set",
+                "wrap": "current_heating_setpoint",
+                "unit": "celsius",
+                "round": 1
+              }
+            },
+            {
+              "attribute": "Thermostat.systemMode",
+              "status": {
+                "topic": "zigbee2mqtt/hallway-trv",
+                "extract": "system_mode",
+                "map": {"heat": "Heat", "off": "Off"}
               },
               "command": {
-                "topic": "cmnd/s26/POWER",
-                "format": {"true": "ON", "false": "OFF"}
+                "topic": "zigbee2mqtt/hallway-trv/set",
+                "wrap": "system_mode",
+                "format": {"Heat": "heat", "Off": "off"}
+              }
+            },
+            {
+              "attribute": "Thermostat.thermostatRunningState",
+              "status": {
+                "topic": "zigbee2mqtt/hallway-trv",
+                "extract": "running_state",
+                "map": {"heat": "heat", "idle": ""}
               }
             }
           ]
         }
       ]
     },
-    "hallway-light": {
-      "name": "Hallway light",
+    "front-door": {
+      "name": "Front door",
       "endpoints": [
         {
-          "deviceTypes": ["OnOffLight"],
+          "deviceTypes": ["DoorLock"],
           "bindings": [
             {
-              "attribute": "OnOff.onOff",
-              "status": {"topic": "home/hallway/light/state", "type": "boolean"},
-              "command": {"topic": "home/hallway/light/set", "qos": 1}
+              "attribute": "DoorLock.lockState",
+              "status": {
+                "topic": "zigbee2mqtt/front-door",
+                "extract": "state",
+                "map": {"LOCK": "Locked", "UNLOCK": "Unlocked"}
+              },
+              "command": {
+                "topic": "zigbee2mqtt/front-door/set",
+                "wrap": "state",
+                "format": {"Locked": "LOCK", "Unlocked": "UNLOCK"}
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "desk-button": {
+      "name": "Desk button",
+      "endpoints": [
+        {
+          "deviceTypes": ["GenericSwitch", "PowerSource"],
+          "bindings": [
+            {
+              "event": "Switch",
+              "status": {
+                "topic": "zigbee2mqtt/desk-button",
+                "extract": "action",
+                "map": {"single": "single", "double": "double", "hold": "long"}
+              }
+            },
+            {
+              "attribute": "PowerSource.batPercentRemaining",
+              "status": {"topic": "zigbee2mqtt/desk-button", "extract": "battery", "unit": "halfPercent"}
+            }
+          ]
+        }
+      ]
+    },
+    "greenhouse": {
+      "name": "Greenhouse",
+      "vendor": "ESPHome",
+      "endpoints": [
+        {
+          "deviceTypes": ["TemperatureSensor"],
+          "bindings": [
+            {
+              "attribute": "TemperatureMeasurement.measuredValue",
+              "status": {
+                "topic": "greenhouse/sensor/temperature/state",
+                "type": "number",
+                "unit": "celsius",
+                "expire": 600
+              }
+            }
+          ]
+        },
+        {
+          "id": "humidity",
+          "deviceTypes": ["HumiditySensor"],
+          "bindings": [
+            {
+              "attribute": "RelativeHumidityMeasurement.measuredValue",
+              "status": {"topic": "greenhouse/sensor/humidity/state", "type": "number", "unit": "percent100ths"}
+            }
+          ]
+        },
+        {
+          "id": "door",
+          "deviceTypes": ["ContactSensor"],
+          "bindings": [
+            {
+              "attribute": "BooleanState.stateValue",
+              "status": {"topic": "greenhouse/binary_sensor/door/state", "map": {"ON": false, "OFF": true}}
             }
           ]
         }
