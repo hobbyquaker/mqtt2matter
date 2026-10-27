@@ -19,7 +19,16 @@ const forbid = (...folders) => ({
 export default tseslint.config(
     {
         // the UI is type-checked by svelte-check (its own tsconfig); eslint has no Svelte parser here
-        ignores: ['dist/**', 'coverage/**', 'data/**', 'ui/**', 'playwright-report/**', 'test-results/**'],
+        ignores: [
+            'dist/**',
+            'coverage/**',
+            'data/**',
+            'ui/**',
+            'playwright-report/**',
+            'test-results/**',
+            // the release workflow's script, plain JavaScript outside the TypeScript project
+            '.github/**',
+        ],
     },
     js.configs.recommended,
     tseslint.configs.strictTypeChecked,

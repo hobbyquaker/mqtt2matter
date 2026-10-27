@@ -6,31 +6,49 @@ templates. Importers add devices with one click: Zigbee2MQTT natively (`bridge/d
 announces itself through Home Assistant MQTT discovery (ESPHome, Tasmota, Shelly, Zwave-JS-UI, …). Built on
 [matter.js](https://github.com/matter-js/matter.js) and [MQTT.js](https://github.com/mqttjs/MQTT.js).
 
-**Status: pre-alpha.** Phase 3 of 6 — the manual model is complete: every device type matter.js ships,
-composed from the Matter data model (no hand-kept catalogue), child endpoints, the payload engine in both
-directions with Jinja templates, and the families — lights (level, colour temperature, xy, hue/saturation,
-RGB), covers (positions, state-only, tilt), thermostats, locks, fans, buttons (GenericSwitch events), sensors,
-battery, availability. `mqtt2matter --check` validates a configuration against the model and matter.js in
-strict mode. The Zigbee2MQTT importer adopts `bridge/devices` and `bridge/groups` from the command line or
-the UI and re-syncs them. The web UI edits devices and mappings with a live preview, adopts discovered
-devices, shows the pairing code and the live MQTT traffic. Not published, not released; the Home Assistant
-discovery importer adopts ESPHome, Tasmota, Shelly, Z-Wave JS UI, OpenMQTTGateway and the device-based
-form from the UI. The configuration schema is frozen.
+**Status: early (0.x).** The configuration schema is frozen and the core is covered by tests — the model, the
+payload engine, the families, both importers, the UI with its API, end-to-end tests against a real matter.js
+node — but it has seen few real controllers yet. Bug reports and payloads that do not map are welcome as
+[issues](https://github.com/hobbyquaker/mqtt2matter/issues).
 
-## Try it
+What it does:
+
+- **Compose devices by hand** from every device type matter.js ships — child endpoints, cluster features,
+  attribute defaults straight from the Matter data model — and map each attribute, command or event onto MQTT
+  with a payload engine that works in both directions: JSON paths, value maps, units, scaling, rounding,
+  Jinja templates in Home Assistant's dialect.
+- **Families with real behaviour**: lights (level, colour temperature, xy, hue/saturation, RGB), covers
+  (position state machine, state-only covers, tilt), thermostats, locks, fans, buttons (GenericSwitch events),
+  sensors, battery, availability → reachable.
+- **Import** from Zigbee2MQTT's own `bridge/devices` and from Home Assistant MQTT discovery, review on the
+  Adopt page, re-sync without losing your edits; a device seen by both is adopted once.
+- **A web UI** for all of it, with a live preview of every conversion step and the live MQTT traffic.
+- `mqtt2matter --check` validates a configuration against the model and matter.js in strict mode.
+
+## Install
 
 Node ≥ 22.13.
 
 ```sh
-npm ci
-npm run build
-cp example/mqtt2matter.json .      # edit topics and payloads
-node dist/main.js mqtt2matter.json
+npm install -g mqtt2matter
+sudo mqtt2matter --install --mqtt-url mqtt://broker:1883   # a systemd service, see below
+journalctl -u mqtt2matter -f                               # the pairing code and QR payload
 ```
 
-`node dist/main.js --check mqtt2matter.json` checks the devices without starting the bridge. The log shows
-the bridge's manual pairing code and QR payload while it is not commissioned. Pair it from Apple Home, Home
+Then open `http://<host>:8282`, adopt devices or create them, and pair the bridge from Apple Home, Home
 Assistant, Google Home or Alexa like any Matter bridge; the devices appear as bridged endpoints.
+
+Without the service: `mqtt2matter mqtt2matter.json` runs in the foreground with the configuration file given
+(start from [example/mqtt2matter.json](example/mqtt2matter.json)), `mqtt2matter --check mqtt2matter.json`
+checks the devices without starting the bridge, `mqtt2matter --help` lists the options.
+
+### From source
+
+```sh
+npm ci
+npm run build
+node dist/main.js example/mqtt2matter.json
+```
 
 ### The web UI
 
@@ -48,9 +66,9 @@ light and dark. `server.enabled: false` turns it off; [docs/api.md](docs/api.md)
 ### Zigbee2MQTT
 
 ```sh
-node dist/main.js --import-z2m mqtt2matter.json            # reads zigbee2mqtt/bridge/devices and /groups
-node dist/main.js --import-z2m mqtt2matter.json --dry-run  # shows what it would do
-node dist/main.js mqtt2matter.json                         # starts the bridge, logs the pairing code
+mqtt2matter --import-z2m mqtt2matter.json            # reads zigbee2mqtt/bridge/devices and /groups
+mqtt2matter --import-z2m mqtt2matter.json --dry-run  # shows what it would do
+mqtt2matter mqtt2matter.json                         # starts the bridge, logs the pairing code
 ```
 
 `--import-z2m` connects to the broker of the configuration (or `MQTT2MATTER_MQTT_URL`), reads the retained
@@ -110,8 +128,7 @@ globally with npm — which the service user may not do: the UI only writes
 the version into `/var/lib/mqtt2matter/update/request`, and `--install` sets up `mqtt2matter-update.path`, which
 starts the root oneshot `mqtt2matter-update.service` (`mqtt2matter --apply-update`): it installs exactly
 `mqtt2matter@<that version>`, logs to `/var/lib/mqtt2matter/update/update.log` (shown in the UI) and restarts
-the service. No sudo rule, no polkit. Until mqtt2matter is on npm, the UI says "not published" and only the
-restart works. Outside the service (by hand, Docker) the UI offers neither and says why.
+the service. No sudo rule, no polkit. Outside the service (by hand, Docker) the UI offers neither and says why.
 
 **The host needs:**
 
