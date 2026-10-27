@@ -110,10 +110,13 @@ export const StatusHalfSchema = z
         template: z.string().optional(),
         /** the payload's type when there is no map; no guessing: a payload that does not parse is ignored */
         type: ValueTypeSchema.optional(),
-        /** extracted value (as text) → attribute value; an unmapped value is ignored unless `default` is set */
-        map: z.record(z.string(), ScalarSchema).optional(),
-        /** the value for an unmapped key */
-        default: ScalarSchema.optional(),
+        /**
+         * extracted value (as text) → attribute value; an unmapped value is ignored unless `default` is set. `null`
+         * clears a nullable attribute (`FanControl.percentSetting` while the fan runs in Auto)
+         */
+        map: z.record(z.string(), ScalarSchema.nullable()).optional(),
+        /** the value for an unmapped key (`null` as in `map`) */
+        default: ScalarSchema.nullable().optional(),
         ...NumericSteps,
         /** seconds without a message on this topic after which the device is unreachable */
         expire: z.number().positive().optional(),

@@ -697,9 +697,13 @@ class Builder {
             if (numeric.length >= 2) {
                 // numeric steps (`1` … `9`): the percent setting carries them; `off`/`auto` go through the mode
                 const max = Math.max(...numeric);
-                const percentMap: Record<string, number> = {off: 0};
+                const percentMap: Record<string, number | null> = {off: 0};
                 for (const n of numeric) {
                     percentMap[String(n)] = Math.round((n * 100) / max);
+                }
+                if (values.includes('auto')) {
+                    // Matter has no percent setting in Auto: null, as the specification wants it
+                    percentMap.auto = null;
                 }
                 this.bind(
                     draft,
@@ -724,6 +728,9 @@ class Builder {
             }
             if (Object.keys(map).length > 0) {
                 this.bind(draft, 'FanControl.fanMode', mode, {map}, {format});
+                if (map.auto === 'Auto') {
+                    this.addFeature(draft, 'FanControl', 'Auto');
+                }
             }
         }
         const speed = by.get('speed');

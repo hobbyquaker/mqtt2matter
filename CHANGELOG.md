@@ -8,6 +8,11 @@
 - A status value that a message does not carry (an extract path that is missing, a template that renders
   nothing) is logged at debug instead of as a warning: topics several mappings share — Tasmota's `RESULT`, a
   partial JSON report — carry only some of the values at a time.
+- **Fans with an auto mode** (IKEA STARKVIND through Zigbee2MQTT or Home Assistant discovery): `auto` is
+  Matter's Auto fan mode — both importers now set the `Auto` feature, so it is no longer refused — and the
+  percent setting is `null` while in auto instead of a warning per message. A status `map` or `default` may be
+  `null` for a nullable attribute, a template's `None` is read as `null`, and a `null` for an attribute that
+  cannot be null is skipped quietly. Adopted fans show as updated on the next sync.
 - Every shipped preset is tested: applied, validated, through the strict dry run, and against an in-process
   broker with its documented status and command messages.
 

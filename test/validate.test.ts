@@ -216,6 +216,24 @@ describe('validateDevice', () => {
         ]);
     });
 
+    it('takes null in a map or default only for a nullable attribute', () => {
+        const result = validateDevice(
+            device([
+                {
+                    deviceTypes: ['Fan'],
+                    features: {FanControl: ['Auto']},
+                    mappings: [
+                        {attribute: 'FanControl.percentSetting', status: {topic: 's', map: {auto: null, '1': 50}}},
+                        {attribute: 'FanControl.fanMode', status: {topic: 's', map: {auto: 'Auto'}, default: null}},
+                    ],
+                },
+            ]),
+        );
+        expect(result.errors.map((e) => `${e.path}: ${e.message}`)).toEqual([
+            expect.stringContaining('mappings[1].status.default: default null: the attribute is not nullable'),
+        ]);
+    });
+
     it('warns about utility-only endpoints and refuses equal availability payloads', () => {
         const result = validateDevice(
             device([{deviceTypes: ['PowerSource'], mappings: []}], {

@@ -94,6 +94,26 @@ describe('decodeStatus: extract, map, type', () => {
         expect(decodeStatus(half, 'TOGGLE')).toEqual({ok: false, reason: expect.stringContaining('not in the map')});
     });
 
+    it("maps to null, and reads a template's None as null: a value only for a nullable attribute", () => {
+        const nullable = {metatype: 'integer' as const, nullable: true};
+        const percent = status({map: {auto: null, '1': 10}});
+        expect(decodeStatus(percent, 'auto', nullable)).toEqual({ok: true, value: null});
+        expect(decodeStatus(percent, '1', nullable)).toEqual({ok: true, value: 10});
+        const none = status({template: "{{ value_json.x | default('None') }}", type: 'number'});
+        expect(decodeStatus(none, '{}', nullable)).toEqual({ok: true, value: null});
+        expect(decodeStatus(none, '{"x": 5}', nullable)).toEqual({ok: true, value: 5});
+        expect(decodeStatus(none, '{}', {metatype: 'enum'})).toEqual({
+            ok: false,
+            reason: 'null, but the attribute is not nullable',
+            absent: true,
+        });
+        // a map that names None keeps it
+        expect(decodeStatus(status({template: '{{ value }}', map: {None: 'x'}}), 'None')).toEqual({
+            ok: true,
+            value: 'x',
+        });
+    });
+
     it('falls back to `default` for an unmapped value', () => {
         const half = status({map: {heat: 'heat'}, default: ''});
         expect(decodeStatus(half, 'idle')).toEqual({ok: true, value: ''});
@@ -242,9 +262,11 @@ describe('shape: the attribute decides', () => {
 
     it('handles null by nullability', () => {
         expect(shape(null, {metatype: 'integer', nullable: true})).toEqual({ok: true, value: null});
+        // null is "no value": logged at debug, not a failure
         expect(shape(null, {metatype: 'integer', nullable: false})).toEqual({
             ok: false,
             reason: expect.stringContaining('null'),
+            absent: true,
         });
     });
 

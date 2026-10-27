@@ -133,7 +133,13 @@ function scalarKind(value: Scalar): 'boolean' | 'number' | 'string' {
     return typeof value as 'boolean' | 'number' | 'string';
 }
 
-function checkValueShape(issues: Issue[], path: string, info: AttributeInfo, value: Scalar, what: string): void {
+function checkValueShape(issues: Issue[], path: string, info: AttributeInfo, value: Scalar | null, what: string): void {
+    if (value === null) {
+        if (!info.nullable) {
+            issues.push({level: 'error', path, message: `${what} null: the attribute is not nullable`});
+        }
+        return;
+    }
     const kind = scalarKind(value);
     switch (info.metatype) {
         case 'boolean':

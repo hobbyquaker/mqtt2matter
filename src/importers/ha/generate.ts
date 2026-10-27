@@ -1199,6 +1199,9 @@ class Builder {
                         `{% set value = ${sets.join(' else ')} else name | lower %}`,
                     ),
                 );
+                if (Object.values(map).includes('Auto')) {
+                    this.addFeature(draft, 'FanControl', 'Auto');
+                }
             }
             const other = presets.filter((p) => names[p.toLowerCase()] === undefined);
             if (other.length > 0) {

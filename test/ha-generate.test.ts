@@ -313,6 +313,7 @@ describe("zigbee2mqtt's own discovery (native preferred)", () => {
             status: {map: {auto: 'Auto'}},
             command: {format: {Auto: 'auto'}},
         });
+        expect(device.endpoints[0]!.features).toEqual({FanControl: ['Auto']});
         const unmapped = item('ha:zigbee2mqtt_0x00124b0000000003').unmapped;
         expect(unmapped.some((u) => u.includes('percentage_command_template a dictionary with non-string keys'))).toBe(
             true,

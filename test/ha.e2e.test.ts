@@ -18,7 +18,7 @@ import {createLogger} from '../src/log.ts';
 import type {DeviceHandle} from '../src/matter/bridge.ts';
 import {startBroker, type Broker} from './helpers/broker.ts';
 import {CORPUS, loadCorpus} from './helpers/ha-corpus.ts';
-import {freeUdpPort, waitFor} from './helpers/util.ts';
+import {freeUdpPort, settled, waitFor} from './helpers/util.ts';
 
 const RELAY = 'ha:aa0000000002';
 const SEEDLING = 'ha:aa0000000003';
@@ -27,7 +27,8 @@ const SHELLY_COVER = 'ha:shellyplus2pm-d4e5f6';
 const SHELLY_I4 = 'ha:shellyplusi4-778899';
 const HUE = 'ha:zigbee2mqtt_0x00124b0000000001';
 const UPS = 'ha:nut2mqtt_nut_nutdev1';
-const KEYS = [RELAY, SEEDLING, TASMOTA_LIGHT, SHELLY_COVER, SHELLY_I4, HUE, UPS];
+const FAN = 'ha:zigbee2mqtt_0x00124b0000000003';
+const KEYS = [RELAY, SEEDLING, TASMOTA_LIGHT, SHELLY_COVER, SHELLY_I4, HUE, UPS, FAN];
 
 let broker: Broker;
 let storage: string;
@@ -223,5 +224,26 @@ describe("zigbee2mqtt's own discovery (json schema)", () => {
             }),
         );
         await expectPublished('zigbee2mqtt/light_cellar_1/set', '{"brightness":127,"state":"ON"}');
+    });
+});
+
+describe('a fan with an auto preset mode', () => {
+    it('auto is the Auto fan mode with no percent setting; a speed leaves Auto; no log line', async () => {
+        const fan = device(FAN);
+        const logged = logLines.length;
+        expect(fan.state.fanControl!.featureMap).toMatchObject({auto: true});
+        const report = (fanMode: string) =>
+            JSON.stringify({fan_state: 'ON', fan_mode: fanMode, fan_speed: 1, pm25: 3, air_quality: 'excellent'});
+        await publish('zigbee2mqtt/starkvind', report('auto'));
+        await settled(() => {
+            expect(fan.state.fanControl!.fanMode).toBe(5);
+            expect(fan.state.fanControl!.percentSetting).toBe(null);
+        });
+        await publish('zigbee2mqtt/starkvind', report('9'));
+        await settled(() => {
+            expect(fan.state.fanControl!.percentSetting).toBe(100);
+            expect(fan.state.fanControl!.fanMode).toBe(3);
+        });
+        expect(logLines.slice(logged)).toEqual([]);
     });
 });

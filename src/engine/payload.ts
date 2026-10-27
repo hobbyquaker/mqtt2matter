@@ -251,9 +251,10 @@ export function shape(value: Decoded, target: TargetShape | undefined): DecodeRe
         return {ok: true, value};
     }
     if (value === null) {
+        // null is "no value" (a JSON null, Home Assistant's None): a value only where the attribute can be null
         return target.nullable === true
             ? {ok: true, value: null}
-            : {ok: false, reason: 'null, but the attribute is not nullable'};
+            : {ok: false, reason: 'null, but the attribute is not nullable', absent: true};
     }
     switch (target.metatype) {
         case 'boolean':
@@ -401,6 +402,10 @@ export function decodeStatus(
         }
         if (rendered.text === '') {
             return {ok: false, reason: 'the template rendered an empty string', absent: true};
+        }
+        if (rendered.text === 'None' && half.map?.None === undefined) {
+            // Home Assistant's templates render None for "no value" (`| default('None')`)
+            return finish(null);
         }
         value = rendered.text;
     }

@@ -195,25 +195,29 @@ write — thermostat setpoints and `systemMode`, `FanControl.fanMode` and `perce
 
 **`status`** (device → Matter), in this order:
 
-| Key        | Meaning                                                                                                                                                                   |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `topic`    | the topic to subscribe                                                                                                                                                    |
-| `extract`  | a JSON path into the payload: `$.POWER`, `state.on`, `$.a[0].b`; absent = the whole payload                                                                               |
-| `template` | a Jinja template over `value` (the extracted value or the payload text), `value_json` (the parsed payload) and `topic`; its text is the value; an empty result is ignored |
-| `map`      | value (as text) → attribute value: `{"ON": true, "OFF": false}`, `{"heat": "Heat"}`; an unmapped value is ignored unless `default` is set                                 |
-| `default`  | the value for an unmapped key or a failed `type`                                                                                                                          |
-| `type`     | without a map: `boolean`, `number` or `string` — explicit, no guessing (`"ON"` is not a boolean)                                                                          |
-| `unit`     | a named conversion into the attribute's unit, see _Units_                                                                                                                 |
-| `scale`    | `{"from": [0, 100], "to": [1, 254], "clamp": true}`: linear, clamped into `from`; reversed `to` bounds invert (`[10000, 0]`)                                              |
-| `offset`   | added after scaling                                                                                                                                                       |
-| `invert`   | booleans: not; numbers with a scale: mirrored within `scale.to`                                                                                                           |
-| `round`    | decimals; integer attributes are rounded to whole numbers in any case                                                                                                     |
-| `expire`   | seconds without a message on this topic after which the device is unreachable                                                                                             |
-| `get`      | `{"topic", "payload"}` published at start and after a reconnect so the device reports (z2m `…/get`)                                                                       |
-| `codec`    | `{"module": "./my-codec.js", "options": …}`: `decode(payload, {topic, options})` replaces every step above                                                                |
+| Key        | Meaning                                                                                                                                                                                                                                         |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `topic`    | the topic to subscribe                                                                                                                                                                                                                          |
+| `extract`  | a JSON path into the payload: `$.POWER`, `state.on`, `$.a[0].b`; absent = the whole payload                                                                                                                                                     |
+| `template` | a Jinja template over `value` (the extracted value or the payload text), `value_json` (the parsed payload) and `topic`; its text is the value; an empty result is ignored, `None` (Home Assistant's "no value") is `null` unless `map` names it |
+| `map`      | value (as text) → attribute value: `{"ON": true, "OFF": false}`, `{"heat": "Heat"}`; an unmapped value is ignored unless `default` is set; `null` clears a nullable attribute                                                                   |
+| `default`  | the value for an unmapped key or a failed `type` (`null` as in `map`)                                                                                                                                                                           |
+| `type`     | without a map: `boolean`, `number` or `string` — explicit, no guessing (`"ON"` is not a boolean)                                                                                                                                                |
+| `unit`     | a named conversion into the attribute's unit, see _Units_                                                                                                                                                                                       |
+| `scale`    | `{"from": [0, 100], "to": [1, 254], "clamp": true}`: linear, clamped into `from`; reversed `to` bounds invert (`[10000, 0]`)                                                                                                                    |
+| `offset`   | added after scaling                                                                                                                                                                                                                             |
+| `invert`   | booleans: not; numbers with a scale: mirrored within `scale.to`                                                                                                                                                                                 |
+| `round`    | decimals; integer attributes are rounded to whole numbers in any case                                                                                                                                                                           |
+| `expire`   | seconds without a message on this topic after which the device is unreachable                                                                                                                                                                   |
+| `get`      | `{"topic", "payload"}` published at start and after a reconnect so the device reports (z2m `…/get`)                                                                                                                                             |
+| `codec`    | `{"module": "./my-codec.js", "options": …}`: `decode(payload, {topic, options})` replaces every step above                                                                                                                                      |
 
 Without `extract`, `map` and `type` a plain payload is taken as text and a JSON scalar as itself; a JSON
 object or array is handed to the family (the colour composites).
+
+A message that carries no value for a mapping — the `extract` path is missing, the template renders nothing,
+the value is `null` for an attribute that cannot be null — is skipped and logged at debug: several mappings
+often share a topic and each message carries only some of their values. Other failures are warnings.
 
 **`command`** (Matter → device): a value a controller wrote becomes a payload on `topic`.
 
@@ -333,7 +337,10 @@ position.
 a controller's lock/unlock publishes the command half keyed by those names and waits for the report.
 
 **fan** (`FanControl`): bind `percentSetting` (command) and `percentCurrent` or `percentSetting` (status), or
-`fanMode` by name (`Off`, `Low`, `Medium`, `High`, `Auto`); the family keeps mode and percent consistent.
+`fanMode` by name (`Off`, `Low`, `Medium`, `High`, `Auto`); the family keeps mode and percent consistent. `Auto`
+needs the `Auto` feature (`"features": {"FanControl": ["Auto"]}`); in Auto Matter has no percent setting, so map
+the device's auto value to `null` on `percentSetting` (`"map": {"auto": null, …}`). A percent report while the mode
+is Auto leaves Auto.
 
 | Option          | Default    | Meaning                                                              |
 | --------------- | ---------- | -------------------------------------------------------------------- |

@@ -137,7 +137,9 @@ export async function fanStatus(
             percentSetting: value,
             ...speedPatch(context, value),
         };
-        if (!hasStatus(context, FAN_MODE_KEY)) {
+        // a reported mode wins, except Auto: a fan in Auto reports no percent setting (null), so a percent means
+        // it left Auto even when the mode's own report says nothing (Home Assistant's preset None)
+        if (!hasStatus(context, FAN_MODE_KEY) || fanState(context).fanMode === FanControl.FanMode.Auto) {
             patch.fanMode = percentToMode(context, value);
         }
         await setFan(context, patch);

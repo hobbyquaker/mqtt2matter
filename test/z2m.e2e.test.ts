@@ -282,10 +282,11 @@ describe('thermostat and sensors', () => {
 });
 
 describe('a fan with numbered speeds', () => {
-    it('every speed sets the percent and its third as the mode, without a warning', async () => {
+    it('every speed sets the percent and its third as the mode, auto Auto with no percent, without a warning', async () => {
         const fan = device(FAN);
-        const steps: [string, number, number][] = [
+        const steps: [string, number | null, number][] = [
             // fan_mode, percentSetting, fanMode (Off 0, Low 1, Medium 2, High 3, Auto 5)
+            ['auto', null, 5],
             ['1', 11, 1],
             ['3', 33, 1],
             ['5', 56, 2],

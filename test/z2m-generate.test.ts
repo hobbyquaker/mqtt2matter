@@ -510,7 +510,12 @@ describe('hand-written descriptions', () => {
         expect(mapping(generated.device, 'OnOff.onOff').status).toMatchObject({extract: 'fan_state'});
         expect(mapping(generated.device, 'FanControl.percentSetting')).toEqual({
             attribute: 'FanControl.percentSetting',
-            status: {topic: 'z/Test', extract: 'fan_mode', map: {off: 0, '1': 20, '2': 40, '3': 60, '4': 80, '5': 100}},
+            // Matter has no percent setting in Auto: null
+            status: {
+                topic: 'z/Test',
+                extract: 'fan_mode',
+                map: {off: 0, '1': 20, '2': 40, '3': 60, '4': 80, '5': 100, auto: null},
+            },
             command: {
                 topic: 'z/Test/set',
                 wrap: 'fan_mode',
@@ -524,6 +529,7 @@ describe('hand-written descriptions', () => {
             },
             command: {format: {Off: 'off', Auto: 'auto', Low: '2', Medium: '4', High: '5'}},
         });
+        expect(generated.device.endpoints[0]!.features).toEqual({FanControl: ['Auto']});
         expect(mapping(generated.device, 'Pm25ConcentrationMeasurement.measuredValue').status).toMatchObject({
             extract: 'pm25',
         });
@@ -547,6 +553,7 @@ describe('hand-written descriptions', () => {
             ]),
         ).device;
         expect(named.endpoints[0]!.mappings!.map(target)).toEqual(['FanControl.fanMode']);
+        expect(named.endpoints[0]!.features).toBeUndefined();
         expect(mapping(named, 'FanControl.fanMode')).toMatchObject({
             status: {map: {off: 'Off', low: 'Low', medium: 'Medium', high: 'High', on: 'On'}},
             command: {format: {Off: 'off', Low: 'low', Medium: 'medium', High: 'high', On: 'on'}},
