@@ -1,0 +1,46 @@
+{
+  "id": "tasmota/shutter",
+  "name": "Tasmota shutter",
+  "description": "A Tasmota shutter (Shutter<n>, 100 = open) as a position-aware window covering: the position from stat/<topic>/RESULT, ShutterPosition<n>, ShutterOpen<n>, ShutterClose<n>, ShutterStop<n>.",
+  "vendor": "Tasmota",
+  "format": 1,
+  "variables": {
+    "topic": {"label": "Tasmota topic", "description": "The device's MQTT topic (Configuration → MQTT → Topic)"},
+    "index": {"label": "Shutter", "description": "The shutter's number: 1, 2, …", "default": "1"},
+    "name": {"label": "Name", "default": "Shutter"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Tasmota",
+    "availability": {"topic": "tele/%topic%/LWT", "online": "Online", "offline": "Offline"},
+    "endpoints": [
+      {
+        "deviceTypes": ["WindowCovering"],
+        "mappings": [
+          {
+            "attribute": "WindowCovering.currentPositionLiftPercent100ths",
+            "status": {
+              "topic": "stat/%topic%/RESULT",
+              "extract": "$.Shutter%index%.Position",
+              "scale": {"from": [0, 100], "to": [10000, 0]},
+              "get": {"topic": "cmnd/%topic%/ShutterPosition%index%", "payload": ""}
+            }
+          },
+          {
+            "attribute": "WindowCovering.targetPositionLiftPercent100ths",
+            "command": {"topic": "cmnd/%topic%/ShutterPosition%index%", "template": "{{ open }}"}
+          },
+          {"invoke": "WindowCovering.upOrOpen", "command": {"topic": "cmnd/%topic%/ShutterOpen%index%", "payload": ""}},
+          {
+            "invoke": "WindowCovering.downOrClose",
+            "command": {"topic": "cmnd/%topic%/ShutterClose%index%", "payload": ""}
+          },
+          {
+            "invoke": "WindowCovering.stopMotion",
+            "command": {"topic": "cmnd/%topic%/ShutterStop%index%", "payload": ""}
+          }
+        ]
+      }
+    ]
+  }
+}

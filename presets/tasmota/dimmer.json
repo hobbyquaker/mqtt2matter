@@ -1,0 +1,45 @@
+{
+  "id": "tasmota/dimmer",
+  "name": "Tasmota dimmer",
+  "description": "A Tasmota dimmer or single-channel light: POWER and Dimmer (0–100) from stat/<topic>/RESULT, commands to cmnd/<topic>/POWER and Dimmer.",
+  "vendor": "Tasmota",
+  "format": 1,
+  "variables": {
+    "topic": {"label": "Tasmota topic", "description": "The device's MQTT topic (Configuration → MQTT → Topic)"},
+    "name": {"label": "Name", "default": "Dimmer"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Tasmota",
+    "availability": {"topic": "tele/%topic%/LWT", "online": "Online", "offline": "Offline"},
+    "endpoints": [
+      {
+        "deviceTypes": ["DimmableLight"],
+        "options": {"light": {"onCommandType": "first"}},
+        "mappings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {
+              "topic": "stat/%topic%/RESULT",
+              "extract": "$.POWER",
+              "map": {"ON": true, "OFF": false},
+              "get": {"topic": "cmnd/%topic%/POWER", "payload": ""}
+            },
+            "command": {"topic": "cmnd/%topic%/POWER", "format": {"true": "ON", "false": "OFF"}}
+          },
+          {
+            "attribute": "LevelControl.currentLevel",
+            "status": {
+              "topic": "stat/%topic%/RESULT",
+              "template": "{{ value_json.Dimmer if value_json.Dimmer is defined and value_json.Dimmer > 0 else '' }}",
+              "type": "number",
+              "unit": "percentLevel",
+              "get": {"topic": "cmnd/%topic%/Dimmer", "payload": ""}
+            },
+            "command": {"topic": "cmnd/%topic%/Dimmer", "unit": "percentLevel", "round": 0}
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "id": "tasmota/climate",
+  "name": "Tasmota climate sensor",
+  "description": "A BME280/BME680-style sensor attached to Tasmota: temperature, humidity and pressure (hPa, PressureUnit hPa) from tele/<topic>/SENSOR; humidity and pressure as child endpoints.",
+  "vendor": "Tasmota",
+  "format": 1,
+  "variables": {
+    "topic": {"label": "Tasmota topic", "description": "The device's MQTT topic (Configuration → MQTT → Topic)"},
+    "sensor": {
+      "label": "Sensor",
+      "description": "The sensor's key in tele/<topic>/SENSOR (BME280, BME680, …)",
+      "default": "BME280"
+    },
+    "name": {"label": "Name", "default": "Climate"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Tasmota",
+    "availability": {"topic": "tele/%topic%/LWT", "online": "Online", "offline": "Offline"},
+    "endpoints": [
+      {
+        "deviceTypes": ["TemperatureSensor"],
+        "mappings": [
+          {
+            "attribute": "TemperatureMeasurement.measuredValue",
+            "status": {"topic": "tele/%topic%/SENSOR", "extract": "$.%sensor%.Temperature", "unit": "celsius"}
+          }
+        ]
+      },
+      {
+        "id": "humidity",
+        "deviceTypes": ["HumiditySensor"],
+        "mappings": [
+          {
+            "attribute": "RelativeHumidityMeasurement.measuredValue",
+            "status": {"topic": "tele/%topic%/SENSOR", "extract": "$.%sensor%.Humidity", "unit": "percent100ths"}
+          }
+        ]
+      },
+      {
+        "id": "pressure",
+        "deviceTypes": ["PressureSensor"],
+        "mappings": [
+          {
+            "attribute": "PressureMeasurement.measuredValue",
+            "status": {"topic": "tele/%topic%/SENSOR", "extract": "$.%sensor%.Pressure"}
+          }
+        ]
+      }
+    ]
+  }
+}

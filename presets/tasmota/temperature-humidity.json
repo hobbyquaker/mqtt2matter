@@ -1,0 +1,42 @@
+{
+  "id": "tasmota/temperature-humidity",
+  "name": "Tasmota temperature and humidity sensor",
+  "description": "A temperature and humidity sensor attached to Tasmota (SHT3X, AM2301, DHT11, SI7021, …) from tele/<topic>/SENSOR every TelePeriod; humidity as a child endpoint.",
+  "vendor": "Tasmota",
+  "format": 1,
+  "variables": {
+    "topic": {"label": "Tasmota topic", "description": "The device's MQTT topic (Configuration → MQTT → Topic)"},
+    "sensor": {
+      "label": "Sensor",
+      "description": "The sensor's key in tele/<topic>/SENSOR (SHT3X, AM2301, DHT11, SI7021, …)",
+      "default": "SHT3X"
+    },
+    "name": {"label": "Name", "default": "Climate"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Tasmota",
+    "availability": {"topic": "tele/%topic%/LWT", "online": "Online", "offline": "Offline"},
+    "endpoints": [
+      {
+        "deviceTypes": ["TemperatureSensor"],
+        "mappings": [
+          {
+            "attribute": "TemperatureMeasurement.measuredValue",
+            "status": {"topic": "tele/%topic%/SENSOR", "extract": "$.%sensor%.Temperature", "unit": "celsius"}
+          }
+        ]
+      },
+      {
+        "id": "humidity",
+        "deviceTypes": ["HumiditySensor"],
+        "mappings": [
+          {
+            "attribute": "RelativeHumidityMeasurement.measuredValue",
+            "status": {"topic": "tele/%topic%/SENSOR", "extract": "$.%sensor%.Humidity", "unit": "percent100ths"}
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -12,7 +12,7 @@ a real device and nothing is copied from another project.
 | File                  | Documentation                                                                          |
 | --------------------- | -------------------------------------------------------------------------------------- |
 | `mqtt-smarthome.json` | the mqtt-smarthome convention, SPEC 2.0: https://github.com/mqtt-smarthome/mqtt-smarthome/blob/master/SPEC.md |
-| `tasmota.json`        | Tasmota's MQTT and command reference: https://tasmota.github.io/docs/MQTT/, https://tasmota.github.io/docs/Commands/ |
+| `tasmota.json`        | Tasmota's MQTT, command, lights and shutter documentation: https://tasmota.github.io/docs/MQTT/, …/Commands/, …/Lights/, …/Blinds-and-Shutters/; the `Shutter1` JSON shape as forum captures show it (the documentation names the fields, not the frame) |
 | `wled.json`           | WLED's MQTT and JSON API: https://kno.wled.ge/interfaces/mqtt/, https://kno.wled.ge/interfaces/json-api/ |
 | `shelly-gen2.json`    | Shelly's Gen2+ API: https://shelly-api-docs.shelly.cloud/gen2/ — RPC channels, Mqtt, Switch, Cover, Light, Input, Temperature, Humidity, DevicePower |
 | `shelly-gen1.json`    | Shelly's Gen1 API, the MQTT sections: https://shelly-api-docs.shelly.cloud/gen1/ |

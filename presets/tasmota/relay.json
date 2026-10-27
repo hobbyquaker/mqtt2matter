@@ -1,11 +1,17 @@
 {
   "id": "tasmota/relay",
   "name": "Tasmota relay",
-  "description": "One relay of a Tasmota device as a plug-in unit: POWER over stat/cmnd, availability from LWT.",
+  "description": "One relay of a Tasmota device as a plug-in unit: POWER (or POWER<n> of a multi-relay device) over stat/cmnd, asked for at start, availability from LWT.",
   "vendor": "Tasmota",
   "format": 1,
   "variables": {
     "topic": {"label": "Tasmota topic", "description": "The device's MQTT topic (Configuration → MQTT → Topic)"},
+    "index": {
+      "label": "Relay",
+      "description": "Empty for a device with one relay (POWER); 1, 2, … for one relay of several (POWER1, POWER2, …)",
+      "default": "",
+      "optional": true
+    },
     "name": {"label": "Name", "default": "Relay"}
   },
   "device": {
@@ -18,8 +24,13 @@
         "mappings": [
           {
             "attribute": "OnOff.onOff",
-            "status": {"topic": "stat/%topic%/RESULT", "extract": "$.POWER", "map": {"ON": true, "OFF": false}},
-            "command": {"topic": "cmnd/%topic%/POWER", "format": {"true": "ON", "false": "OFF"}}
+            "status": {
+              "topic": "stat/%topic%/RESULT",
+              "extract": "$.POWER%index%",
+              "map": {"ON": true, "OFF": false},
+              "get": {"topic": "cmnd/%topic%/POWER%index%", "payload": ""}
+            },
+            "command": {"topic": "cmnd/%topic%/POWER%index%", "format": {"true": "ON", "false": "OFF"}}
           }
         ]
       }

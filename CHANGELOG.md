@@ -12,6 +12,10 @@
   from the "Generic status update" topics, commands as RPC, the status requested at start.
 - **Presets for first-generation Shelly devices**: relay, relay with power, roller (2.5), Dimmer 1/2, H&T and
   Door/Window, over the `shellies/<id>/…` topics; mains-powered ones ask for their state at start.
+- **More Tasmota presets**: dimmer, CT light, colour light (RGB/RGBW/RGBCCT with the colour mode from the
+  channels), shutter, and temperature, temperature/humidity and climate (with pressure) sensors from
+  `tele/<topic>/SENSOR`. `tasmota/relay` takes an optional relay index for `POWER1`…`POWERn` and asks for the
+  state at start.
 - Templates: `int` takes Home Assistant's default and base, `'ff' | int(0, 16)` reads hexadecimal.
 - A status value that a message does not carry (an extract path that is missing, a template that renders
   nothing) is logged at debug instead of as a warning: topics several mappings share — Tasmota's `RESULT`, a

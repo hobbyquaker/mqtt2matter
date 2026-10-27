@@ -1,0 +1,63 @@
+{
+  "id": "tasmota/color-light",
+  "name": "Tasmota colour light",
+  "description": "A Tasmota RGB, RGBW or RGBCCT light: POWER, Dimmer, the colour from HSBColor (sent as Color2 r,g,b, which keeps the dimmer), CT for the white channels; the colour mode follows Channel (RGB all 0 = white).",
+  "vendor": "Tasmota",
+  "format": 1,
+  "variables": {
+    "topic": {"label": "Tasmota topic", "description": "The device's MQTT topic (Configuration → MQTT → Topic)"},
+    "name": {"label": "Name", "default": "Light"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Tasmota",
+    "availability": {"topic": "tele/%topic%/LWT", "online": "Online", "offline": "Offline"},
+    "endpoints": [
+      {
+        "deviceTypes": ["ExtendedColorLight"],
+        "features": {"ColorControl": ["HueSaturation"]},
+        "options": {"light": {"onCommandType": "first"}},
+        "mappings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {
+              "topic": "stat/%topic%/RESULT",
+              "extract": "$.POWER",
+              "map": {"ON": true, "OFF": false},
+              "get": {"topic": "cmnd/%topic%/POWER", "payload": ""}
+            },
+            "command": {"topic": "cmnd/%topic%/POWER", "format": {"true": "ON", "false": "OFF"}}
+          },
+          {
+            "attribute": "LevelControl.currentLevel",
+            "status": {
+              "topic": "stat/%topic%/RESULT",
+              "template": "{{ value_json.Dimmer if value_json.Dimmer is defined and value_json.Dimmer > 0 else '' }}",
+              "type": "number",
+              "unit": "percentLevel",
+              "get": {"topic": "cmnd/%topic%/Dimmer", "payload": ""}
+            },
+            "command": {"topic": "cmnd/%topic%/Dimmer", "unit": "percentLevel", "round": 0}
+          },
+          {
+            "attribute": "ColorControl.colorHs",
+            "status": {"topic": "stat/%topic%/RESULT", "extract": "$.HSBColor"},
+            "command": {"topic": "cmnd/%topic%/Color2", "template": "{{ red }},{{ green }},{{ blue }}"}
+          },
+          {
+            "attribute": "ColorControl.colorTemperatureMireds",
+            "status": {"topic": "stat/%topic%/RESULT", "extract": "$.CT"},
+            "command": {"topic": "cmnd/%topic%/CT"}
+          },
+          {
+            "attribute": "ColorControl.colorMode",
+            "status": {
+              "topic": "stat/%topic%/RESULT",
+              "template": "{% if value_json.Channel is defined and value_json.Channel | length > 3 %}{{ 'ColorTemperatureMireds' if (value_json.Channel[0:3] | max) == 0 else 'CurrentHueAndCurrentSaturation' }}{% elif value_json.HSBColor is defined %}CurrentHueAndCurrentSaturation{% endif %}"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

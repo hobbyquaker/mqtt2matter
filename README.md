@@ -67,7 +67,7 @@ light and dark. `server.enabled: false` turns it off; [docs/api.md](docs/api.md)
 
 A preset turns a kind of device into a device entry from a few values (a topic, a name): the device editor
 offers them. Shipped: devices following the mqtt-smarthome convention (switch, light, dimmer, cover, contact,
-occupancy, temperature, humidity, button), WLED (colour light, dimmer), Shelly Gen2/Gen3 (switch with and without power metering, cover, dimmer, Plus H&T, Plus i4), Shelly Gen1 (relay with and without power, roller, dimmer, H&T, Door/Window) and the Tasmota relay — the list with what each needs on the device
+occupancy, temperature, humidity, button), WLED (colour light, dimmer), Shelly Gen2/Gen3 (switch with and without power metering, cover, dimmer, Plus H&T, Plus i4), Shelly Gen1 (relay with and without power, roller, dimmer, H&T, Door/Window) and Tasmota (relay, dimmer, CT and colour lights, shutter, temperature, humidity and pressure sensors) — the list with what each needs on the device
 side is in [docs/config.md](docs/config.md#shipped-presets). Your own presets are JSON files in a directory
 named in `presets`.
 

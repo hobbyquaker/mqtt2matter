@@ -483,8 +483,21 @@ Battery devices sleep between reports and have no availability.
 | `shelly-gen1/door-window` | ContactSensor, PowerSource        | Door/Window 1/2: `sensor/state` `open`/`close`, `sensor/battery`; `sensor/lux` as a child                                     |
 
 **Tasmota** — `topic`: the device's MQTT topic (Configuration → MQTT → Topic); the default FullTopic
-`%prefix%/%topic%/`.
+`%prefix%/%topic%/`. Actuators read `stat/<topic>/RESULT` and ask for their state at start with an empty
+`cmnd/<topic>/<Command>`; sensors read `tele/<topic>/SENSOR`, sent every `TelePeriod` (300 s by default), with
+`TempUnit` C and `PressureUnit` hPa. Availability is `tele/<topic>/LWT` (`Online`/`Offline`).
 
-| Id              | Matter          | Notes                                                       |
-| --------------- | --------------- | ----------------------------------------------------------- |
-| `tasmota/relay` | OnOffPlugInUnit | `POWER` from `stat/<topic>/RESULT`, availability from `LWT` |
+| Id                             | Matter                                                   | Notes                                                                                                                          |
+| ------------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `tasmota/relay`                | OnOffPlugInUnit                                          | `POWER`; `index` empty for one relay, `1`, `2`, … for `POWER1`, `POWER2` of a multi-relay device                               |
+| `tasmota/dimmer`               | DimmableLight                                            | `POWER`, `Dimmer` 0–100                                                                                                        |
+| `tasmota/ct-light`             | ColorTemperatureLight                                    | `POWER`, `Dimmer`, `CT` 153–500                                                                                                |
+| `tasmota/color-light`          | ExtendedColorLight                                       | RGB, RGBW, RGBCCT: the colour from `HSBColor`, sent as `Color2 r,g,b` (keeps the dimmer); `CT`; the colour mode from `Channel` |
+| `tasmota/shutter`              | WindowCovering                                           | `Shutter<index>.Position` (100 = open), `ShutterPosition<index>`, `ShutterOpen`, `ShutterClose`, `ShutterStop`                 |
+| `tasmota/temperature`          | TemperatureSensor                                        | `sensor`: the key in `SENSOR` (`DS18B20`, `DS18B20-1`, …)                                                                      |
+| `tasmota/temperature-humidity` | TemperatureSensor, HumiditySensor child                  | `SHT3X`, `AM2301`, `DHT11`, `SI7021`, …                                                                                        |
+| `tasmota/climate`              | TemperatureSensor, Humidity- and PressureSensor children | `BME280`, `BME680`, …                                                                                                          |
+
+A device with several relays is one `tasmota/relay` per relay (`index`), not one device with child endpoints:
+the preset format has no repetition, and separate devices give each relay its own name and room in the
+controllers — the way the relays are usually used.

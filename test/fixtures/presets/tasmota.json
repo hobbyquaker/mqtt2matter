@@ -1,17 +1,388 @@
 {
-  "documentation": ["https://tasmota.github.io/docs/MQTT/", "https://tasmota.github.io/docs/Commands/"],
+  "documentation": [
+    "https://tasmota.github.io/docs/MQTT/",
+    "https://tasmota.github.io/docs/Commands/",
+    "https://tasmota.github.io/docs/Lights/",
+    "https://tasmota.github.io/docs/Blinds-and-Shutters/"
+  ],
   "presets": {
     "tasmota/relay": {
-      "values": {"topic": "plug-1", "name": "Plug"},
+      "values": {
+        "topic": "plug-1",
+        "name": "Plug"
+      },
       "availability": [
-        {"topic": "tele/plug-1/LWT", "payload": "Offline", "reachable": false},
-        {"topic": "tele/plug-1/LWT", "payload": "Online", "reachable": true}
+        {
+          "topic": "tele/plug-1/LWT",
+          "payload": "Offline",
+          "reachable": false
+        },
+        {
+          "topic": "tele/plug-1/LWT",
+          "payload": "Online",
+          "reachable": true
+        }
       ],
       "status": [
-        {"topic": "stat/plug-1/RESULT", "payload": {"POWER": "ON"}, "expect": {"onOff.onOff": true}},
-        {"topic": "stat/plug-1/RESULT", "payload": {"POWER": "OFF"}, "expect": {"onOff.onOff": false}}
+        {
+          "topic": "stat/plug-1/RESULT",
+          "payload": {
+            "POWER": "ON"
+          },
+          "expect": {
+            "onOff.onOff": true
+          }
+        },
+        {
+          "topic": "stat/plug-1/RESULT",
+          "payload": {
+            "POWER": "OFF"
+          },
+          "expect": {
+            "onOff.onOff": false
+          }
+        }
       ],
-      "commands": [{"action": "on", "publishes": [{"topic": "cmnd/plug-1/POWER", "payload": "ON"}]}]
+      "commands": [
+        {
+          "action": "on",
+          "publishes": [
+            {
+              "topic": "cmnd/plug-1/POWER",
+              "payload": "ON"
+            }
+          ]
+        },
+        {
+          "action": "off",
+          "publishes": [
+            {
+              "topic": "cmnd/plug-1/POWER",
+              "payload": "OFF"
+            }
+          ]
+        }
+      ]
+    },
+    "tasmota/dimmer": {
+      "values": {
+        "topic": "dimmer-1"
+      },
+      "status": [
+        {
+          "topic": "stat/dimmer-1/RESULT",
+          "payload": {
+            "POWER": "ON",
+            "Dimmer": 50
+          },
+          "expect": {
+            "onOff.onOff": true,
+            "levelControl.currentLevel": 127
+          }
+        },
+        {
+          "topic": "stat/dimmer-1/RESULT",
+          "payload": {
+            "POWER": "OFF"
+          },
+          "expect": {
+            "onOff.onOff": false
+          }
+        }
+      ],
+      "commands": [
+        {
+          "action": "level",
+          "args": {
+            "level": 254
+          },
+          "publishes": [
+            {
+              "topic": "cmnd/dimmer-1/POWER",
+              "payload": "ON"
+            },
+            {
+              "topic": "cmnd/dimmer-1/Dimmer",
+              "payload": "100"
+            }
+          ]
+        }
+      ]
+    },
+    "tasmota/ct-light": {
+      "values": {
+        "topic": "bulb-ct"
+      },
+      "status": [
+        {
+          "topic": "stat/bulb-ct/RESULT",
+          "payload": {
+            "POWER": "ON",
+            "Dimmer": 100,
+            "Color": "7F80",
+            "White": 100,
+            "CT": 327,
+            "Channel": [
+              50,
+              50
+            ]
+          },
+          "expect": {
+            "onOff.onOff": true,
+            "levelControl.currentLevel": 254,
+            "colorControl.colorTemperatureMireds": 327
+          }
+        }
+      ],
+      "commands": [
+        {
+          "action": "mireds",
+          "args": {
+            "mireds": 250
+          },
+          "publishes": [
+            {
+              "topic": "cmnd/bulb-ct/CT",
+              "payload": "250"
+            }
+          ]
+        }
+      ]
+    },
+    "tasmota/color-light": {
+      "values": {
+        "topic": "bulb-rgbcct"
+      },
+      "status": [
+        {
+          "topic": "stat/bulb-rgbcct/RESULT",
+          "payload": {
+            "POWER": "ON",
+            "Dimmer": 100,
+            "Color": "FF00000000",
+            "HSBColor": "0,100,100",
+            "White": 0,
+            "CT": 153,
+            "Channel": [
+              100,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "expect": {
+            "colorControl.currentHue": 0,
+            "colorControl.currentSaturation": 254,
+            "colorControl.colorMode": 0
+          }
+        },
+        {
+          "topic": "stat/bulb-rgbcct/RESULT",
+          "payload": {
+            "POWER": "ON",
+            "Dimmer": 80,
+            "Color": "0000007FCC",
+            "HSBColor": "0,100,0",
+            "White": 80,
+            "CT": 400,
+            "Channel": [
+              0,
+              0,
+              0,
+              30,
+              80
+            ]
+          },
+          "expect": {
+            "colorControl.colorTemperatureMireds": 400,
+            "colorControl.colorMode": 2
+          }
+        }
+      ],
+      "commands": [
+        {
+          "action": "hs",
+          "args": {
+            "hue": 0,
+            "saturation": 254
+          },
+          "publishes": [
+            {
+              "topic": "cmnd/bulb-rgbcct/Color2",
+              "payload": "255,0,0"
+            }
+          ]
+        },
+        {
+          "action": "mireds",
+          "args": {
+            "mireds": 370
+          },
+          "publishes": [
+            {
+              "topic": "cmnd/bulb-rgbcct/CT",
+              "payload": "370"
+            }
+          ]
+        }
+      ]
+    },
+    "tasmota/shutter": {
+      "values": {
+        "topic": "blind-1",
+        "index": "1"
+      },
+      "status": [
+        {
+          "topic": "stat/blind-1/RESULT",
+          "payload": {
+            "Shutter1": {
+              "Position": 100,
+              "Direction": 0,
+              "Target": 100,
+              "Tilt": 0
+            }
+          },
+          "expect": {
+            "windowCovering.currentPositionLiftPercent100ths": 0
+          }
+        }
+      ],
+      "commands": [
+        {
+          "action": "lift",
+          "args": {
+            "percent100ths": 6000
+          },
+          "publishes": [
+            {
+              "topic": "cmnd/blind-1/ShutterPosition1",
+              "payload": "40"
+            }
+          ]
+        },
+        {
+          "action": "stop",
+          "publishes": [
+            {
+              "topic": "cmnd/blind-1/ShutterStop1",
+              "payload": ""
+            }
+          ]
+        },
+        {
+          "action": "close",
+          "publishes": [
+            {
+              "topic": "cmnd/blind-1/ShutterClose1",
+              "payload": ""
+            }
+          ]
+        }
+      ]
+    },
+    "tasmota/temperature": {
+      "values": {
+        "topic": "pool"
+      },
+      "status": [
+        {
+          "topic": "tele/pool/SENSOR",
+          "payload": {
+            "Time": "2026-10-27T10:00:00",
+            "DS18B20": {
+              "Id": "000000000001",
+              "Temperature": 24.6
+            },
+            "TempUnit": "C"
+          },
+          "expect": {
+            "temperatureMeasurement.measuredValue": 2460
+          }
+        }
+      ]
+    },
+    "tasmota/temperature-humidity": {
+      "values": {
+        "topic": "bath",
+        "sensor": "AM2301"
+      },
+      "status": [
+        {
+          "topic": "tele/bath/SENSOR",
+          "payload": {
+            "Time": "2026-10-27T10:00:00",
+            "AM2301": {
+              "Temperature": 22.1,
+              "Humidity": 61.3,
+              "DewPoint": 14.3
+            },
+            "TempUnit": "C"
+          },
+          "expect": {
+            "temperatureMeasurement.measuredValue": 2210
+          }
+        },
+        {
+          "topic": "tele/bath/SENSOR",
+          "payload": {
+            "Time": "2026-10-27T10:05:00",
+            "AM2301": {
+              "Temperature": 22.2,
+              "Humidity": 60.5,
+              "DewPoint": 14.1
+            },
+            "TempUnit": "C"
+          },
+          "endpoint": "humidity",
+          "expect": {
+            "relativeHumidityMeasurement.measuredValue": 6050
+          }
+        }
+      ]
+    },
+    "tasmota/climate": {
+      "values": {
+        "topic": "office"
+      },
+      "status": [
+        {
+          "topic": "tele/office/SENSOR",
+          "payload": {
+            "Time": "2026-10-27T10:00:00",
+            "BME280": {
+              "Temperature": 21.5,
+              "Humidity": 45.2,
+              "DewPoint": 9.1,
+              "Pressure": 1013.2
+            },
+            "PressureUnit": "hPa",
+            "TempUnit": "C"
+          },
+          "expect": {
+            "temperatureMeasurement.measuredValue": 2150
+          }
+        },
+        {
+          "topic": "tele/office/SENSOR",
+          "payload": {
+            "Time": "2026-10-27T10:05:00",
+            "BME280": {
+              "Temperature": 21.6,
+              "Humidity": 45.0,
+              "DewPoint": 9.1,
+              "Pressure": 1009.8
+            },
+            "PressureUnit": "hPa",
+            "TempUnit": "C"
+          },
+          "endpoint": "pressure",
+          "expect": {
+            "pressureMeasurement.measuredValue": 1010
+          }
+        }
+      ]
     }
   }
 }

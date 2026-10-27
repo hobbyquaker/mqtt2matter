@@ -1,0 +1,50 @@
+{
+  "id": "tasmota/ct-light",
+  "name": "Tasmota CT light",
+  "description": "A Tasmota light with cold and warm white (2 channels): POWER, Dimmer and CT (153–500 mireds).",
+  "vendor": "Tasmota",
+  "format": 1,
+  "variables": {
+    "topic": {"label": "Tasmota topic", "description": "The device's MQTT topic (Configuration → MQTT → Topic)"},
+    "name": {"label": "Name", "default": "Light"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Tasmota",
+    "availability": {"topic": "tele/%topic%/LWT", "online": "Online", "offline": "Offline"},
+    "endpoints": [
+      {
+        "deviceTypes": ["ColorTemperatureLight"],
+        "options": {"light": {"onCommandType": "first"}},
+        "mappings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {
+              "topic": "stat/%topic%/RESULT",
+              "extract": "$.POWER",
+              "map": {"ON": true, "OFF": false},
+              "get": {"topic": "cmnd/%topic%/POWER", "payload": ""}
+            },
+            "command": {"topic": "cmnd/%topic%/POWER", "format": {"true": "ON", "false": "OFF"}}
+          },
+          {
+            "attribute": "LevelControl.currentLevel",
+            "status": {
+              "topic": "stat/%topic%/RESULT",
+              "template": "{{ value_json.Dimmer if value_json.Dimmer is defined and value_json.Dimmer > 0 else '' }}",
+              "type": "number",
+              "unit": "percentLevel",
+              "get": {"topic": "cmnd/%topic%/Dimmer", "payload": ""}
+            },
+            "command": {"topic": "cmnd/%topic%/Dimmer", "unit": "percentLevel", "round": 0}
+          },
+          {
+            "attribute": "ColorControl.colorTemperatureMireds",
+            "status": {"topic": "stat/%topic%/RESULT", "extract": "$.CT"},
+            "command": {"topic": "cmnd/%topic%/CT"}
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "id": "tasmota/temperature",
+  "name": "Tasmota temperature sensor",
+  "description": "A temperature sensor attached to Tasmota (DS18B20, …) from tele/<topic>/SENSOR every TelePeriod; set TempUnit to C (SetOption8 0).",
+  "vendor": "Tasmota",
+  "format": 1,
+  "variables": {
+    "topic": {"label": "Tasmota topic", "description": "The device's MQTT topic (Configuration → MQTT → Topic)"},
+    "sensor": {
+      "label": "Sensor",
+      "description": "The sensor's key in tele/<topic>/SENSOR (DS18B20, DS18B20-1, …)",
+      "default": "DS18B20"
+    },
+    "name": {"label": "Name", "default": "Temperature"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Tasmota",
+    "availability": {"topic": "tele/%topic%/LWT", "online": "Online", "offline": "Offline"},
+    "endpoints": [
+      {
+        "deviceTypes": ["TemperatureSensor"],
+        "mappings": [
+          {
+            "attribute": "TemperatureMeasurement.measuredValue",
+            "status": {"topic": "tele/%topic%/SENSOR", "extract": "$.%sensor%.Temperature", "unit": "celsius"}
+          }
+        ]
+      }
+    ]
+  }
+}
