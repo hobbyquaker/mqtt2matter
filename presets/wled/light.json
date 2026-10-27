@@ -1,0 +1,59 @@
+{
+  "id": "wled/light",
+  "name": "WLED light",
+  "description": "A WLED strip as a colour light: on/off and brightness from <topic>/g, the colour from <topic>/c, commands to <topic> and <topic>/col; colour temperature goes to the main segment's cct over <topic>/api (white channels only); availability from <topic>/status.",
+  "vendor": "WLED",
+  "format": 1,
+  "variables": {
+    "topic": {
+      "label": "Device topic",
+      "description": "WLED's MQTT device topic (Config → Sync Interfaces → MQTT → Device Topic; default wled/<MAC>)"
+    },
+    "name": {"label": "Name", "default": "WLED"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "WLED",
+    "availability": {"topic": "%topic%/status", "online": "online", "offline": "offline"},
+    "endpoints": [
+      {
+        "deviceTypes": ["ExtendedColorLight"],
+        "features": {"ColorControl": ["HueSaturation"]},
+        "options": {"light": {"onCommandType": "brightness"}},
+        "mappings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {
+              "topic": "%topic%/g",
+              "template": "{{ 'true' if value | int > 0 else 'false' }}",
+              "map": {"true": true, "false": false}
+            },
+            "command": {"topic": "%topic%", "format": {"true": "ON", "false": "OFF"}}
+          },
+          {
+            "attribute": "LevelControl.currentLevel",
+            "status": {
+              "topic": "%topic%/g",
+              "template": "{{ value if value | int > 0 else '' }}",
+              "type": "number",
+              "unit": "byteLevel"
+            },
+            "command": {"topic": "%topic%", "unit": "byteLevel", "round": 0}
+          },
+          {
+            "attribute": "ColorControl.colorRgb",
+            "status": {
+              "topic": "%topic%/c",
+              "template": "{% set h = value[-6:] %}{{ h[0:2] | int(0, 16) }},{{ h[2:4] | int(0, 16) }},{{ h[4:6] | int(0, 16) }}"
+            },
+            "command": {"topic": "%topic%/col", "template": "{{ red * 65536 + green * 256 + blue }}"}
+          },
+          {
+            "attribute": "ColorControl.colorTemperatureMireds",
+            "command": {"topic": "%topic%/api", "template": "{\"seg\":{\"cct\":{{ kelvin | round(0) | int }}}}"}
+          }
+        ]
+      }
+    ]
+  }
+}

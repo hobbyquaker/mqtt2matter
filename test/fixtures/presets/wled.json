@@ -1,0 +1,32 @@
+{
+  "documentation": ["https://kno.wled.ge/interfaces/mqtt/", "https://kno.wled.ge/interfaces/json-api/"],
+  "presets": {
+    "wled/light": {
+      "values": {"topic": "wled/desk", "name": "Desk strip"},
+      "availability": [
+        {"topic": "wled/desk/status", "payload": "offline", "reachable": false},
+        {"topic": "wled/desk/status", "payload": "online", "reachable": true}
+      ],
+      "status": [
+        {"topic": "wled/desk/g", "payload": "128", "expect": {"onOff.onOff": true, "levelControl.currentLevel": 127}},
+        {"topic": "wled/desk/c", "payload": "#FF0000", "expect": {"colorControl.currentHue": 0, "colorControl.currentSaturation": 254}},
+        {"topic": "wled/desk/c", "payload": "#8000FF00", "expect": {"colorControl.currentHue": 85, "colorControl.currentSaturation": 254}},
+        {"topic": "wled/desk/g", "payload": "0", "expect": {"onOff.onOff": false, "levelControl.currentLevel": 127}}
+      ],
+      "commands": [
+        {"action": "on", "publishes": [{"topic": "wled/desk", "payload": "ON"}]},
+        {"action": "level", "args": {"level": 254}, "publishes": [{"topic": "wled/desk", "payload": "255"}]},
+        {"action": "hs", "args": {"hue": 0, "saturation": 254}, "publishes": [{"topic": "wled/desk/col", "payload": "16711680"}]},
+        {"action": "mireds", "args": {"mireds": 370}, "publishes": [{"topic": "wled/desk/api", "payload": {"seg": {"cct": 2703}}}]},
+        {"action": "off", "publishes": [{"topic": "wled/desk", "payload": "OFF"}]}
+      ]
+    },
+    "wled/dimmer": {
+      "values": {"topic": "wled/AABBCCDDEEFF"},
+      "status": [
+        {"topic": "wled/AABBCCDDEEFF/g", "payload": "255", "expect": {"onOff.onOff": true, "levelControl.currentLevel": 254}}
+      ],
+      "commands": [{"action": "level", "args": {"level": 127}, "publishes": [{"topic": "wled/AABBCCDDEEFF", "payload": "128"}]}]
+    }
+  }
+}

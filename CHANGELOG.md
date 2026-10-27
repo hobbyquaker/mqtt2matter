@@ -5,6 +5,9 @@
 - **Presets for the mqtt-smarthome convention**: switch, light, dimmer, cover, contact, occupancy,
   temperature, humidity and button for any adapter that publishes `<name>/status/<item>` (plain values and
   `{val, ts, lc}` alike), takes `<name>/set/<item>` and reports `<name>/connected`.
+- **Presets for WLED**: a colour light (brightness, RGB colour, colour temperature to the main segment) and a
+  dimmer for single-colour strips, over WLED's own MQTT topics with its `status` topic as availability.
+- Templates: `int` takes Home Assistant's default and base, `'ff' | int(0, 16)` reads hexadecimal.
 - A status value that a message does not carry (an extract path that is missing, a template that renders
   nothing) is logged at debug instead of as a warning: topics several mappings share — Tasmota's `RESULT`, a
   partial JSON report — carry only some of the values at a time.

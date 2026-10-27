@@ -257,7 +257,7 @@ Without `format`, `payload` and `template` the payload is the value as text (an 
 ### Templates
 
 Jinja through `@huggingface/jinja`, Home Assistant style. Available: expressions, `if … else …`, loops, the
-filters `int`, `float`, `string`, `bool`, `lower`, `upper`, `trim`, `abs`, `default`, `length`, `join`,
+filters `int` (Home Assistant's `int(default, base)`: `'ff' | int(0, 16)`), `float`, `string`, `bool`, `lower`, `upper`, `trim`, `abs`, `default`, `length`, `join`,
 `replace`, `tojson`, `round(precision, method, default)`, `is_defined`, `iif`, `multiply`, `is_number`, `max`,
 `min`; the tests `defined`, `none`, `number`, `string`; the functions `iif`, `float`, `int`, `max`, `min`.
 Whole floats render as Python does (`3.0`). Not available: `states()`, `now()`, macros, `format`.
@@ -436,6 +436,17 @@ Variables: `instance` (the adapter's `--name`), `item` (the item path, may have 
 | `mqtt-smarthome/temperature` | TemperatureSensor | °C                                                                                                                |
 | `mqtt-smarthome/humidity`    | HumiditySensor    | %                                                                                                                 |
 | `mqtt-smarthome/button`      | GenericSwitch     | `true`, `1`, `single`, `short`, `click` = one press; `double`, `triple`; `long`, `hold` = a long press            |
+
+**WLED** — `topic`: the device topic (Config → Sync Interfaces → MQTT → Device Topic; default `wled/<MAC>`),
+the whole of it. WLED publishes `<topic>/g` (brightness 0–255) and `<topic>/c` (`#RRGGBB`, `#WWRRGGBB` with
+white) on every change and keeps `<topic>/status` (`online`/`offline`) retained; there is no request for the
+state, so after a restart of mqtt2matter the light shows its state from the next change on (or at once where the
+broker holds `/g` and `/c` retained).
+
+| Id            | Matter             | Notes                                                                                                                                                                                                         |
+| ------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wled/light`  | ExtendedColorLight | brightness to `<topic>` (`ON`/`OFF`/0–255), the colour to `<topic>/col` as a decimal `0xRRGGBB`; colour temperature as `{"seg":{"cct":<K>}}` to `<topic>/api` (strips with white channels; not reported back) |
+| `wled/dimmer` | DimmableLight      | single-colour strips: on/off and brightness only                                                                                                                                                              |
 
 **Tasmota** — `topic`: the device's MQTT topic (Configuration → MQTT → Topic); the default FullTopic
 `%prefix%/%topic%/`.

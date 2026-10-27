@@ -1,0 +1,46 @@
+{
+  "id": "wled/dimmer",
+  "name": "WLED dimmer",
+  "description": "A single-colour WLED strip as a dimmable light: on/off and brightness from <topic>/g, commands to <topic>; availability from <topic>/status.",
+  "vendor": "WLED",
+  "format": 1,
+  "variables": {
+    "topic": {
+      "label": "Device topic",
+      "description": "WLED's MQTT device topic (Config → Sync Interfaces → MQTT → Device Topic; default wled/<MAC>)"
+    },
+    "name": {"label": "Name", "default": "WLED"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "WLED",
+    "availability": {"topic": "%topic%/status", "online": "online", "offline": "offline"},
+    "endpoints": [
+      {
+        "deviceTypes": ["DimmableLight"],
+        "options": {"light": {"onCommandType": "brightness"}},
+        "mappings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {
+              "topic": "%topic%/g",
+              "template": "{{ 'true' if value | int > 0 else 'false' }}",
+              "map": {"true": true, "false": false}
+            },
+            "command": {"topic": "%topic%", "format": {"true": "ON", "false": "OFF"}}
+          },
+          {
+            "attribute": "LevelControl.currentLevel",
+            "status": {
+              "topic": "%topic%/g",
+              "template": "{{ value if value | int > 0 else '' }}",
+              "type": "number",
+              "unit": "byteLevel"
+            },
+            "command": {"topic": "%topic%", "unit": "byteLevel", "round": 0}
+          }
+        ]
+      }
+    ]
+  }
+}
