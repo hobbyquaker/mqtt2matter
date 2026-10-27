@@ -1,4 +1,4 @@
-/* The last payload per topic. The UI's live view and the importers read it (phase 2–4); the runtime
+/* The last payload per topic. The UI's live view and the importers read it; the runtime
    does not need it, but every message passes through here so a mapping added later sees the retained
    state at once. MQTT wildcard matching lives here too. */
 

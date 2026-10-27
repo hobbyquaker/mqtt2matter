@@ -1,4 +1,4 @@
-/* The payload engine: every row of the study's §2.2 in both directions, as pure functions over the
+/* The payload engine: every conversion step in both directions, as pure functions over the
    model's halves. Status (device → Matter): extract (a JSON path) → template → map (or an explicit
    type; no guessing) → unit → scale → offset → invert → round → the attribute's shape (enum names to
    ids, bitmap names to flags, integers rounded). Command (Matter → device): the numeric steps inverted →

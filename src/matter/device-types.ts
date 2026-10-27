@@ -5,7 +5,7 @@
    names, and any other cluster a mapping names; each cluster's server is the family's class where there
    is one (it routes controller commands), else matter.js' default; its features are the union of what the
    device type requires (`OnOffServer.with("Lighting")` on lights), what the mappings imply and what the
-   config asks for. No table of device types lives here (study §2.1). */
+   config asks for. No table of device types lives here. */
 
 import type {Behavior, EndpointType} from '@matter/main';
 import * as behaviors from '@matter/main/behaviors';

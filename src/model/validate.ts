@@ -1,4 +1,4 @@
-/* Static validation of a device against @matter/model (study §2.5, layer 1): device types exist, clusters
+/* Static validation of a device against @matter/model (the first validation layer): device types exist, clusters
    and attributes exist, the attribute's conformance holds under the endpoint's features, mappings fit the
    attribute's shape (a boolean attribute does not take a number map, an enum map's values are member
    names), commands and event channels exist, templates parse. Pure: no node is built; the strict dry run

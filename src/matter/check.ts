@@ -1,7 +1,7 @@
-/* The strict dry run (study §2.5, layer 2): build every enabled device in a throw-away ServerNode of its
+/* The strict dry run (the second validation layer): build every enabled device in a throw-away ServerNode of its
    own Environment with `endpoint.validation=strict` and in-memory storage, never going online, and
    collect what matter.js refuses — construction errors and the DeviceTypeConformanceService's
-   violations. `mqtt2matter --check` prints the result; the UI's check button (phase 3) calls it. */
+   violations. `mqtt2matter --check` prints the result; the UI's check button calls it. */
 
 import {
     Endpoint,

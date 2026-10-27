@@ -1,7 +1,7 @@
 /* Lookups into @matter/model: device types, clusters, their features, attributes, commands and events,
    with what the editor and the validator need (metatype, nullability, writability, enum members, bitmap
    fields, ranges, conformance under a feature set). Nothing here is hand-maintained; the model is the
-   catalogue (study §2.1). The few names the families add on top of the model — composite attributes such
+   catalogue. The few names the families add on top of the model — composite attributes such
    as `ColorControl.colorHs` — are listed at the end so the validator knows them. */
 
 import {

@@ -1,5 +1,5 @@
 /* Loading the configuration: a JSON file, then the environment on top of it. The environment wins
-   because that is how a container is configured; the file is what the UI edits (phase 3). */
+   because that is how a container is configured; the file is what the UI edits. */
 
 import {readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';

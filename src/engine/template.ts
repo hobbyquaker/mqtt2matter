@@ -1,4 +1,4 @@
-/* Templates: @huggingface/jinja renders `value_template`-style Jinja (study §2.4, decision: the library,
+/* Templates: @huggingface/jinja renders `value_template`-style Jinja (a library,
    not an own evaluator). The library ships Jinja's core — expressions, `if`, loops, the filters `int`,
    `float`, `default`, `lower`, `upper`, `trim`, `abs`, `string`, `join`, `length`, `replace`, `tojson` and
    the tests `defined`, `none`, `number`, `string` — but no way to register filters. The Home Assistant

@@ -76,7 +76,7 @@ attributes the model gives no default for. There is no table of device types.
 
 ## Validation
 
-Two layers (study §2.5): `model/validate.ts` checks a device statically against the model — device types,
+Two layers: `model/validate.ts` checks a device statically against the model — device types,
 clusters, attributes, features, conformance under the endpoint's features, map and format values against the
 attribute's shape, templates — and the app refuses to build a device with errors; `matter/check.ts` builds every
 device in a throw-away `ServerNode` of its own `Environment` with `endpoint.validation=strict` and memory
