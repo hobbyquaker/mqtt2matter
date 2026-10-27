@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- The Presets page has a search box: every word must occur in a preset's name, vendor, id or description
+  ("shelly cover", "tasmota sensor"); the toolbar shows how many of the presets match.
+
 ## 0.2.0
 
 - **Presets for the mqtt-smarthome convention**: switch, light, dimmer, cover, contact, occupancy,

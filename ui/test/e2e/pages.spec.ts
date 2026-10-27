@@ -51,6 +51,24 @@ test('the log page shows the bridge log and filters by level', async ({page}) =>
     await expect(page.locator('[data-testid=log-row].debug')).toHaveCount(0);
 });
 
+test('the presets page searches name, vendor, id and description', async ({page}) => {
+    await page.goto('/#/presets');
+    const cards = page.getByTestId('preset');
+    await expect(page.locator('[data-testid=preset][data-id="tasmota/relay"]')).toBeVisible();
+    const total = await cards.count();
+    expect(total).toBeGreaterThan(10);
+    const search = page.getByTestId('preset-search');
+    await search.fill('shelly cover');
+    await expect(page.locator('[data-testid=preset][data-id="shelly-gen2/cover"]')).toBeVisible();
+    await expect(page.locator('[data-testid=preset][data-id="tasmota/relay"]')).toHaveCount(0);
+    expect(await cards.count()).toBeLessThan(total);
+    await search.fill('no such preset');
+    await expect(page.getByTestId('preset-no-match')).toBeVisible();
+    await expect(cards).toHaveCount(0);
+    await search.fill('');
+    await expect(cards).toHaveCount(total);
+});
+
 test('a preset becomes a device', async ({page}) => {
     await page.goto('/#/presets');
     await page.locator('[data-testid=preset][data-id="tasmota/relay"]').click();

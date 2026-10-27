@@ -213,6 +213,9 @@ export const MESSAGES: Record<string, Message> = {
 
     // presets
     Other: m('Sonstige', 'Other'),
+    'Search presets': m('Vorlagen durchsuchen', 'Search presets'),
+    '{count} of {total} presets': m('{count} von {total} Vorlagen', '{count} of {total} presets'),
+    'No preset matches “{query}”.': m('Keine Vorlage passt zu „{query}“.', 'No preset matches “{query}”.'),
     own: m('eigene', 'own'),
     'No presets. Put preset files into a directory named in the configuration.': m(
         'Keine Vorlagen. Lege Vorlagen-Dateien in ein Verzeichnis, das in der Konfiguration genannt ist.',

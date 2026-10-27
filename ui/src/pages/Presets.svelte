@@ -21,9 +21,26 @@
 
     const KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:._-]{0,63}$/;
     const keyValid = $derived(KEY_PATTERN.test(key));
+    let query = $state('');
+
+    /** every word of the query must occur in the preset's name, vendor, id or description */
+    const shown = $derived.by(() => {
+        const words = query
+            .trim()
+            .toLowerCase()
+            .split(/\s+/)
+            .filter((w) => w !== '');
+        if (words.length === 0) {
+            return presets;
+        }
+        return presets.filter((preset) => {
+            const text = [preset.name, preset.vendor ?? '', preset.id, preset.description ?? ''].join(' ').toLowerCase();
+            return words.every((word) => text.includes(word));
+        });
+    });
     const grouped = $derived.by(() => {
         const groups = new Map<string, PresetEntry[]>();
-        for (const preset of presets) {
+        for (const preset of shown) {
             const vendor = preset.vendor ?? t('Other');
             groups.set(vendor, [...(groups.get(vendor) ?? []), preset]);
         }
@@ -83,9 +100,26 @@
 </script>
 
 <div class="ui-page" data-testid="presets-page">
+    {#if presets.length > 0}
+        <div class="ui-toolbar">
+            <!-- svelte-ignore a11y_autofocus -->
+            <input
+                type="search"
+                class="ui-input search"
+                placeholder={t('Search presets')}
+                aria-label={t('Search presets')}
+                bind:value={query}
+                autofocus
+                data-testid="preset-search"
+            />
+            <div class="ui-toolbar-trailing">{t('{count} of {total} presets', {count: shown.length, total: presets.length})}</div>
+        </div>
+    {/if}
     <div class="ui-page-scroll">
         {#if loaded && presets.length === 0}
             <div class="ui-empty">{t('No presets. Put preset files into a directory named in the configuration.')}</div>
+        {:else if presets.length > 0 && shown.length === 0}
+            <div class="ui-empty" data-testid="preset-no-match">{t('No preset matches “{query}”.', {query: query.trim()})}</div>
         {/if}
         {#each grouped as [vendor, list] (vendor)}
             <section class="group">
@@ -154,6 +188,11 @@
 {/if}
 
 <style>
+    .search {
+        width: 320px;
+        max-width: 100%;
+    }
+
     .group {
         margin-bottom: 14px;
     }
