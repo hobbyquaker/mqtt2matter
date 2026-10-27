@@ -6,11 +6,24 @@
     import QrCode from '../lib/components/QrCode.svelte';
     import {dialogs} from '../lib/dialogs.svelte.ts';
     import {events} from '../lib/events.svelte.ts';
+    import {formatDateTime} from '../lib/format.ts';
     import {t} from '../lib/i18n.svelte.ts';
     import {notices} from '../lib/notices.svelte.ts';
 
     let bridges = $state<BridgeInfo[]>([]);
     let busy = $state('');
+
+    /** the companion fabric Apple Home adds for the iCloud Keychain */
+    const APPLE_KEYCHAIN = 0x1384;
+
+    /** an id as hex, upper case, padded: matter.js hands node and fabric ids out as decimal strings */
+    function hex(value: string | number, digits: number): string {
+        try {
+            return BigInt(value).toString(16).toUpperCase().padStart(digits, '0');
+        } catch {
+            return String(value);
+        }
+    }
 
     async function load(): Promise<void> {
         try {
@@ -132,26 +145,54 @@
                         {#if bridge.fabrics.length === 0}
                             <div class="ui-muted">{t('No controller has paired this bridge yet.')}</div>
                         {:else}
-                            <table class="ui-table">
-                                <thead>
-                                    <tr><th>#</th><th>{t('Label')}</th><th>{t('Vendor')}</th><th>{t('Node id')}</th><th></th></tr>
-                                </thead>
-                                <tbody>
-                                    {#each bridge.fabrics as fabric (fabric.index)}
-                                        <tr>
-                                            <td>{fabric.index}</td>
-                                            <td>{fabric.label}</td>
-                                            <td><code>0x{fabric.vendorId.toString(16)}</code></td>
-                                            <td><code>{fabric.nodeId}</code></td>
-                                            <td class="ui-actions">
-                                                <button type="button" class="ui-icon-button" title={t('Remove')} onclick={() => removeFabric(bridge, fabric)}
-                                                    ><Icon name="trash" /></button
-                                                >
-                                            </td>
-                                        </tr>
-                                    {/each}
-                                </tbody>
-                            </table>
+                            <ul class="fabrics" data-testid="fabrics">
+                                {#each bridge.fabrics as fabric (fabric.index)}
+                                    <li class="fabric" data-testid="fabric">
+                                        <div class="fabric-head">
+                                            <span class="controller" data-testid="fabric-controller">{fabric.vendorName ?? t('Unknown controller')}</span>
+                                            {#if fabric.label !== '' && fabric.label !== fabric.vendorName}<span class="ui-muted">“{fabric.label}”</span>{/if}
+                                            <span
+                                                class="ui-badge"
+                                                class:ui-badge-ok={fabric.sessions > 0}
+                                                title={t('Sessions of this controller with an active peer, and their subscriptions')}
+                                                data-testid="fabric-sessions"
+                                                >{fabric.sessions > 0
+                                                    ? t('sessions: {sessions} · subscriptions: {subscriptions}', {
+                                                          sessions: fabric.sessions,
+                                                          subscriptions: fabric.subscriptions,
+                                                      })
+                                                    : t('no active session')}</span
+                                            >
+                                            <button type="button" class="ui-icon-button remove" title={t('Remove')} onclick={() => removeFabric(bridge, fabric)}
+                                                ><Icon name="trash" /></button
+                                            >
+                                        </div>
+                                        {#if fabric.vendorId === APPLE_KEYCHAIN}
+                                            <p class="ui-faint ui-small hint" data-testid="fabric-hint">
+                                                {t(
+                                                    'Apple adds this fabric next to the Apple Home one when the bridge is paired from Apple Home; removing the bridge in Apple Home removes both.',
+                                                )}
+                                            </p>
+                                        {/if}
+                                        <dl class="ui-kv details">
+                                            <dt>{t('Vendor id')}</dt>
+                                            <dd><code>0x{hex(fabric.vendorId, 4)}</code></dd>
+                                            <dt>{t('Fabric')}</dt>
+                                            <dd>#{fabric.index} · <code>0x{hex(fabric.fabricId, 16)}</code></dd>
+                                            <dt>{t('Bridge node id')}</dt>
+                                            <dd><code data-testid="fabric-node-id">0x{hex(fabric.nodeId, 16)}</code></dd>
+                                            <dt>{t('Controller node id')}</dt>
+                                            <dd><code>0x{hex(fabric.rootNodeId, 16)}</code></dd>
+                                            <dt title={t('The first half of the bridge’s operational mDNS name in this fabric')}>
+                                                {t('Compressed fabric id')}
+                                            </dt>
+                                            <dd><code>{fabric.compressedFabricId}</code></dd>
+                                            <dt>{t('Last contact')}</dt>
+                                            <dd>{fabric.lastInteraction === undefined ? '—' : formatDateTime(fabric.lastInteraction)}</dd>
+                                        </dl>
+                                    </li>
+                                {/each}
+                            </ul>
                         {/if}
                     </div>
                 </div>
@@ -161,6 +202,45 @@
 </div>
 
 <style>
+    .fabrics {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .fabric {
+        padding: 6px 8px;
+        border: 1px solid var(--ui-border-muted);
+        border-radius: var(--ui-radius);
+    }
+
+    .fabric-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .controller {
+        font-weight: 600;
+    }
+
+    .remove {
+        margin-left: auto;
+    }
+
+    .hint {
+        margin: 4px 0 0;
+    }
+
+    .details {
+        margin-top: 6px;
+        font-size: var(--ui-font-size-grid);
+    }
+
     .bridges {
         display: flex;
         flex-direction: column;

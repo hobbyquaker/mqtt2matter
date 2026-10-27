@@ -7,7 +7,7 @@ import {createServer, type Server as HttpServer} from 'node:http';
 import type {AddressInfo} from 'node:net';
 import {resolve} from 'node:path';
 
-import {Minutes} from '@matter/main';
+import {Minutes, type ServerNode} from '@matter/main';
 import {DeviceCommissioner, FabricManager} from '@matter/main/protocol';
 
 import type {App} from '../app.ts';
@@ -22,6 +22,7 @@ import {catalogJson, clusterJson} from './catalog.ts';
 import {compactDevice} from './compact.ts';
 import type {ConfigStore} from './config-store.ts';
 import {EventHub} from './events.ts';
+import {type FabricJson, type SessionSource, fabricJson} from './fabrics.ts';
 import {AuthConfigSchema} from '../config/schema.ts';
 import {Auth, hashPassword} from './auth.ts';
 import {HttpError, type Request, Router, sendJson, serveStatic} from './http.ts';
@@ -77,7 +78,7 @@ export interface BridgeJson {
     commissioned: boolean;
     pairingCodes: {manualPairingCode: string; qrPairingCode: string} | undefined;
     devices: number;
-    fabrics: {index: number; label: string; vendorId: number; nodeId: string; fabricId: string}[];
+    fabrics: FabricJson[];
     /** 0 closed, 1 enhanced, 2 basic (the AdministratorCommissioning window status) */
     windowStatus: number;
 }
@@ -479,19 +480,41 @@ export class Server {
         };
     }
 
+    /** the sessions matter.js holds on a bridge node; none while the node is not up */
+    private sessionsOf(node: ServerNode): SessionSource[] {
+        try {
+            return Object.values(node.state.sessions.sessions).map((session) => ({
+                fabric: session.fabric === undefined ? undefined : {fabricIndex: Number(session.fabric.fabricIndex)},
+                isPeerActive: session.isPeerActive,
+                lastInteractionTimestamp: session.lastInteractionTimestamp,
+                numberOfActiveSubscriptions: session.numberOfActiveSubscriptions,
+            }));
+        } catch {
+            return [];
+        }
+    }
+
     private bridgesJson(): BridgeJson[] {
         return this.app.nodes.allBridges().map((bridge) => {
             const node = bridge.serverNode;
-            const fabrics =
-                node === undefined
-                    ? []
-                    : node.env.get(FabricManager).map((f) => ({
-                          index: Number(f.fabricIndex),
-                          label: f.label,
-                          vendorId: f.rootVendorId,
-                          nodeId: String(f.nodeId),
-                          fabricId: String(f.fabricId),
-                      }));
+            let fabrics: FabricJson[] = [];
+            if (node !== undefined) {
+                const sessions = this.sessionsOf(node);
+                fabrics = node.env.get(FabricManager).map((f) =>
+                    fabricJson(
+                        {
+                            fabricIndex: Number(f.fabricIndex),
+                            fabricId: f.fabricId,
+                            nodeId: f.nodeId,
+                            rootNodeId: f.rootNodeId,
+                            rootVendorId: f.rootVendorId,
+                            globalId: f.globalId,
+                            label: f.label,
+                        },
+                        sessions,
+                    ),
+                );
+            }
             let windowStatus = 0;
             if (node !== undefined) {
                 try {

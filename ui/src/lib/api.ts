@@ -140,6 +140,21 @@ export interface DeviceDetail {
     state?: EndpointState;
 }
 
+/** a controller's pairing of a bridge (docs/api.md, GET /api/bridges) */
+export interface Fabric {
+    index: number;
+    label: string;
+    vendorId: number;
+    vendorName?: string;
+    nodeId: string;
+    rootNodeId: string;
+    fabricId: string;
+    compressedFabricId: string;
+    sessions: number;
+    subscriptions: number;
+    lastInteraction?: number;
+}
+
 export interface BridgeInfo {
     id: string;
     port: number;
@@ -147,7 +162,7 @@ export interface BridgeInfo {
     commissioned: boolean;
     pairingCodes: {manualPairingCode: string; qrPairingCode: string} | undefined;
     devices: number;
-    fabrics: {index: number; label: string; vendorId: number; nodeId: string; fabricId: string}[];
+    fabrics: Fabric[];
     windowStatus: number;
 }
 

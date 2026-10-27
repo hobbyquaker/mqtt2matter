@@ -18,6 +18,12 @@
     The build generates the list (`ui/dist/licenses.json`) from `node_modules`; nothing is kept by hand.
   - **Language and theme** moved to the top of the Configuration page ("Display"); they are still kept per
     browser.
+- **The fabrics on the Bridges page** say which controller each one belongs to — Apple Home, Apple Keychain (the
+  companion fabric Apple adds when the bridge is paired from Apple Home, with a hint saying so), Google Home,
+  Amazon Alexa, Home Assistant, SmartThings, Aqara, IKEA, Hue and more, by the root vendor id as the CSA's ledger
+  lists it — with the fabric's label, index and id, the bridge's and the controller's node ids, the compressed
+  fabric id, the active sessions and subscriptions, and the last contact. `GET /api/bridges` carries the new
+  fields.
 
 ## 0.2.0
 

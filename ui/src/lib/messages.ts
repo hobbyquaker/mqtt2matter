@@ -366,8 +366,31 @@ export const MESSAGES: Record<string, Message> = {
         'Noch kein Controller hat diese Bridge gekoppelt.',
         'No controller has paired this bridge yet.',
     ),
-    Label: m('Bezeichnung', 'Label'),
-    'Node id': m('Node-Id', 'Node id'),
+    'Unknown controller': m('Unbekannter Controller', 'Unknown controller'),
+    'Sessions of this controller with an active peer, and their subscriptions': m(
+        'Sitzungen dieses Controllers mit aktiver Gegenstelle und ihre Abonnements',
+        'Sessions of this controller with an active peer, and their subscriptions',
+    ),
+    'sessions: {sessions} · subscriptions: {subscriptions}': m(
+        'Sitzungen: {sessions} · Abonnements: {subscriptions}',
+        'sessions: {sessions} · subscriptions: {subscriptions}',
+    ),
+    'no active session': m('keine aktive Sitzung', 'no active session'),
+    'Apple adds this fabric next to the Apple Home one when the bridge is paired from Apple Home; removing the bridge in Apple Home removes both.':
+        m(
+            'Apple legt dieses Fabric neben dem von Apple Home an, wenn die Bridge in Apple Home gekoppelt wird; wer die Bridge in Apple Home entfernt, entfernt beide.',
+            'Apple adds this fabric next to the Apple Home one when the bridge is paired from Apple Home; removing the bridge in Apple Home removes both.',
+        ),
+    'Vendor id': m('Hersteller-Id', 'Vendor id'),
+    Fabric: m('Fabric', 'Fabric'),
+    'Bridge node id': m('Node-Id der Bridge', 'Bridge node id'),
+    'Controller node id': m('Node-Id des Controllers', 'Controller node id'),
+    'Compressed fabric id': m('Komprimierte Fabric-Id', 'Compressed fabric id'),
+    'The first half of the bridge’s operational mDNS name in this fabric': m(
+        'Die erste Hälfte des operativen mDNS-Namens der Bridge in diesem Fabric',
+        'The first half of the bridge’s operational mDNS name in this fabric',
+    ),
+    'Last contact': m('Letzter Kontakt', 'Last contact'),
     'Remove fabric {label}? The controller loses the bridge and every device on it.': m(
         'Fabric {label} entfernen? Der Controller verliert die Bridge und jedes Gerät darauf.',
         'Remove fabric {label}? The controller loses the bridge and every device on it.',
