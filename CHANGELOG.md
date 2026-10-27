@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - **Presets for the mqtt-smarthome convention**: switch, light, dimmer, cover, contact, occupancy,
   temperature, humidity and button for any adapter that publishes `<name>/status/<item>` (plain values and
