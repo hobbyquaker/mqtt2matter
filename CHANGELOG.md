@@ -4,6 +4,20 @@
 
 - The Presets page has a search box: every word must occur in a preset's name, vendor, id or description
   ("shelly cover", "tasmota sensor"); the toolbar shows how many of the presets match.
+- **A new top bar**: on the right, the GitHub link, **§** for the licences, the version, the statistics and a
+  gear for the Configuration page (no longer a tab).
+  - The **version** is a button with a popup: installed and latest version, "check for updates", "update to
+    vX" and the restart (they were the Version section of the Configuration page); a dot on the version says
+    an update is published.
+  - The **statistics** popup shows uptime, CPU, memory (RSS and heap), event loop utilisation and lag
+    (mean/max), devices, endpoints, bridges paired, controllers (fabrics), MQTT topics and MQTT messages per
+    second — from the new `GET /api/stats`, averaged over a 5-second window, polled only while the popup is
+    open.
+  - The **licences** dialog lists mqtt2matter's own licence and NOTICE and the licence of every third-party
+    package that ships — the runtime dependencies and what the UI bundle contains, with their licence texts.
+    The build generates the list (`ui/dist/licenses.json`) from `node_modules`; nothing is kept by hand.
+  - **Language and theme** moved to the top of the Configuration page ("Display"); they are still kept per
+    browser.
 
 ## 0.2.0
 

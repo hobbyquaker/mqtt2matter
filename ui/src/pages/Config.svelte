@@ -5,13 +5,15 @@
     import Checkbox from '../lib/components/Checkbox.svelte';
     import {dialogs} from '../lib/dialogs.svelte.ts';
     import {download, isRecord, pretty, tryJson} from '../lib/format.ts';
-    import {t} from '../lib/i18n.svelte.ts';
+    import {LANGUAGES, LANGUAGE_LABELS, i18n, t} from '../lib/i18n.svelte.ts';
     import {notices} from '../lib/notices.svelte.ts';
     import {session} from '../lib/session.svelte.ts';
-    import Version from './Version.svelte';
+    import {type Theme, getTheme, setTheme} from '../lib/theme.ts';
 
     let view = $state<ConfigView | undefined>(undefined);
     let text = $state('');
+    /** the display settings are the viewer's own, kept in the browser */
+    let theme = $state<Theme>(getTheme());
     let importText = $state('');
     let replace = $state(false);
     let saving = $state(false);
@@ -156,6 +158,44 @@
 
 <div class="ui-page" data-testid="config-page">
     <div class="ui-page-scroll columns">
+        <section class="ui-section display" data-testid="display">
+            <div class="ui-section-title">
+                {t('Display')}
+                <span class="ui-faint ui-small">{t('in this browser only')}</span>
+            </div>
+            <div class="display-row">
+                <label class="display-field">
+                    <span class="ui-muted">{t('Language')}</span>
+                    <select
+                        class="ui-select"
+                        value={i18n.choice}
+                        onchange={(event) => i18n.set(event.currentTarget.value as 'de' | 'en' | 'auto')}
+                        data-testid="language"
+                    >
+                        <option value="auto">{t('Browser language')}</option>
+                        {#each LANGUAGES as language (language)}
+                            <option value={language}>{LANGUAGE_LABELS[language]}</option>
+                        {/each}
+                    </select>
+                </label>
+                <label class="display-field">
+                    <span class="ui-muted">{t('Theme')}</span>
+                    <select
+                        class="ui-select"
+                        value={theme}
+                        onchange={(event) => {
+                            theme = event.currentTarget.value as Theme;
+                            setTheme(theme);
+                        }}
+                        data-testid="theme"
+                    >
+                        <option value="system">{t('like the system')}</option>
+                        <option value="light">{t('light')}</option>
+                        <option value="dark">{t('dark')}</option>
+                    </select>
+                </label>
+            </div>
+        </section>
         <section class="ui-section">
             <div class="ui-section-title">
                 {t('Settings')}
@@ -257,12 +297,31 @@
                     <Checkbox bind:checked={replace} label={t('replace every device')} />
                 </div>
             </section>
-            <Version />
         </div>
     </div>
 </div>
 
 <style>
+    .display {
+        grid-column: 1 / -1;
+    }
+
+    .display-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 20px;
+    }
+
+    .display-field {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .display-field .ui-select {
+        width: auto;
+    }
+
     .columns {
         display: grid;
         grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);

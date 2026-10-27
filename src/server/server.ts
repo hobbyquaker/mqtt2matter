@@ -29,6 +29,7 @@ import {Updater} from './update.ts';
 import type {Importer, SyncEntry} from './importers.ts';
 import type {LogBuffer} from './log-buffer.ts';
 import {loadPresets} from './presets.ts';
+import {type RuntimeFigures, RuntimeStats} from './stats.ts';
 import {previewCommand, previewStatus} from './preview.ts';
 
 export interface ServerOptions {
@@ -81,6 +82,18 @@ export interface BridgeJson {
     windowStatus: number;
 }
 
+export interface StatsJson extends RuntimeFigures {
+    devices: number;
+    endpoints: number;
+    bridges: number;
+    bridgesCommissioned: number;
+    /** the controllers paired, over all bridges */
+    fabrics: number;
+    mqttConnected: boolean;
+    /** the topics in the cache (everything the bridge subscribed to and saw) */
+    mqttTopics: number;
+}
+
 /** the package's `ui/dist`, from `src/server/` or `dist/server/` alike */
 export const UI_DIST = resolve(new URL('../../ui/dist', import.meta.url).pathname);
 
@@ -118,6 +131,7 @@ export class Server {
     private readonly startedAt = Date.now();
     private readonly auth: Auth;
     private readonly updater: Updater;
+    private readonly stats = new RuntimeStats();
 
     constructor(options: ServerOptions) {
         this.options = options;
@@ -164,6 +178,7 @@ export class Server {
             }
         });
         this.routes();
+        this.stats.start();
     }
 
     /** the bound port */
@@ -204,6 +219,7 @@ export class Server {
             importer.load(this.app.mqtt.cache);
         }
         const onMessage = (topic: string, payload: Buffer, retain: boolean): void => {
+            this.stats.count();
             this.hub.broadcast({
                 type: 'mqtt',
                 topic,
@@ -261,6 +277,7 @@ export class Server {
     }
 
     async close(): Promise<void> {
+        this.stats.stop();
         for (const off of this.unsubscribe.splice(0)) {
             off();
         }
@@ -434,6 +451,33 @@ export class Server {
     }
 
     // ── bridges ────────────────────────────────────────────────────────────────────────────────────
+
+    /** the statistics popup: the process figures and what the bridge holds; cheap, no Matter round trip */
+    private statsJson(): StatsJson {
+        const devices = Object.values(this.app.config.devices);
+        const bridges = this.app.nodes.allBridges();
+        let fabrics = 0;
+        for (const bridge of bridges) {
+            const node = bridge.serverNode;
+            if (node !== undefined) {
+                try {
+                    fabrics += node.env.get(FabricManager).length;
+                } catch {
+                    // the node is not up yet
+                }
+            }
+        }
+        return {
+            ...this.stats.figures(),
+            devices: devices.length,
+            endpoints: devices.reduce((sum, device) => sum + device.endpoints.length, 0),
+            bridges: bridges.length,
+            bridgesCommissioned: bridges.filter((bridge) => bridge.info().commissioned).length,
+            fabrics,
+            mqttConnected: this.app.mqtt.connected,
+            mqttTopics: this.app.mqtt.cache.size,
+        };
+    }
 
     private bridgesJson(): BridgeJson[] {
         return this.app.nodes.allBridges().map((bridge) => {
@@ -619,6 +663,8 @@ export class Server {
             importers: this.importers().map((i) => i.kind),
             update: this.updater.known,
         }));
+
+        r.add('GET', '/api/stats', () => this.statsJson());
 
         r.add('GET', '/api/update', async (request) => {
             await this.updater.check(request.query.get('check') === '1');

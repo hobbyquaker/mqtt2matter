@@ -60,7 +60,7 @@ describe('the catalogue', () => {
     });
 
     it('knows the theme names', () => {
-        expect(Object.keys(MESSAGES)).toEqual(expect.arrayContaining(['system', 'light', 'dark']));
+        expect(Object.keys(MESSAGES)).toEqual(expect.arrayContaining(['like the system', 'light', 'dark']));
     });
 });
 

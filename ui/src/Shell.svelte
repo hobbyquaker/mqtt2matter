@@ -2,14 +2,17 @@
     import {onMount} from 'svelte';
 
     import {api, type Status} from './lib/api.ts';
+    import BarIcon from './lib/components/BarIcon.svelte';
     import DialogHost from './lib/components/DialogHost.svelte';
+    import LicensesDialog from './lib/components/LicensesDialog.svelte';
     import Notices from './lib/components/Notices.svelte';
+    import StatsMenu from './lib/components/StatsMenu.svelte';
     import Tabs from './lib/components/Tabs.svelte';
+    import VersionMenu from './lib/components/VersionMenu.svelte';
     import {events} from './lib/events.svelte.ts';
-    import {LANGUAGES, LANGUAGE_LABELS, i18n, t} from './lib/i18n.svelte.ts';
+    import {t} from './lib/i18n.svelte.ts';
     import {type Page, router} from './lib/router.svelte.ts';
     import {session} from './lib/session.svelte.ts';
-    import {type Theme, getTheme, nextTheme, setTheme} from './lib/theme.ts';
     import Adopt from './pages/Adopt.svelte';
     import Bridges from './pages/Bridges.svelte';
     import Check from './pages/Check.svelte';
@@ -19,16 +22,16 @@
     import Mqtt from './pages/Mqtt.svelte';
     import Presets from './pages/Presets.svelte';
 
-    let theme = $state<Theme>(getTheme());
     let status = $state<Status | undefined>(undefined);
     let logLevel = $state<'none' | 'warn' | 'error'>('none');
+    /** the one popup of the top bar that is open */
+    let popup = $state<'version' | 'stats' | undefined>(undefined);
+    let licensesOpen = $state(false);
 
     const page = $derived(router.route.page);
     const mqttUp = $derived(events.mqttConnected ?? status?.mqtt.connected ?? false);
     const commissioned = $derived(status?.bridges.some((b) => b.commissioned) ?? false);
     const importers = $derived(status?.importers ?? []);
-
-    const THEME_ICONS: Record<Theme, string> = {system: '◐', light: '☀', dark: '☾'};
 
     const tabs = $derived([
         {id: 'devices', label: t('Devices'), badge: status === undefined ? undefined : String(status.devices)},
@@ -38,8 +41,13 @@
         {id: 'mqtt', label: 'MQTT', dot: mqttUp ? ('ok' as const) : ('error' as const)},
         {id: 'log', label: t('Log'), dot: logLevel === 'none' ? ('none' as const) : logLevel},
         {id: 'check', label: t('Check')},
-        {id: 'config', label: t('Configuration')},
     ]);
+
+    const REPOSITORY = 'https://github.com/hobbyquaker/mqtt2matter';
+
+    function toggle(which: 'version' | 'stats'): void {
+        popup = popup === which ? undefined : which;
+    }
 
     async function loadStatus(): Promise<void> {
         try {
@@ -77,17 +85,28 @@
             logLevel = 'none';
         }
     });
-
-    function cycleTheme(): void {
-        theme = nextTheme(theme);
-        setTheme(theme);
-    }
 </script>
+
+<!-- a click outside closes the popup; one in a dialog it opened (confirm the update) does not -->
+<svelte:document
+    onclick={(event) => {
+        if (!(event.target instanceof Element && event.target.closest('dialog') !== null)) {
+            popup = undefined;
+        }
+    }}
+    onkeydown={(event) => {
+        if (event.key === 'Escape') {
+            popup = undefined;
+        }
+    }}
+/>
 
 <div class="shell" data-testid="app">
     <header class="header">
         <span class="brand">mqtt2matter</span>
-        <Tabs {tabs} active={page} label={t('Pages')} onselect={(id) => router.go(id as Page)} />
+        <div class="tabs">
+            <Tabs {tabs} active={page} label={t('Pages')} onselect={(id) => router.go(id as Page)} />
+        </div>
         <div class="actions">
             <span class="status" title={mqttUp ? t('Connected to the broker') : t('Not connected to the broker')}>
                 <span class="ui-dot" class:ui-dot-ok={mqttUp} class:ui-dot-error={!mqttUp}></span>MQTT
@@ -96,41 +115,56 @@
                 <span class="ui-dot" class:ui-dot-ok={events.connected} class:ui-dot-error={!events.connected}></span>
                 {t('Live')}
             </span>
-            {#if status}<span class="version ui-faint">{status.version}</span>{/if}
-            {#if status?.update?.newer === true}
-                <button type="button" class="ui-badge ui-badge-accent update" onclick={() => router.go('config')} data-testid="update-available"
-                    >{t('Update {version}', {version: status.update.latest ?? ''})}</button
-                >
-            {/if}
             {#if session.state?.mode === 'proxy' && session.state.user !== undefined}
-                <span class="status" data-testid="user">{session.state.user}</span>
+                <span class="status user" data-testid="user">{session.state.user}</span>
             {/if}
-            {#if session.state?.mode === 'password' || session.state?.logoutUrl !== undefined}
-                <button type="button" class="ui-button logout" onclick={() => session.logout()} data-testid="logout">{t('Log out')}</button>
-            {/if}
-            <select
-                class="ui-select language"
-                aria-label={t('Language')}
-                title={t('Language')}
-                value={i18n.choice}
-                onchange={(event) => i18n.set(event.currentTarget.value as 'de' | 'en' | 'auto')}
-                data-testid="language"
-            >
-                <option value="auto">{t('Browser language')}</option>
-                {#each LANGUAGES as language (language)}
-                    <option value={language}>{LANGUAGE_LABELS[language]}</option>
-                {/each}
-            </select>
+            <a class="ui-bar-button" href={REPOSITORY} target="_blank" rel="noopener" title="GitHub" aria-label="GitHub" data-testid="github">
+                <BarIcon name="github" />
+            </a>
             <button
                 type="button"
-                class="theme"
-                aria-label={t('Theme: {theme}', {theme: t(theme)})}
-                title={t('Theme: {theme}', {theme: t(theme)})}
-                onclick={cycleTheme}
-                data-testid="theme"
+                class="ui-bar-button paragraph"
+                title={t('Licences')}
+                aria-label={t('Licences')}
+                onclick={() => {
+                    licensesOpen = true;
+                }}
+                data-testid="licenses-button">§</button
             >
-                <span aria-hidden="true">{THEME_ICONS[theme]}</span>
+            {#if status}
+                <VersionMenu
+                    open={popup === 'version'}
+                    version={status.version}
+                    newer={status.update?.newer === true}
+                    ontoggle={() => toggle('version')}
+                    onchange={() => void loadStatus()}
+                />
+            {/if}
+            <StatsMenu open={popup === 'stats'} ontoggle={() => toggle('stats')} />
+            <button
+                type="button"
+                class="ui-bar-button"
+                class:ui-bar-button-active={page === 'config'}
+                title={t('Configuration')}
+                aria-label={t('Configuration')}
+                aria-current={page === 'config' ? 'page' : undefined}
+                onclick={() => router.go('config')}
+                data-testid="config-button"
+            >
+                <BarIcon name="gear" />
             </button>
+            {#if session.state?.mode === 'password' || session.state?.logoutUrl !== undefined}
+                <button
+                    type="button"
+                    class="ui-bar-button"
+                    title={t('Log out')}
+                    aria-label={t('Log out')}
+                    onclick={() => session.logout()}
+                    data-testid="logout"
+                >
+                    <BarIcon name="logout" />
+                </button>
+            {/if}
         </div>
     </header>
     <main class="main">
@@ -153,6 +187,12 @@
         {/if}
     </main>
     <Notices />
+    <LicensesDialog
+        open={licensesOpen}
+        onclose={() => {
+            licensesOpen = false;
+        }}
+    />
     <DialogHost />
 </div>
 
@@ -188,11 +228,19 @@
         white-space: nowrap;
     }
 
+    /* the tabs scroll sideways when the window is narrow; the icons on the right never leave */
+    .tabs {
+        display: flex;
+        align-self: stretch;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
     .actions {
         display: flex;
         align-items: center;
-        gap: 8px;
-        margin-left: auto;
+        gap: 2px;
+        flex: 0 0 auto;
         white-space: nowrap;
     }
 
@@ -200,42 +248,15 @@
         display: inline-flex;
         align-items: center;
         gap: 2px;
+        margin-right: 6px;
         color: var(--ui-fg-muted);
         font-size: var(--ui-font-size-small);
     }
 
-    .version {
-        font-size: var(--ui-font-size-small);
-    }
-
-    .language {
-        width: auto;
-        min-height: 24px;
-    }
-
-    .logout {
-        min-height: 24px;
-    }
-
-    .update {
-        border: none;
-        cursor: pointer;
-    }
-
-    .theme {
-        width: 26px;
-        height: 24px;
-        padding: 0;
-        border: 1px solid var(--ui-border);
-        border-radius: var(--ui-radius);
-        background: var(--ui-bg);
-        cursor: pointer;
+    .paragraph {
+        font-size: 15px;
+        font-weight: 600;
         line-height: 1;
-    }
-
-    .theme:hover {
-        border-color: var(--ui-border-strong);
-        background: var(--ui-accent-bg);
     }
 
     .main {
@@ -245,8 +266,13 @@
     }
 
     @media (max-width: 700px) {
-        .status,
-        .version {
+        .status {
+            display: none;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .brand {
             display: none;
         }
     }

@@ -178,6 +178,40 @@ describe('the web server', () => {
         expect(devices.json[0].number).toBeGreaterThan(1);
     });
 
+    it('answers the statistics: the process figures and the counts', async () => {
+        // a message the UI's subscription sees counts towards the rate and the topic cache
+        observer.publish('test/stats/ping', '1');
+        await waitFor(async () => {
+            const figures = (await api('GET', '/api/stats')).json;
+            return figures.mqttTopics > 0 && figures.mqttMessagesPerSecond > 0;
+        });
+        const stats = await api('GET', '/api/stats');
+        expect(stats.status).toBe(200);
+        expect(stats.json).toMatchObject({
+            devices: 1,
+            endpoints: 1,
+            bridges: 1,
+            bridgesCommissioned: 0,
+            fabrics: 0,
+            mqttConnected: true,
+        });
+        for (const key of [
+            'uptime',
+            'memoryMb',
+            'heapMb',
+            'cpuPercent',
+            'eluPercent',
+            'lagMeanMs',
+            'lagMaxMs',
+            'window',
+        ]) {
+            expect(typeof stats.json[key], key).toBe('number');
+            expect(Number.isFinite(stats.json[key]), key).toBe(true);
+        }
+        expect(stats.json.memoryMb).toBeGreaterThan(0);
+        expect(stats.json.mqttMessagesPerSecond).toBeGreaterThan(0);
+    });
+
     it('refuses a settings change the environment owns and accepts one it does not', async () => {
         const settings = (await api('GET', '/api/config')).json.settings;
         const refused = await api('PUT', '/api/config', {...settings, mqtt: {url: 'mqtt://elsewhere'}});

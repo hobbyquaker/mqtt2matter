@@ -610,3 +610,123 @@ pre.ui-pre {
     max-height: 240px;
     overflow: auto;
 }
+
+/* ── the top bar's icon buttons and their popups ───────────────────────────────────────────── */
+
+.ui-bar-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-width: 28px;
+    height: 26px;
+    padding: 0 6px;
+    border: none;
+    border-radius: var(--ui-radius);
+    background: none;
+    color: var(--ui-fg-muted);
+    font: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.ui-bar-button:hover,
+.ui-bar-button[aria-expanded='true'] {
+    background: var(--ui-control-bg-hover);
+    color: var(--ui-fg);
+}
+
+.ui-bar-button.ui-bar-button-active {
+    background: var(--ui-accent-bg);
+    color: var(--ui-fg);
+}
+
+.ui-popup-anchor {
+    position: relative;
+}
+
+.ui-popup {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 200;
+    width: max-content;
+    min-width: 200px;
+    max-width: min(360px, calc(100vw - 16px));
+    padding: 10px 12px 6px;
+    background: var(--ui-bg);
+    border: 1px solid var(--ui-border);
+    border-radius: 5px;
+    box-shadow: var(--ui-shadow-menu);
+    font-size: var(--ui-font-size-grid);
+    white-space: normal;
+}
+
+.ui-popup .ui-kv {
+    grid-template-columns: 1fr auto;
+    margin-bottom: 8px;
+}
+
+.ui-popup .ui-kv dd {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.ui-popup-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 6px;
+    border-top: 1px solid var(--ui-border-muted);
+}
+
+.ui-popup-actions button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 4px 8px;
+    border: none;
+    border-radius: var(--ui-radius);
+    background: none;
+    color: var(--ui-fg-muted);
+    font: inherit;
+    cursor: pointer;
+}
+
+.ui-popup-actions button:hover:not(:disabled) {
+    background: var(--ui-control-bg-hover);
+    color: var(--ui-fg);
+}
+
+.ui-popup-actions button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.ui-popup-actions button.ui-popup-primary {
+    color: var(--ui-accent);
+    font-weight: 600;
+}
+
+.ui-update-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ui-warn);
+    flex: 0 0 auto;
+}
+
+@keyframes ui-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.ui-spinning {
+    animation: ui-spin 0.8s linear infinite;
+}

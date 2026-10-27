@@ -164,6 +164,41 @@ export interface Status {
     update?: {latest?: string; newer: boolean};
 }
 
+/** GET /api/stats (docs/api.md) */
+export interface Stats {
+    uptime: number;
+    memoryMb: number;
+    heapMb: number;
+    cpuPercent: number;
+    eluPercent: number;
+    lagMeanMs: number;
+    lagMaxMs: number;
+    mqttMessagesPerSecond: number;
+    window: number;
+    devices: number;
+    endpoints: number;
+    bridges: number;
+    bridgesCommissioned: number;
+    fabrics: number;
+    mqttConnected: boolean;
+    mqttTopics: number;
+}
+
+/** licenses.json beside the UI, written by the build (scripts/licenses.ts) */
+export interface PackageLicense {
+    name: string;
+    version: string;
+    license: string;
+    repository?: string;
+    text?: string;
+}
+
+export interface Licenses {
+    self: {name: string; version: string; license: string; text: string; notice: string};
+    runtime: PackageLicense[];
+    ui: PackageLicense[];
+}
+
 export interface UpdateStatus {
     current: string;
     latest?: string;
@@ -344,6 +379,7 @@ export const api = {
     logout: () => request<AuthState>('POST', '/api/auth/logout', {}),
     setAccess: (settings: AccessSettings) => request<AuthState>('PUT', '/api/auth', settings),
     status: () => request<Status>('GET', '/api/status'),
+    stats: () => request<Stats>('GET', '/api/stats'),
     updateStatus: (check = false) => request<UpdateStatus>('GET', `/api/update${check ? '?check=1' : ''}`),
     requestUpdate: (version: string) => request<{requested: string}>('POST', '/api/update', {version}),
     restart: () => request<{restarting: boolean}>('POST', '/api/restart', {}),
