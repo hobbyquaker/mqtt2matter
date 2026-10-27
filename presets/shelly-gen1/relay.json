@@ -1,0 +1,36 @@
+{
+  "id": "shelly-gen1/relay",
+  "name": "Shelly Gen1 relay",
+  "description": "A relay of a first-generation Shelly (1, 1PM, 2.5, Plug S, …) as a plug-in unit: shellies/<id>/relay/<channel> and …/command; availability from shellies/<id>/online.",
+  "vendor": "Shelly",
+  "format": 1,
+  "variables": {
+    "device": {
+      "label": "Device id",
+      "description": "The device's MQTT id: <model>-<deviceid>, as in its topics shellies/<id>/… (shelly1-B929CC)"
+    },
+    "channel": {"label": "Channel", "description": "The relay: 0, or 1 for a Shelly 2.5's second", "default": "0"},
+    "name": {"label": "Name", "default": "Shelly relay"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Shelly",
+    "availability": {"topic": "shellies/%device%/online", "online": "true", "offline": "false"},
+    "endpoints": [
+      {
+        "deviceTypes": ["OnOffPlugInUnit"],
+        "mappings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {
+              "topic": "shellies/%device%/relay/%channel%",
+              "map": {"on": true, "off": false, "overpower": false},
+              "get": {"topic": "shellies/%device%/command", "payload": "update"}
+            },
+            "command": {"topic": "shellies/%device%/relay/%channel%/command", "format": {"true": "on", "false": "off"}}
+          }
+        ]
+      }
+    ]
+  }
+}

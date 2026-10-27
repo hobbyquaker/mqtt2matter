@@ -1,0 +1,60 @@
+{
+  "id": "shelly-gen1/relay-pm",
+  "name": "Shelly Gen1 relay with power",
+  "description": "A metering relay (1PM, 2.5, Plug S) as a plug-in unit with an electrical sensor: the active power from shellies/<id>/relay/<channel>/power.",
+  "vendor": "Shelly",
+  "format": 1,
+  "variables": {
+    "device": {
+      "label": "Device id",
+      "description": "The device's MQTT id: <model>-<deviceid>, as in its topics shellies/<id>/… (shelly1pm-B929CC)"
+    },
+    "channel": {"label": "Channel", "description": "The relay: 0, or 1 for a Shelly 2.5's second", "default": "0"},
+    "name": {"label": "Name", "default": "Shelly relay"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Shelly",
+    "availability": {"topic": "shellies/%device%/online", "online": "true", "offline": "false"},
+    "endpoints": [
+      {
+        "deviceTypes": ["OnOffPlugInUnit", "ElectricalSensor"],
+        "features": {"ElectricalPowerMeasurement": ["AlternatingCurrent"], "PowerTopology": ["NodeTopology"]},
+        "attributes": {
+          "ElectricalPowerMeasurement": {
+            "powerMode": 2,
+            "numberOfMeasurementTypes": 1,
+            "accuracy": [
+              {
+                "measurementType": 5,
+                "measured": true,
+                "minMeasuredValue": 0,
+                "maxMeasuredValue": 4000000,
+                "accuracyRanges": [{"rangeMin": 0, "rangeMax": 4000000, "fixedMax": 1000}]
+              }
+            ]
+          }
+        },
+        "mappings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {
+              "topic": "shellies/%device%/relay/%channel%",
+              "map": {"on": true, "off": false, "overpower": false},
+              "get": {"topic": "shellies/%device%/command", "payload": "update"}
+            },
+            "command": {"topic": "shellies/%device%/relay/%channel%/command", "format": {"true": "on", "false": "off"}}
+          },
+          {
+            "attribute": "ElectricalPowerMeasurement.activePower",
+            "status": {
+              "topic": "shellies/%device%/relay/%channel%/power",
+              "type": "number",
+              "scale": {"from": [0, 1], "to": [0, 1000], "clamp": false}
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

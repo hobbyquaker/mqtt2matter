@@ -1,0 +1,43 @@
+{
+  "id": "shelly-gen1/ht",
+  "name": "Shelly H&T (Gen1)",
+  "description": "The first-generation Shelly H&T: sensor/temperature (set the device to °C), sensor/humidity as a child endpoint, sensor/battery. It sleeps between reports, so it has no availability.",
+  "vendor": "Shelly",
+  "format": 1,
+  "variables": {
+    "device": {
+      "label": "Device id",
+      "description": "The device's MQTT id: <model>-<deviceid>, as in its topics shellies/<id>/… (shellyht-B929CC)"
+    },
+    "name": {"label": "Name", "default": "Shelly H&T"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Shelly",
+    "endpoints": [
+      {
+        "deviceTypes": ["TemperatureSensor", "PowerSource"],
+        "mappings": [
+          {
+            "attribute": "TemperatureMeasurement.measuredValue",
+            "status": {"topic": "shellies/%device%/sensor/temperature", "type": "number", "unit": "celsius"}
+          },
+          {
+            "attribute": "PowerSource.batPercentRemaining",
+            "status": {"topic": "shellies/%device%/sensor/battery", "type": "number", "unit": "halfPercent"}
+          }
+        ]
+      },
+      {
+        "id": "humidity",
+        "deviceTypes": ["HumiditySensor"],
+        "mappings": [
+          {
+            "attribute": "RelativeHumidityMeasurement.measuredValue",
+            "status": {"topic": "shellies/%device%/sensor/humidity", "type": "number", "unit": "percent100ths"}
+          }
+        ]
+      }
+    ]
+  }
+}

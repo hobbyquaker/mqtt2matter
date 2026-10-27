@@ -1,0 +1,43 @@
+{
+  "id": "shelly-gen1/door-window",
+  "name": "Shelly Door/Window (Gen1)",
+  "description": "Shelly Door/Window 1/2 as a contact sensor with its battery (sensor/state open/close, sensor/battery) and the illuminance (sensor/lux) as a child endpoint. It sleeps between reports, so it has no availability.",
+  "vendor": "Shelly",
+  "format": 1,
+  "variables": {
+    "device": {
+      "label": "Device id",
+      "description": "The device's MQTT id: <model>-<deviceid>, as in its topics shellies/<id>/… (shellydw2-B929CC)"
+    },
+    "name": {"label": "Name", "default": "Shelly door/window"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Shelly",
+    "endpoints": [
+      {
+        "deviceTypes": ["ContactSensor", "PowerSource"],
+        "mappings": [
+          {
+            "attribute": "BooleanState.stateValue",
+            "status": {"topic": "shellies/%device%/sensor/state", "map": {"open": false, "close": true}}
+          },
+          {
+            "attribute": "PowerSource.batPercentRemaining",
+            "status": {"topic": "shellies/%device%/sensor/battery", "type": "number", "unit": "halfPercent"}
+          }
+        ]
+      },
+      {
+        "id": "illuminance",
+        "deviceTypes": ["LightSensor"],
+        "mappings": [
+          {
+            "attribute": "IlluminanceMeasurement.measuredValue",
+            "status": {"topic": "shellies/%device%/sensor/lux", "type": "number", "unit": "lux"}
+          }
+        ]
+      }
+    ]
+  }
+}

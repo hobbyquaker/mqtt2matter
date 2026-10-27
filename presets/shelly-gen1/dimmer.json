@@ -1,0 +1,48 @@
+{
+  "id": "shelly-gen1/dimmer",
+  "name": "Shelly Gen1 dimmer",
+  "description": "Shelly Dimmer 1/2 as a dimmable light: the light/0/status JSON (ison, brightness), commands as JSON to light/0/set; a level switches on.",
+  "vendor": "Shelly",
+  "format": 1,
+  "variables": {
+    "device": {
+      "label": "Device id",
+      "description": "The device's MQTT id: <model>-<deviceid>, as in its topics shellies/<id>/… (shellydimmer2-B929CC)"
+    },
+    "name": {"label": "Name", "default": "Shelly dimmer"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Shelly",
+    "availability": {"topic": "shellies/%device%/online", "online": "true", "offline": "false"},
+    "endpoints": [
+      {
+        "deviceTypes": ["DimmableLight"],
+        "options": {"light": {"onCommandType": "brightness"}},
+        "mappings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {
+              "topic": "shellies/%device%/light/0/status",
+              "extract": "ison",
+              "type": "boolean",
+              "get": {"topic": "shellies/%device%/command", "payload": "update"}
+            },
+            "command": {
+              "topic": "shellies/%device%/light/0/set",
+              "format": {"true": "{\"turn\":\"on\"}", "false": "{\"turn\":\"off\"}"}
+            }
+          },
+          {
+            "attribute": "LevelControl.currentLevel",
+            "status": {"topic": "shellies/%device%/light/0/status", "extract": "brightness", "unit": "percentLevel"},
+            "command": {
+              "topic": "shellies/%device%/light/0/set",
+              "template": "{\"turn\":\"{{ 'on' if percent > 0 else 'off' }}\",\"brightness\":{{ [percent, 1] | max }}}"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

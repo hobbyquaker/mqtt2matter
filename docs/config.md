@@ -468,6 +468,20 @@ land on `mqtt2matter/rpc`); at start each status is requested with `status_updat
 One preset is one channel: a 2PM's two relays are two devices (`channel` `0` and `1`) — the preset format has no
 repetition, and two devices let each relay have its own name and room.
 
+**Shelly Gen1** (the first generation, topics under `shellies/`) — `device`: the id in the device's topics,
+`<model>-<deviceid>` (`shelly1pm-B929CC`). At start each mains-powered preset sends `update` to
+`shellies/<device>/command`, which makes the device publish its state; availability is `shellies/<device>/online`.
+Battery devices sleep between reports and have no availability.
+
+| Id                        | Matter                            | Notes                                                                                                                         |
+| ------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `shelly-gen1/relay`       | OnOffPlugInUnit                   | `relay/<channel>` (`on`/`off`/`overpower`) and `relay/<channel>/command`                                                      |
+| `shelly-gen1/relay-pm`    | OnOffPlugInUnit, ElectricalSensor | as above plus the active power from `relay/<channel>/power` (1PM, 2.5, Plug S)                                                |
+| `shelly-gen1/roller`      | WindowCovering                    | Shelly 2.5 in roller mode: `roller/0/pos` (100 = open, `-1` uncalibrated is skipped), `roller/0/command/pos`, open/close/stop |
+| `shelly-gen1/dimmer`      | DimmableLight                     | Dimmer 1/2: `light/0/status` (`ison`, `brightness`), JSON to `light/0/set`                                                    |
+| `shelly-gen1/ht`          | TemperatureSensor, PowerSource    | H&T: `sensor/temperature` (set the device to °C), `sensor/battery`; humidity as a child                                       |
+| `shelly-gen1/door-window` | ContactSensor, PowerSource        | Door/Window 1/2: `sensor/state` `open`/`close`, `sensor/battery`; `sensor/lux` as a child                                     |
+
 **Tasmota** — `topic`: the device's MQTT topic (Configuration → MQTT → Topic); the default FullTopic
 `%prefix%/%topic%/`.
 

@@ -1,0 +1,52 @@
+{
+  "id": "shelly-gen1/roller",
+  "name": "Shelly Gen1 roller",
+  "description": "A Shelly 2.5 in roller mode as a position-aware window covering: roller/0/pos (100 = open; -1 until calibrated), roller/0/command/pos, open/close/stop on roller/0/command.",
+  "vendor": "Shelly",
+  "format": 1,
+  "variables": {
+    "device": {
+      "label": "Device id",
+      "description": "The device's MQTT id: <model>-<deviceid>, as in its topics shellies/<id>/… (shellyswitch25-B929CC)"
+    },
+    "name": {"label": "Name", "default": "Shelly roller"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Shelly",
+    "availability": {"topic": "shellies/%device%/online", "online": "true", "offline": "false"},
+    "endpoints": [
+      {
+        "deviceTypes": ["WindowCovering"],
+        "mappings": [
+          {
+            "attribute": "WindowCovering.currentPositionLiftPercent100ths",
+            "status": {
+              "topic": "shellies/%device%/roller/0/pos",
+              "template": "{{ value if value | int >= 0 else '' }}",
+              "type": "number",
+              "scale": {"from": [0, 100], "to": [10000, 0]},
+              "get": {"topic": "shellies/%device%/command", "payload": "update"}
+            }
+          },
+          {
+            "attribute": "WindowCovering.targetPositionLiftPercent100ths",
+            "command": {"topic": "shellies/%device%/roller/0/command/pos", "template": "{{ open }}"}
+          },
+          {
+            "invoke": "WindowCovering.upOrOpen",
+            "command": {"topic": "shellies/%device%/roller/0/command", "payload": "open"}
+          },
+          {
+            "invoke": "WindowCovering.downOrClose",
+            "command": {"topic": "shellies/%device%/roller/0/command", "payload": "close"}
+          },
+          {
+            "invoke": "WindowCovering.stopMotion",
+            "command": {"topic": "shellies/%device%/roller/0/command", "payload": "stop"}
+          }
+        ]
+      }
+    ]
+  }
+}

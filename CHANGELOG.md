@@ -10,6 +10,8 @@
 - **Presets for Shelly Gen2/Gen3** (Plus, Pro, Gen3): switch, switch with power metering (an electrical
   sensor with active power, voltage and current), cover, dimmer, Plus H&T and Plus i4 — the component status
   from the "Generic status update" topics, commands as RPC, the status requested at start.
+- **Presets for first-generation Shelly devices**: relay, relay with power, roller (2.5), Dimmer 1/2, H&T and
+  Door/Window, over the `shellies/<id>/…` topics; mains-powered ones ask for their state at start.
 - Templates: `int` takes Home Assistant's default and base, `'ff' | int(0, 16)` reads hexadecimal.
 - A status value that a message does not carry (an extract path that is missing, a template that renders
   nothing) is logged at debug instead of as a warning: topics several mappings share — Tasmota's `RESULT`, a

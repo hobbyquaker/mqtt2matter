@@ -1,0 +1,68 @@
+{
+  "documentation": ["https://shelly-api-docs.shelly.cloud/gen1/ (the MQTT sections of Shelly 1/1PM, 2.5, Dimmer 1/2, H&T, Door/Window 1/2)"],
+  "presets": {
+    "shelly-gen1/relay": {
+      "values": {"device": "shelly1-000001"},
+      "availability": [
+        {"topic": "shellies/shelly1-000001/online", "payload": "false", "reachable": false},
+        {"topic": "shellies/shelly1-000001/online", "payload": "true", "reachable": true}
+      ],
+      "status": [
+        {"topic": "shellies/shelly1-000001/relay/0", "payload": "on", "expect": {"onOff.onOff": true}},
+        {"topic": "shellies/shelly1-000001/relay/0", "payload": "off", "expect": {"onOff.onOff": false}}
+      ],
+      "commands": [{"action": "on", "publishes": [{"topic": "shellies/shelly1-000001/relay/0/command", "payload": "on"}]}]
+    },
+    "shelly-gen1/relay-pm": {
+      "values": {"device": "shellyswitch25-000002", "channel": "1"},
+      "status": [
+        {"topic": "shellies/shellyswitch25-000002/relay/1", "payload": "on", "expect": {"onOff.onOff": true}},
+        {"topic": "shellies/shellyswitch25-000002/relay/1/power", "payload": "61.27", "expect": {"electricalPowerMeasurement.activePower": 61270}}
+      ],
+      "commands": [{"action": "off", "publishes": [{"topic": "shellies/shellyswitch25-000002/relay/1/command", "payload": "off"}]}]
+    },
+    "shelly-gen1/roller": {
+      "values": {"device": "shellyswitch25-000003"},
+      "status": [
+        {"topic": "shellies/shellyswitch25-000003/roller/0/pos", "payload": "-1"},
+        {"topic": "shellies/shellyswitch25-000003/roller/0/pos", "payload": "100", "expect": {"windowCovering.currentPositionLiftPercent100ths": 0}}
+      ],
+      "commands": [
+        {"action": "lift", "args": {"percent100ths": 2500}, "publishes": [{"topic": "shellies/shellyswitch25-000003/roller/0/command/pos", "payload": "75"}]},
+        {"action": "stop", "publishes": [{"topic": "shellies/shellyswitch25-000003/roller/0/command", "payload": "stop"}]},
+        {"action": "open", "publishes": [{"topic": "shellies/shellyswitch25-000003/roller/0/command", "payload": "open"}]}
+      ]
+    },
+    "shelly-gen1/dimmer": {
+      "values": {"device": "shellydimmer2-000004"},
+      "status": [
+        {
+          "topic": "shellies/shellydimmer2-000004/light/0/status",
+          "payload": {"ison": true, "has_timer": false, "timer_started": 0, "timer_duration": 0, "timer_remaining": 0, "mode": "white", "brightness": 40},
+          "expect": {"onOff.onOff": true, "levelControl.currentLevel": 102}
+        }
+      ],
+      "commands": [
+        {"action": "level", "args": {"level": 254}, "publishes": [{"topic": "shellies/shellydimmer2-000004/light/0/set", "payload": {"turn": "on", "brightness": 100}}]},
+        {"action": "off", "publishes": [{"topic": "shellies/shellydimmer2-000004/light/0/set", "payload": {"turn": "off"}}]}
+      ]
+    },
+    "shelly-gen1/ht": {
+      "values": {"device": "shellyht-000005"},
+      "status": [
+        {"topic": "shellies/shellyht-000005/sensor/temperature", "payload": "21.75", "expect": {"temperatureMeasurement.measuredValue": 2175}},
+        {"topic": "shellies/shellyht-000005/sensor/humidity", "payload": "48.5", "endpoint": "humidity", "expect": {"relativeHumidityMeasurement.measuredValue": 4850}},
+        {"topic": "shellies/shellyht-000005/sensor/battery", "payload": "87", "expect": {"powerSource.batPercentRemaining": 174}}
+      ]
+    },
+    "shelly-gen1/door-window": {
+      "values": {"device": "shellydw2-000006"},
+      "status": [
+        {"topic": "shellies/shellydw2-000006/sensor/state", "payload": "open", "expect": {"booleanState.stateValue": false}},
+        {"topic": "shellies/shellydw2-000006/sensor/state", "payload": "close", "expect": {"booleanState.stateValue": true}},
+        {"topic": "shellies/shellydw2-000006/sensor/lux", "payload": "100", "endpoint": "illuminance", "expect": {"illuminanceMeasurement.measuredValue": 20001}},
+        {"topic": "shellies/shellydw2-000006/sensor/battery", "payload": "95", "expect": {"powerSource.batPercentRemaining": 190}}
+      ]
+    }
+  }
+}
