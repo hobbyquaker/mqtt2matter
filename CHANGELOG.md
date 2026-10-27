@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
 - The Presets page has a search box: every word must occur in a preset's name, vendor, id or description
   ("shelly cover", "tasmota sensor"); the toolbar shows how many of the presets match.

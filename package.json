@@ -1,6 +1,6 @@
 {
   "name": "mqtt2matter",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Generic MQTT to Matter bridge: compose Matter devices by hand and map them onto MQTT topics with configurable payloads; importers for Zigbee2MQTT and Home Assistant MQTT discovery",
   "type": "module",
   "license": "Apache-2.0",
