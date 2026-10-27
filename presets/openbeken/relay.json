@@ -1,0 +1,40 @@
+{
+  "id": "openbeken/relay",
+  "name": "OpenBeken relay",
+  "description": "A relay channel of an OpenBeken device (BK7231, …) as a plug-in unit: <client>/<channel>/get 1/0, <client>/<channel>/set, the state asked for at start; availability from <client>/connected.",
+  "vendor": "OpenBeken",
+  "format": 1,
+  "variables": {
+    "client": {
+      "label": "Client topic",
+      "description": "OpenBeken → Config → MQTT → Client Topic (Base Topic): the first level of its topics"
+    },
+    "channel": {
+      "label": "Channel",
+      "description": "The relay's channel number (the pin's channel in Configure Module)",
+      "default": "1"
+    },
+    "name": {"label": "Name", "default": "Relay"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "OpenBeken",
+    "availability": {"topic": "%client%/connected", "online": "online", "offline": "offline"},
+    "endpoints": [
+      {
+        "deviceTypes": ["OnOffPlugInUnit"],
+        "mappings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {
+              "topic": "%client%/%channel%/get",
+              "map": {"1": true, "0": false},
+              "get": {"topic": "%client%/%channel%/get", "payload": ""}
+            },
+            "command": {"topic": "%client%/%channel%/set", "format": {"true": "1", "false": "0"}}
+          }
+        ]
+      }
+    ]
+  }
+}

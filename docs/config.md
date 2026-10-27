@@ -502,6 +502,21 @@ robot vacuum as a Matter node of its own: behind a bridge Apple Home shows it at
 bridges report the Home app failing with a vacuum among other bridged devices), Alexa does not discover it. Rooms
 (Service Area) and cleaning modes (RvcCleanMode) are not mapped.
 
+**OpenBeken** (BK7231, BL602, … — OpenBK7231T_App) — `client`: the client topic (Config → MQTT). Channels publish
+`<client>/<channel>/get` and take `<client>/<channel>/set`; LED drivers publish `led_enableAll`, `led_dimmer` and
+`led_basecolor_rgb` on `<client>/<variable>/get` and take the commands of the same names on
+`cmnd/<client>/<command>`. Each status is asked for at start with an empty `…/get`. Availability is
+`<client>/connected` (`online`; `offline` from the broker's last will).
+
+| Id                      | Matter                | Notes                                                                                                                   |
+| ----------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `openbeken/relay`       | OnOffPlugInUnit       | a relay channel, `1`/`0`                                                                                                |
+| `openbeken/dimmer`      | DimmableLight         | `led_enableAll`, `led_dimmer` 0–100                                                                                     |
+| `openbeken/ct-light`    | ColorTemperatureLight | as the dimmer, plus `led_temperature` (154–500 mireds); its value is kept locally, the topic list names no report of it |
+| `openbeken/color-light` | ExtendedColorLight    | as the dimmer, the colour as hex in `led_basecolor_rgb`, `led_temperature` as above                                     |
+| `openbeken/temperature` | TemperatureSensor     | a channel of type `Temperature`, `Temperature_div10` or `_div100`: `divisor` `1`, `10` (default) or `100`               |
+| `openbeken/humidity`    | HumiditySensor        | `Humidity` or `Humidity_div10`: `divisor` `1` (default) or `10`                                                         |
+
 **Tasmota** — `topic`: the device's MQTT topic (Configuration → MQTT → Topic); the default FullTopic
 `%prefix%/%topic%/`. Actuators read `stat/<topic>/RESULT` and ask for their state at start with an empty
 `cmnd/<topic>/<Command>`; sensors read `tele/<topic>/SENSOR`, sent every `TelePeriod` (300 s by default), with

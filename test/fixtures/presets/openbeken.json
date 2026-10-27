@@ -1,0 +1,59 @@
+{
+  "documentation": [
+    "https://github.com/openshwprojects/OpenBK7231T_App/blob/main/docs/mqttTopics.md",
+    "https://github.com/openshwprojects/OpenBK7231T_App/blob/main/docs/commands.md",
+    "https://github.com/openshwprojects/OpenBK7231T_App/blob/main/docs/channelTypes.md"
+  ],
+  "presets": {
+    "openbeken/relay": {
+      "values": {"client": "obk-plug", "channel": "1"},
+      "availability": [
+        {"topic": "obk-plug/connected", "payload": "offline", "reachable": false},
+        {"topic": "obk-plug/connected", "payload": "online", "reachable": true}
+      ],
+      "status": [
+        {"topic": "obk-plug/1/get", "payload": "1", "expect": {"onOff.onOff": true}},
+        {"topic": "obk-plug/1/get", "payload": "0", "expect": {"onOff.onOff": false}}
+      ],
+      "commands": [{"action": "on", "publishes": [{"topic": "obk-plug/1/set", "payload": "1"}]}]
+    },
+    "openbeken/dimmer": {
+      "values": {"client": "obk-dimmer"},
+      "status": [
+        {"topic": "obk-dimmer/led_enableAll/get", "payload": "1", "expect": {"onOff.onOff": true}},
+        {"topic": "obk-dimmer/led_dimmer/get", "payload": "100", "expect": {"levelControl.currentLevel": 254}}
+      ],
+      "commands": [
+        {"action": "level", "args": {"level": 127}, "publishes": [{"topic": "cmnd/obk-dimmer/led_dimmer", "payload": "50"}]},
+        {"action": "off", "publishes": [{"topic": "cmnd/obk-dimmer/led_enableAll", "payload": "0"}]}
+      ]
+    },
+    "openbeken/ct-light": {
+      "values": {"client": "obk-cw"},
+      "status": [
+        {"topic": "obk-cw/led_enableAll/get", "payload": "1", "expect": {"onOff.onOff": true}},
+        {"topic": "obk-cw/led_dimmer/get", "payload": "40", "expect": {"levelControl.currentLevel": 102}}
+      ],
+      "commands": [{"action": "mireds", "args": {"mireds": 250}, "publishes": [{"topic": "cmnd/obk-cw/led_temperature", "payload": "250"}]}]
+    },
+    "openbeken/color-light": {
+      "values": {"client": "obk-rgbcw"},
+      "status": [
+        {"topic": "obk-rgbcw/led_enableAll/get", "payload": "1", "expect": {"onOff.onOff": true}},
+        {"topic": "obk-rgbcw/led_basecolor_rgb/get", "payload": "0000FF", "expect": {"colorControl.currentHue": 169, "colorControl.currentSaturation": 254}}
+      ],
+      "commands": [
+        {"action": "hs", "args": {"hue": 0, "saturation": 254}, "publishes": [{"topic": "cmnd/obk-rgbcw/led_basecolor_rgb", "payload": "FF0000"}]},
+        {"action": "mireds", "args": {"mireds": 300}, "publishes": [{"topic": "cmnd/obk-rgbcw/led_temperature", "payload": "300"}]}
+      ]
+    },
+    "openbeken/temperature": {
+      "values": {"client": "obk-th", "channel": "3"},
+      "status": [{"topic": "obk-th/3/get", "payload": "215", "expect": {"temperatureMeasurement.measuredValue": 2150}}]
+    },
+    "openbeken/humidity": {
+      "values": {"client": "obk-th", "channel": "4", "divisor": "10"},
+      "status": [{"topic": "obk-th/4/get", "payload": "554", "expect": {"relativeHumidityMeasurement.measuredValue": 5540}}]
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "id": "openbeken/color-light",
+  "name": "OpenBeken colour light",
+  "description": "An OpenBeken RGB, RGBW or RGBCW light: on/off and dimmer, the colour from led_basecolor_rgb (hex), sent with led_basecolor_rgb; the colour temperature with led_temperature, kept locally.",
+  "vendor": "OpenBeken",
+  "format": 1,
+  "variables": {
+    "client": {
+      "label": "Client topic",
+      "description": "OpenBeken → Config → MQTT → Client Topic (Base Topic): the first level of its topics"
+    },
+    "name": {"label": "Name", "default": "Light"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "OpenBeken",
+    "availability": {"topic": "%client%/connected", "online": "online", "offline": "offline"},
+    "endpoints": [
+      {
+        "deviceTypes": ["ExtendedColorLight"],
+        "features": {"ColorControl": ["HueSaturation"]},
+        "options": {"light": {"onCommandType": "first"}},
+        "mappings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {
+              "topic": "%client%/led_enableAll/get",
+              "map": {"1": true, "0": false},
+              "get": {"topic": "%client%/led_enableAll/get", "payload": ""}
+            },
+            "command": {"topic": "cmnd/%client%/led_enableAll", "format": {"true": "1", "false": "0"}}
+          },
+          {
+            "attribute": "LevelControl.currentLevel",
+            "status": {
+              "topic": "%client%/led_dimmer/get",
+              "template": "{{ value if value | float > 0 else '' }}",
+              "type": "number",
+              "unit": "percentLevel",
+              "get": {"topic": "%client%/led_dimmer/get", "payload": ""}
+            },
+            "command": {"topic": "cmnd/%client%/led_dimmer", "unit": "percentLevel", "round": 0}
+          },
+          {
+            "attribute": "ColorControl.colorRgb",
+            "status": {
+              "topic": "%client%/led_basecolor_rgb/get",
+              "template": "{% set v = value | trim %}{{ v[-6:-4] | int(0, 16) }},{{ v[-4:-2] | int(0, 16) }},{{ v[-2:] | int(0, 16) }}",
+              "get": {"topic": "%client%/led_basecolor_rgb/get", "payload": ""}
+            },
+            "command": {
+              "topic": "cmnd/%client%/led_basecolor_rgb",
+              "template": "{% set h = '0123456789ABCDEF' %}{% for c in [red, green, blue] %}{% set n = c | round(0) | int %}{{ h[n // 16] }}{{ h[n % 16] }}{% endfor %}"
+            }
+          },
+          {
+            "attribute": "ColorControl.colorTemperatureMireds",
+            "command": {"topic": "cmnd/%client%/led_temperature", "round": 0, "optimistic": true}
+          }
+        ]
+      }
+    ]
+  }
+}

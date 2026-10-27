@@ -1,0 +1,37 @@
+{
+  "id": "openbeken/humidity",
+  "name": "OpenBeken humidity",
+  "description": "A humidity channel (channel type Humidity or Humidity_div10) as a humidity sensor: <client>/<channel>/get divided by the type's divisor.",
+  "vendor": "OpenBeken",
+  "format": 1,
+  "variables": {
+    "client": {
+      "label": "Client topic",
+      "description": "OpenBeken → Config → MQTT → Client Topic (Base Topic): the first level of its topics"
+    },
+    "channel": {"label": "Channel", "description": "The humidity's channel number", "default": "2"},
+    "divisor": {"label": "Divisor", "description": "1 for Humidity, 10 for Humidity_div10", "default": "1"},
+    "name": {"label": "Name", "default": "Humidity"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "OpenBeken",
+    "availability": {"topic": "%client%/connected", "online": "online", "offline": "offline"},
+    "endpoints": [
+      {
+        "deviceTypes": ["HumiditySensor"],
+        "mappings": [
+          {
+            "attribute": "RelativeHumidityMeasurement.measuredValue",
+            "status": {
+              "topic": "%client%/%channel%/get",
+              "template": "{{ (value | float) / %divisor% }}",
+              "type": "number",
+              "unit": "percent100ths"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

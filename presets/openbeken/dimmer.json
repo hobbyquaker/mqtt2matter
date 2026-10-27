@@ -1,0 +1,47 @@
+{
+  "id": "openbeken/dimmer",
+  "name": "OpenBeken dimmer",
+  "description": "An OpenBeken LED driver or dimmer as a dimmable light: led_enableAll and led_dimmer (0–100) from <client>/<variable>/get, commands over cmnd/<client>/….",
+  "vendor": "OpenBeken",
+  "format": 1,
+  "variables": {
+    "client": {
+      "label": "Client topic",
+      "description": "OpenBeken → Config → MQTT → Client Topic (Base Topic): the first level of its topics"
+    },
+    "name": {"label": "Name", "default": "Dimmer"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "OpenBeken",
+    "availability": {"topic": "%client%/connected", "online": "online", "offline": "offline"},
+    "endpoints": [
+      {
+        "deviceTypes": ["DimmableLight"],
+        "options": {"light": {"onCommandType": "first"}},
+        "mappings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {
+              "topic": "%client%/led_enableAll/get",
+              "map": {"1": true, "0": false},
+              "get": {"topic": "%client%/led_enableAll/get", "payload": ""}
+            },
+            "command": {"topic": "cmnd/%client%/led_enableAll", "format": {"true": "1", "false": "0"}}
+          },
+          {
+            "attribute": "LevelControl.currentLevel",
+            "status": {
+              "topic": "%client%/led_dimmer/get",
+              "template": "{{ value if value | float > 0 else '' }}",
+              "type": "number",
+              "unit": "percentLevel",
+              "get": {"topic": "%client%/led_dimmer/get", "payload": ""}
+            },
+            "command": {"topic": "cmnd/%client%/led_dimmer", "unit": "percentLevel", "round": 0}
+          }
+        ]
+      }
+    ]
+  }
+}

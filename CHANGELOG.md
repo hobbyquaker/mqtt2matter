@@ -23,6 +23,8 @@
 - The model knows a derived cluster's own enum values and the commands it takes over from its base
   (`RvcOperationalState`: `Docked`, `SeekingCharger`, `pause`, `resume`), and a rechargeable battery gets its
   mandatory charge state by default.
+- **Presets for OpenBeken** (Tuya/BK7231 and similar): relay channel, dimmer, CT and colour light, temperature and
+  humidity channels with their divisor.
 - Templates: `int` takes Home Assistant's default and base, `'ff' | int(0, 16)` reads hexadecimal.
 - A status value that a message does not carry (an extract path that is missing, a template that renders
   nothing) is logged at debug instead of as a warning: topics several mappings share — Tasmota's `RESULT`, a

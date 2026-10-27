@@ -1,0 +1,41 @@
+{
+  "id": "openbeken/temperature",
+  "name": "OpenBeken temperature",
+  "description": "A temperature channel (channel type Temperature, Temperature_div10 or _div100) as a temperature sensor: <client>/<channel>/get divided by the type's divisor.",
+  "vendor": "OpenBeken",
+  "format": 1,
+  "variables": {
+    "client": {
+      "label": "Client topic",
+      "description": "OpenBeken → Config → MQTT → Client Topic (Base Topic): the first level of its topics"
+    },
+    "channel": {"label": "Channel", "description": "The temperature's channel number", "default": "1"},
+    "divisor": {
+      "label": "Divisor",
+      "description": "1 for Temperature, 10 for Temperature_div10, 100 for Temperature_div100",
+      "default": "10"
+    },
+    "name": {"label": "Name", "default": "Temperature"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "OpenBeken",
+    "availability": {"topic": "%client%/connected", "online": "online", "offline": "offline"},
+    "endpoints": [
+      {
+        "deviceTypes": ["TemperatureSensor"],
+        "mappings": [
+          {
+            "attribute": "TemperatureMeasurement.measuredValue",
+            "status": {
+              "topic": "%client%/%channel%/get",
+              "template": "{{ (value | float) / %divisor% }}",
+              "type": "number",
+              "unit": "celsius"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -17,3 +17,4 @@ a real device and nothing is copied from another project.
 | `shelly-gen2.json`    | Shelly's Gen2+ API: https://shelly-api-docs.shelly.cloud/gen2/ — RPC channels, Mqtt, Switch, Cover, Light, Input, Temperature, Humidity, DevicePower |
 | `shelly-gen1.json`    | Shelly's Gen1 API, the MQTT sections: https://shelly-api-docs.shelly.cloud/gen1/ |
 | `valetudo.json`       | Valetudo's MQTT reference: https://valetudo.cloud/pages/integrations/mqtt; the `$state` values from the Homie convention: https://homieiot.github.io/specification/ |
+| `openbeken.json`      | OpenBeken's docs: https://github.com/openshwprojects/OpenBK7231T_App/blob/main/docs/ — mqttTopics.md, commands.md, channelTypes.md |
