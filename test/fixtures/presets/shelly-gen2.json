@@ -1,0 +1,94 @@
+{
+  "documentation": [
+    "https://shelly-api-docs.shelly.cloud/gen2/General/RPCChannels",
+    "https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Mqtt",
+    "https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Switch",
+    "https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Cover",
+    "https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Light",
+    "https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Input",
+    "https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Temperature",
+    "https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Humidity",
+    "https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/DevicePower"
+  ],
+  "presets": {
+    "shelly-gen2/switch": {
+      "values": {"prefix": "shellyplus1-000000000001"},
+      "availability": [
+        {"topic": "shellyplus1-000000000001/online", "payload": "false", "reachable": false},
+        {"topic": "shellyplus1-000000000001/online", "payload": "true", "reachable": true}
+      ],
+      "status": [
+        {"topic": "shellyplus1-000000000001/status/switch:0", "payload": {"id": 0, "source": "button", "output": true, "temperature": {"tC": 41.2, "tF": 106.2}}, "expect": {"onOff.onOff": true}}
+      ],
+      "commands": [
+        {"action": "off", "publishes": [{"topic": "shellyplus1-000000000001/rpc", "payload": {"id": 1, "src": "mqtt2matter", "method": "Switch.Set", "params": {"id": 0, "on": false}}}]}
+      ]
+    },
+    "shelly-gen2/switch-pm": {
+      "values": {"prefix": "shellyplus2pm-000000000002", "channel": "1", "name": "Heater"},
+      "status": [
+        {
+          "topic": "shellyplus2pm-000000000002/status/switch:1",
+          "payload": {"id": 1, "source": "WS_in", "output": true, "apower": 1203.4, "voltage": 229.8, "current": 5.24, "aenergy": {"total": 11679.2}, "temperature": {"tC": 53.3, "tF": 127.9}},
+          "expect": {"onOff.onOff": true, "electricalPowerMeasurement.activePower": 1203400, "electricalPowerMeasurement.voltage": 229800, "electricalPowerMeasurement.activeCurrent": 5240}
+        }
+      ],
+      "commands": [
+        {"action": "on", "publishes": [{"topic": "shellyplus2pm-000000000002/rpc", "payload": {"id": 1, "src": "mqtt2matter", "method": "Switch.Set", "params": {"id": 1, "on": true}}}]}
+      ]
+    },
+    "shelly-gen2/cover": {
+      "values": {"prefix": "shellyplus2pm-000000000003"},
+      "status": [
+        {
+          "topic": "shellyplus2pm-000000000003/status/cover:0",
+          "payload": {"id": 0, "source": "init", "state": "open", "apower": 0, "voltage": 233, "current": 0, "pf": 0, "freq": 50, "aenergy": {"total": 48.996}, "current_pos": 100, "pos_control": true, "last_direction": "open"},
+          "expect": {"windowCovering.currentPositionLiftPercent100ths": 0}
+        }
+      ],
+      "commands": [
+        {"action": "lift", "args": {"percent100ths": 7000}, "publishes": [{"topic": "shellyplus2pm-000000000003/rpc", "payload": {"id": 1, "src": "mqtt2matter", "method": "Cover.GoToPosition", "params": {"id": 0, "pos": 30}}}]},
+        {"action": "stop", "publishes": [{"topic": "shellyplus2pm-000000000003/rpc", "payload": {"id": 1, "src": "mqtt2matter", "method": "Cover.Stop", "params": {"id": 0}}}]},
+        {"action": "close", "publishes": [{"topic": "shellyplus2pm-000000000003/rpc", "payload": {"id": 1, "src": "mqtt2matter", "method": "Cover.Close", "params": {"id": 0}}}]}
+      ]
+    },
+    "shelly-gen2/dimmer": {
+      "values": {"prefix": "shellyplus010v-000000000004"},
+      "status": [
+        {"topic": "shellyplus010v-000000000004/status/light:0", "payload": {"id": 0, "source": "http", "output": true, "brightness": 50}, "expect": {"onOff.onOff": true, "levelControl.currentLevel": 127}}
+      ],
+      "commands": [
+        {"action": "level", "args": {"level": 254}, "publishes": [{"topic": "shellyplus010v-000000000004/rpc", "payload": {"id": 1, "src": "mqtt2matter", "method": "Light.Set", "params": {"id": 0, "on": true, "brightness": 100}}}]},
+        {"action": "off", "publishes": [{"topic": "shellyplus010v-000000000004/rpc", "payload": {"id": 1, "src": "mqtt2matter", "method": "Light.Set", "params": {"id": 0, "on": false}}}]}
+      ]
+    },
+    "shelly-gen2/ht": {
+      "values": {"prefix": "shellyplusht-000000000005"},
+      "status": [
+        {"topic": "shellyplusht-000000000005/status/temperature:0", "payload": {"id": 0, "tC": 24.4, "tF": 75.9}, "expect": {"temperatureMeasurement.measuredValue": 2440}},
+        {"topic": "shellyplusht-000000000005/status/humidity:0", "payload": {"id": 0, "rh": 73.7}, "endpoint": "humidity", "expect": {"relativeHumidityMeasurement.measuredValue": 7370}},
+        {"topic": "shellyplusht-000000000005/status/devicepower:0", "payload": {"id": 0, "battery": {"V": 4.87, "percent": 50}, "external": {"present": false}}, "expect": {"powerSource.batPercentRemaining": 100, "powerSource.batVoltage": 4870}}
+      ]
+    },
+    "shelly-gen2/i4": {
+      "values": {"prefix": "shellyplusi4-000000000006"},
+      "status": [
+        {
+          "topic": "shellyplusi4-000000000006/events/rpc",
+          "payload": {"src": "shellyplusi4-000000000006", "dst": "shellyplusi4-000000000006/events", "method": "NotifyEvent", "params": {"ts": 1631266595.43, "events": [{"component": "input:0", "id": 0, "event": "single_push", "ts": 1631266595.43}]}},
+          "events": ["initialPress", "shortRelease", "multiPressComplete"]
+        },
+        {
+          "topic": "shellyplusi4-000000000006/events/rpc",
+          "payload": {"src": "shellyplusi4-000000000006", "dst": "shellyplusi4-000000000006/events", "method": "NotifyEvent", "params": {"ts": 1631266599.1, "events": [{"component": "input:2", "id": 2, "event": "long_push", "ts": 1631266599.1}]}},
+          "endpoint": "input2",
+          "events": ["initialPress", "longPress", "longRelease"]
+        },
+        {
+          "topic": "shellyplusi4-000000000006/events/rpc",
+          "payload": {"src": "shellyplusi4-000000000006", "dst": "shellyplusi4-000000000006/events", "method": "NotifyStatus", "params": {"ts": 1631266600.2, "input:1": {"id": 1, "state": null}}}
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "id": "shelly-gen2/switch-pm",
+  "name": "Shelly Gen2 switch with power",
+  "description": "A relay with power metering (1PM, 2PM, Plug S, Pro xPM: switch:<channel>) as a plug-in unit with an electrical sensor: active power, voltage, current. Needs Settings → MQTT → Generic status update.",
+  "vendor": "Shelly",
+  "format": 1,
+  "variables": {
+    "prefix": {
+      "label": "MQTT prefix",
+      "description": "Settings → MQTT → MQTT prefix; by default the device id (shellyplus1pm-a8032abe54dc)"
+    },
+    "channel": {
+      "label": "Channel",
+      "description": "The switch component's id: 0, or 1 for a 2PM's second relay",
+      "default": "0"
+    },
+    "name": {"label": "Name", "default": "Shelly switch"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Shelly",
+    "availability": {"topic": "%prefix%/online", "online": "true", "offline": "false"},
+    "endpoints": [
+      {
+        "deviceTypes": ["OnOffPlugInUnit", "ElectricalSensor"],
+        "features": {"ElectricalPowerMeasurement": ["AlternatingCurrent"], "PowerTopology": ["NodeTopology"]},
+        "attributes": {
+          "ElectricalPowerMeasurement": {
+            "powerMode": 2,
+            "numberOfMeasurementTypes": 3,
+            "accuracy": [
+              {
+                "measurementType": 5,
+                "measured": true,
+                "minMeasuredValue": 0,
+                "maxMeasuredValue": 4000000,
+                "accuracyRanges": [{"rangeMin": 0, "rangeMax": 4000000, "fixedMax": 1000}]
+              },
+              {
+                "measurementType": 1,
+                "measured": true,
+                "minMeasuredValue": 0,
+                "maxMeasuredValue": 300000,
+                "accuracyRanges": [{"rangeMin": 0, "rangeMax": 300000, "fixedMax": 1000}]
+              },
+              {
+                "measurementType": 2,
+                "measured": true,
+                "minMeasuredValue": 0,
+                "maxMeasuredValue": 20000,
+                "accuracyRanges": [{"rangeMin": 0, "rangeMax": 20000, "fixedMax": 100}]
+              }
+            ]
+          }
+        },
+        "mappings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {
+              "topic": "%prefix%/status/switch:%channel%",
+              "extract": "output",
+              "type": "boolean",
+              "get": {"topic": "%prefix%/command/switch:%channel%", "payload": "status_update"}
+            },
+            "command": {
+              "topic": "%prefix%/rpc",
+              "format": {
+                "true": "{\"id\":1,\"src\":\"mqtt2matter\",\"method\":\"Switch.Set\",\"params\":{\"id\":%channel%,\"on\":true}}",
+                "false": "{\"id\":1,\"src\":\"mqtt2matter\",\"method\":\"Switch.Set\",\"params\":{\"id\":%channel%,\"on\":false}}"
+              }
+            }
+          },
+          {
+            "attribute": "ElectricalPowerMeasurement.activePower",
+            "status": {
+              "topic": "%prefix%/status/switch:%channel%",
+              "extract": "apower",
+              "scale": {"from": [0, 1], "to": [0, 1000], "clamp": false}
+            }
+          },
+          {
+            "attribute": "ElectricalPowerMeasurement.voltage",
+            "status": {
+              "topic": "%prefix%/status/switch:%channel%",
+              "extract": "voltage",
+              "scale": {"from": [0, 1], "to": [0, 1000], "clamp": false}
+            }
+          },
+          {
+            "attribute": "ElectricalPowerMeasurement.activeCurrent",
+            "status": {
+              "topic": "%prefix%/status/switch:%channel%",
+              "extract": "current",
+              "scale": {"from": [0, 1], "to": [0, 1000], "clamp": false}
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

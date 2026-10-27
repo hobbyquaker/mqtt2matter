@@ -1,0 +1,47 @@
+{
+  "id": "shelly-gen2/switch",
+  "name": "Shelly Gen2 switch",
+  "description": "A relay of a Shelly Plus/Pro/Gen3 device (switch:<channel>) as a plug-in unit. Needs Settings → MQTT → Generic status update; commands go as RPC (Switch.Set) to <prefix>/rpc.",
+  "vendor": "Shelly",
+  "format": 1,
+  "variables": {
+    "prefix": {
+      "label": "MQTT prefix",
+      "description": "Settings → MQTT → MQTT prefix; by default the device id (shellyplus1pm-a8032abe54dc)"
+    },
+    "channel": {
+      "label": "Channel",
+      "description": "The switch component's id: 0, or 1 for a 2PM's second relay",
+      "default": "0"
+    },
+    "name": {"label": "Name", "default": "Shelly switch"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Shelly",
+    "availability": {"topic": "%prefix%/online", "online": "true", "offline": "false"},
+    "endpoints": [
+      {
+        "deviceTypes": ["OnOffPlugInUnit"],
+        "mappings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {
+              "topic": "%prefix%/status/switch:%channel%",
+              "extract": "output",
+              "type": "boolean",
+              "get": {"topic": "%prefix%/command/switch:%channel%", "payload": "status_update"}
+            },
+            "command": {
+              "topic": "%prefix%/rpc",
+              "format": {
+                "true": "{\"id\":1,\"src\":\"mqtt2matter\",\"method\":\"Switch.Set\",\"params\":{\"id\":%channel%,\"on\":true}}",
+                "false": "{\"id\":1,\"src\":\"mqtt2matter\",\"method\":\"Switch.Set\",\"params\":{\"id\":%channel%,\"on\":false}}"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

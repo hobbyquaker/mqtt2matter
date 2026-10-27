@@ -1,0 +1,68 @@
+{
+  "id": "shelly-gen2/cover",
+  "name": "Shelly Gen2 cover",
+  "description": "A cover (2PM in cover mode, Pro Dual Cover: cover:<channel>) as a position-aware window covering; needs a calibrated cover and Settings → MQTT → Generic status update. Commands as RPC: Cover.GoToPosition, Open, Close, Stop.",
+  "vendor": "Shelly",
+  "format": 1,
+  "variables": {
+    "prefix": {
+      "label": "MQTT prefix",
+      "description": "Settings → MQTT → MQTT prefix; by default the device id (shellyplus1pm-a8032abe54dc)"
+    },
+    "channel": {
+      "label": "Channel",
+      "description": "The cover component's id: 0, or 1 for a Pro Dual Cover's second",
+      "default": "0"
+    },
+    "name": {"label": "Name", "default": "Shelly cover"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Shelly",
+    "availability": {"topic": "%prefix%/online", "online": "true", "offline": "false"},
+    "endpoints": [
+      {
+        "deviceTypes": ["WindowCovering"],
+        "mappings": [
+          {
+            "attribute": "WindowCovering.currentPositionLiftPercent100ths",
+            "status": {
+              "topic": "%prefix%/status/cover:%channel%",
+              "extract": "current_pos",
+              "scale": {"from": [0, 100], "to": [10000, 0]},
+              "get": {"topic": "%prefix%/command/cover:%channel%", "payload": "status_update"}
+            }
+          },
+          {
+            "attribute": "WindowCovering.targetPositionLiftPercent100ths",
+            "command": {
+              "topic": "%prefix%/rpc",
+              "template": "{\"id\":1,\"src\":\"mqtt2matter\",\"method\":\"Cover.GoToPosition\",\"params\":{\"id\":%channel%,\"pos\":{{ open }}}}"
+            }
+          },
+          {
+            "invoke": "WindowCovering.upOrOpen",
+            "command": {
+              "topic": "%prefix%/rpc",
+              "payload": "{\"id\":1,\"src\":\"mqtt2matter\",\"method\":\"Cover.Open\",\"params\":{\"id\":%channel%}}"
+            }
+          },
+          {
+            "invoke": "WindowCovering.downOrClose",
+            "command": {
+              "topic": "%prefix%/rpc",
+              "payload": "{\"id\":1,\"src\":\"mqtt2matter\",\"method\":\"Cover.Close\",\"params\":{\"id\":%channel%}}"
+            }
+          },
+          {
+            "invoke": "WindowCovering.stopMotion",
+            "command": {
+              "topic": "%prefix%/rpc",
+              "payload": "{\"id\":1,\"src\":\"mqtt2matter\",\"method\":\"Cover.Stop\",\"params\":{\"id\":%channel%}}"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

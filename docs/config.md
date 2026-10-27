@@ -448,6 +448,26 @@ broker holds `/g` and `/c` retained).
 | `wled/light`  | ExtendedColorLight | brightness to `<topic>` (`ON`/`OFF`/0–255), the colour to `<topic>/col` as a decimal `0xRRGGBB`; colour temperature as `{"seg":{"cct":<K>}}` to `<topic>/api` (strips with white channels; not reported back) |
 | `wled/dimmer` | DimmableLight      | single-colour strips: on/off and brightness only                                                                                                                                                              |
 
+**Shelly Gen2/Gen3** (Plus, Pro, Gen3, Gen4) — `prefix`: the MQTT prefix (Settings → MQTT; by default the device
+id, `shellyplus1pm-a8032abe54dc`). **Switch on "Generic status update"** (`status_ntf`) in the device's MQTT
+settings: the presets read the complete component status from `<prefix>/status/<component>:<id>`, which the
+device publishes only with it. Commands go as RPC frames to `<prefix>/rpc` (`src` `mqtt2matter`, so the answers
+land on `mqtt2matter/rpc`); at start each status is requested with `status_update` on
+`<prefix>/command/<component>:<id>` (MQTT control, firmware 0.14 and later; 1.6 for lights). Availability is
+`<prefix>/online` (`true`/`false`). `channel` is the component id: `0`, or `1` for the second relay of a 2PM.
+
+| Id                      | Matter                            | Notes                                                                                                               |
+| ----------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `shelly-gen2/switch`    | OnOffPlugInUnit                   | `switch:<channel>` `output`; `Switch.Set`                                                                           |
+| `shelly-gen2/switch-pm` | OnOffPlugInUnit, ElectricalSensor | as above plus `apower`, `voltage`, `current` → active power, voltage, current (1PM, 2PM, Plug S, Pro xPM)           |
+| `shelly-gen2/cover`     | WindowCovering                    | `cover:<channel>` `current_pos` (100 = open); `Cover.GoToPosition`, `Open`, `Close`, `Stop`; calibrate first        |
+| `shelly-gen2/dimmer`    | DimmableLight                     | `light:<channel>` `output`, `brightness`; `Light.Set` (a level switches on)                                         |
+| `shelly-gen2/ht`        | TemperatureSensor, PowerSource    | Plus H&T: `temperature:0`, `devicepower:0` battery; humidity (`humidity:0`) as a child; no availability (it sleeps) |
+| `shelly-gen2/i4`        | GenericSwitch ×4                  | Plus i4: `NotifyEvent` on `<prefix>/events/rpc`, single/double/triple/long push per input; inputs of type Button    |
+
+One preset is one channel: a 2PM's two relays are two devices (`channel` `0` and `1`) — the preset format has no
+repetition, and two devices let each relay have its own name and room.
+
 **Tasmota** — `topic`: the device's MQTT topic (Configuration → MQTT → Topic); the default FullTopic
 `%prefix%/%topic%/`.
 

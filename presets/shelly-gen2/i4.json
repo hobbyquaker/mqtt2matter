@@ -1,0 +1,82 @@
+{
+  "id": "shelly-gen2/i4",
+  "name": "Shelly Plus i4",
+  "description": "Shelly Plus i4 / i4 Gen3: the four inputs as buttons (input:0 on the device, input:1…3 as child endpoints) from the NotifyEvent notifications on <prefix>/events/rpc — single, double, triple and long push. The inputs must be of type Button; RPC notifications are on by default.",
+  "vendor": "Shelly",
+  "format": 1,
+  "variables": {
+    "prefix": {
+      "label": "MQTT prefix",
+      "description": "Settings → MQTT → MQTT prefix; by default the device id (shellyplus1pm-a8032abe54dc)"
+    },
+    "name": {"label": "Name", "default": "Shelly i4"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Shelly",
+    "availability": {"topic": "%prefix%/online", "online": "true", "offline": "false"},
+    "endpoints": [
+      {
+        "deviceTypes": ["GenericSwitch"],
+        "mappings": [
+          {
+            "event": "Switch",
+            "status": {
+              "topic": "%prefix%/events/rpc",
+              "template": "{% for e in value_json.params.events | default([]) if e.component == 'input:0' %}{{ e.event }}{% endfor %}",
+              "map": {"single_push": "single", "double_push": "double", "triple_push": "triple", "long_push": "long"}
+            }
+          }
+        ]
+      },
+      {
+        "id": "input1",
+        "deviceTypes": ["GenericSwitch"],
+        "features": {"Descriptor": ["TagList"]},
+        "attributes": {"Descriptor": {"tagList": [{"mfgCode": null, "namespaceId": 7, "tag": 1, "label": "Input 2"}]}},
+        "mappings": [
+          {
+            "event": "Switch",
+            "status": {
+              "topic": "%prefix%/events/rpc",
+              "template": "{% for e in value_json.params.events | default([]) if e.component == 'input:1' %}{{ e.event }}{% endfor %}",
+              "map": {"single_push": "single", "double_push": "double", "triple_push": "triple", "long_push": "long"}
+            }
+          }
+        ]
+      },
+      {
+        "id": "input2",
+        "deviceTypes": ["GenericSwitch"],
+        "features": {"Descriptor": ["TagList"]},
+        "attributes": {"Descriptor": {"tagList": [{"mfgCode": null, "namespaceId": 7, "tag": 2, "label": "Input 3"}]}},
+        "mappings": [
+          {
+            "event": "Switch",
+            "status": {
+              "topic": "%prefix%/events/rpc",
+              "template": "{% for e in value_json.params.events | default([]) if e.component == 'input:2' %}{{ e.event }}{% endfor %}",
+              "map": {"single_push": "single", "double_push": "double", "triple_push": "triple", "long_push": "long"}
+            }
+          }
+        ]
+      },
+      {
+        "id": "input3",
+        "deviceTypes": ["GenericSwitch"],
+        "features": {"Descriptor": ["TagList"]},
+        "attributes": {"Descriptor": {"tagList": [{"mfgCode": null, "namespaceId": 7, "tag": 3, "label": "Input 4"}]}},
+        "mappings": [
+          {
+            "event": "Switch",
+            "status": {
+              "topic": "%prefix%/events/rpc",
+              "template": "{% for e in value_json.params.events | default([]) if e.component == 'input:3' %}{{ e.event }}{% endfor %}",
+              "map": {"single_push": "single", "double_push": "double", "triple_push": "triple", "long_push": "long"}
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

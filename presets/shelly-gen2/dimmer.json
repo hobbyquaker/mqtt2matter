@@ -1,0 +1,61 @@
+{
+  "id": "shelly-gen2/dimmer",
+  "name": "Shelly Gen2 dimmer",
+  "description": "A dimmer (Plus/Pro Dimmer, Dimmer Gen3: light:<channel>) as a dimmable light; needs Settings → MQTT → Generic status update. Commands as RPC (Light.Set); a level switches on.",
+  "vendor": "Shelly",
+  "format": 1,
+  "variables": {
+    "prefix": {
+      "label": "MQTT prefix",
+      "description": "Settings → MQTT → MQTT prefix; by default the device id (shellyplus1pm-a8032abe54dc)"
+    },
+    "channel": {
+      "label": "Channel",
+      "description": "The light component's id: 0, or 1 for a Pro Dimmer 2PM's second",
+      "default": "0"
+    },
+    "name": {"label": "Name", "default": "Shelly dimmer"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Shelly",
+    "availability": {"topic": "%prefix%/online", "online": "true", "offline": "false"},
+    "endpoints": [
+      {
+        "deviceTypes": ["DimmableLight"],
+        "options": {"light": {"onCommandType": "brightness"}},
+        "mappings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {
+              "topic": "%prefix%/status/light:%channel%",
+              "extract": "output",
+              "type": "boolean",
+              "get": {"topic": "%prefix%/command/light:%channel%", "payload": "status_update"}
+            },
+            "command": {
+              "topic": "%prefix%/rpc",
+              "format": {
+                "true": "{\"id\":1,\"src\":\"mqtt2matter\",\"method\":\"Light.Set\",\"params\":{\"id\":%channel%,\"on\":true}}",
+                "false": "{\"id\":1,\"src\":\"mqtt2matter\",\"method\":\"Light.Set\",\"params\":{\"id\":%channel%,\"on\":false}}"
+              }
+            }
+          },
+          {
+            "attribute": "LevelControl.currentLevel",
+            "status": {
+              "topic": "%prefix%/status/light:%channel%",
+              "template": "{{ value_json.brightness if value_json.brightness > 0 else '' }}",
+              "type": "number",
+              "unit": "percentLevel"
+            },
+            "command": {
+              "topic": "%prefix%/rpc",
+              "template": "{\"id\":1,\"src\":\"mqtt2matter\",\"method\":\"Light.Set\",\"params\":{\"id\":%channel%,\"on\":{{ 'true' if percent > 0 else 'false' }},\"brightness\":{{ [percent, 1] | max }}}}"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

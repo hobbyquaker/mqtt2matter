@@ -7,6 +7,9 @@
   `{val, ts, lc}` alike), takes `<name>/set/<item>` and reports `<name>/connected`.
 - **Presets for WLED**: a colour light (brightness, RGB colour, colour temperature to the main segment) and a
   dimmer for single-colour strips, over WLED's own MQTT topics with its `status` topic as availability.
+- **Presets for Shelly Gen2/Gen3** (Plus, Pro, Gen3): switch, switch with power metering (an electrical
+  sensor with active power, voltage and current), cover, dimmer, Plus H&T and Plus i4 — the component status
+  from the "Generic status update" topics, commands as RPC, the status requested at start.
 - Templates: `int` takes Home Assistant's default and base, `'ff' | int(0, 16)` reads hexadecimal.
 - A status value that a message does not carry (an extract path that is missing, a template that renders
   nothing) is logged at debug instead of as a warning: topics several mappings share — Tasmota's `RESULT`, a

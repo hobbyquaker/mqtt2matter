@@ -1,0 +1,47 @@
+{
+  "id": "shelly-gen2/ht",
+  "name": "Shelly Plus H&T",
+  "description": "Shelly Plus H&T / H&T Gen3: temperature with the battery, humidity as a child endpoint. Needs Settings → MQTT → Generic status update. Battery-powered: it reports when it wakes up and has no availability topic worth following (it is offline while asleep).",
+  "vendor": "Shelly",
+  "format": 1,
+  "variables": {
+    "prefix": {
+      "label": "MQTT prefix",
+      "description": "Settings → MQTT → MQTT prefix; by default the device id (shellyplus1pm-a8032abe54dc)"
+    },
+    "name": {"label": "Name", "default": "Shelly H&T"}
+  },
+  "device": {
+    "name": "%name%",
+    "vendor": "Shelly",
+    "endpoints": [
+      {
+        "deviceTypes": ["TemperatureSensor", "PowerSource"],
+        "mappings": [
+          {
+            "attribute": "TemperatureMeasurement.measuredValue",
+            "status": {"topic": "%prefix%/status/temperature:0", "extract": "tC", "unit": "celsius"}
+          },
+          {
+            "attribute": "PowerSource.batPercentRemaining",
+            "status": {"topic": "%prefix%/status/devicepower:0", "extract": "battery.percent", "unit": "halfPercent"}
+          },
+          {
+            "attribute": "PowerSource.batVoltage",
+            "status": {"topic": "%prefix%/status/devicepower:0", "extract": "battery.V", "unit": "volt"}
+          }
+        ]
+      },
+      {
+        "id": "humidity",
+        "deviceTypes": ["HumiditySensor"],
+        "mappings": [
+          {
+            "attribute": "RelativeHumidityMeasurement.measuredValue",
+            "status": {"topic": "%prefix%/status/humidity:0", "extract": "rh", "unit": "percent100ths"}
+          }
+        ]
+      }
+    ]
+  }
+}

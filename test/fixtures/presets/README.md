@@ -14,3 +14,4 @@ a real device and nothing is copied from another project.
 | `mqtt-smarthome.json` | the mqtt-smarthome convention, SPEC 2.0: https://github.com/mqtt-smarthome/mqtt-smarthome/blob/master/SPEC.md |
 | `tasmota.json`        | Tasmota's MQTT and command reference: https://tasmota.github.io/docs/MQTT/, https://tasmota.github.io/docs/Commands/ |
 | `wled.json`           | WLED's MQTT and JSON API: https://kno.wled.ge/interfaces/mqtt/, https://kno.wled.ge/interfaces/json-api/ |
+| `shelly-gen2.json`    | Shelly's Gen2+ API: https://shelly-api-docs.shelly.cloud/gen2/ — RPC channels, Mqtt, Switch, Cover, Light, Input, Temperature, Humidity, DevicePower |
