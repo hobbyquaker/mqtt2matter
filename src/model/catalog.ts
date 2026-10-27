@@ -131,7 +131,9 @@ function attributeInfo(cluster: ClusterModel, attribute: AttributeModel): Attrib
     let bitFields: {name: string; bit: number}[] | undefined;
     if (metatype === 'enum') {
         enumMembers = new Map();
-        for (const member of attribute.members) {
+        // a derived cluster extends the base's enum in a datatype of its own (RvcOperationalState adds Docked …)
+        const local = cluster.datatypes.find((d) => d.name === attribute.type);
+        for (const member of local?.children ?? attribute.members) {
             if (typeof member.id === 'number') {
                 enumMembers.set(member.name, member.id);
             }
@@ -165,7 +167,8 @@ function commandInfo(cluster: ClusterModel, command: CommandModel): CommandInfo 
         name: lowerCamel(command.name),
         id: command.id,
         fields: (command.children as unknown as {name: string}[]).map((f) => lowerCamel(f.name)),
-        applicability: (features) => command.conformance.applicabilityFor(featureContext(cluster, features)),
+        // a derived cluster's command that only narrows the base's has its conformance and direction there
+        applicability: (features) => command.effectiveConformance.applicabilityFor(featureContext(cluster, features)),
     };
 }
 
@@ -191,7 +194,7 @@ export function cluster(name: string): ClusterInfo | undefined {
     }
     const commands = new Map<string, CommandInfo>();
     for (const command of model.commands) {
-        if (String(command.direction) !== 'request') {
+        if (String(command.effectiveDirection) !== 'request') {
             continue;
         }
         const info = commandInfo(model, command);

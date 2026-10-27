@@ -53,6 +53,11 @@ export function powerSourceDefaults(features: ReadonlySet<string>): Record<strin
         defaults.batChargeLevel = PowerSource.BatChargeLevel.Ok;
         defaults.batReplacementNeeded = false;
         defaults.batReplaceability = PowerSource.BatReplaceability.Unspecified;
+        if (features.has('Rechargeable')) {
+            // mandatory with the feature: Unknown until the first report
+            defaults.batChargeState = PowerSource.BatChargeState.Unknown;
+            defaults.batFunctionalWhileCharging = true;
+        }
     } else if (features.has('Wired')) {
         defaults.description = 'Mains';
         defaults.wiredCurrentType = PowerSource.WiredCurrentType.Ac;

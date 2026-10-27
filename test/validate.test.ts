@@ -216,6 +216,25 @@ describe('validateDevice', () => {
         ]);
     });
 
+    it("knows a derived cluster's own enum members and the base's commands (RvcOperationalState)", () => {
+        const result = validateDevice(
+            device([
+                {
+                    deviceTypes: ['RoboticVacuumCleaner'],
+                    mappings: [
+                        {
+                            attribute: 'RvcOperationalState.operationalState',
+                            status: {topic: 's', map: {docked: 'Docked', returning: 'SeekingCharger', idle: 'Stopped'}},
+                        },
+                        {invoke: 'RvcOperationalState.pause', command: {topic: 'c', payload: 'PAUSE'}},
+                        {invoke: 'RvcOperationalState.goHome', command: {topic: 'c', payload: 'HOME'}},
+                    ],
+                },
+            ]),
+        );
+        expect(result.issues).toEqual([]);
+    });
+
     it('takes null in a map or default only for a nullable attribute', () => {
         const result = validateDevice(
             device([
