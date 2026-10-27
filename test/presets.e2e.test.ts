@@ -11,7 +11,14 @@ import {afterAll, beforeAll, describe, expect, it} from 'vitest';
 
 import {App} from '../src/app.ts';
 import {parseConfig} from '../src/config/load.ts';
-import {ColorControlServer, LevelControlServer, OnOffServer, WindowCoveringServer} from '../src/families/index.ts';
+import {
+    ColorControlServer,
+    LevelControlServer,
+    OnOffServer,
+    RvcOperationalStateServer,
+    RvcRunModeServer,
+    WindowCoveringServer,
+} from '../src/families/index.ts';
 import {createLogger} from '../src/log.ts';
 import type {DeviceHandle} from '../src/matter/bridge.ts';
 import {applyPreset} from '../src/model/presets.ts';
@@ -98,6 +105,18 @@ async function actOnce(handle: Handle, command: CommandCase): Promise<void> {
                 return agent.get(WindowCoveringServer).downOrClose();
             case 'stop':
                 return agent.get(WindowCoveringServer).stopMotion();
+            case 'runMode':
+                await agent.get(RvcRunModeServer).changeToMode({newMode: args.mode!});
+                return;
+            case 'pause':
+                await agent.get(RvcOperationalStateServer).pause();
+                return;
+            case 'resume':
+                await agent.get(RvcOperationalStateServer).resume();
+                return;
+            case 'goHome':
+                await agent.get(RvcOperationalStateServer).goHome();
+                return;
             default:
                 throw new Error(`unknown action ${command.action}`);
         }

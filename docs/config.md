@@ -370,6 +370,13 @@ the value as its position.
 | --------------------- | ---------- | ------------------------------------------------------------------- |
 | `warning`, `critical` | `20`, `10` | percent at or below which the charge level is derived, unless bound |
 
+**robot vacuum** (`RvcRunMode`, `RvcOperationalState` of a `RoboticVacuumCleaner`): the run modes are `0` Idle
+and `1` Cleaning — `RvcRunMode.currentMode` maps the device's state to them and its command half formats a
+controller's mode change (`{"1": "START", "0": "HOME"}`); `RvcOperationalState.operationalState` by name
+(`Stopped`, `Running`, `Paused`, `Error`, `SeekingCharger`, `Charging`, `Docked`); `invoke` mappings for
+`RvcOperationalState.pause`, `resume` and `goHome` — a command without a mapping is refused as invalid in the
+current state. No options.
+
 **sensors** have no options: `TemperatureMeasurement`, `RelativeHumidityMeasurement`, `IlluminanceMeasurement`,
 `PressureMeasurement`, `FlowMeasurement` (`measuredValue`), `BooleanState.stateValue` (contact, leak, rain,
 freeze), `OccupancySensing.occupancy` (a boolean), `AirQuality.airQuality` (`Good` … `ExtremelyPoor`), the
@@ -481,6 +488,19 @@ Battery devices sleep between reports and have no availability.
 | `shelly-gen1/dimmer`      | DimmableLight                     | Dimmer 1/2: `light/0/status` (`ison`, `brightness`), JSON to `light/0/set`                                                    |
 | `shelly-gen1/ht`          | TemperatureSensor, PowerSource    | H&T: `sensor/temperature` (set the device to °C), `sensor/battery`; humidity as a child                                       |
 | `shelly-gen1/door-window` | ContactSensor, PowerSource        | Door/Window 1/2: `sensor/state` `open`/`close`, `sensor/battery`; `sensor/lux` as a child                                     |
+
+**Valetudo** — `prefix` (default `valetudo`) and `identifier`: Valetudo's Connectivity → MQTT settings.
+Valetudo's own topics (not its Home Assistant discovery): `StatusStateAttribute/status`, `BatteryStateAttribute/level`
+and `/status`, `BasicControlCapability/operation/set`; availability from the Homie `$state` (`ready` = reachable).
+
+| Id                | Matter                            | Notes                                                                                                                                                                                                |
+| ----------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `valetudo/vacuum` | RoboticVacuumCleaner, PowerSource | run mode Idle/Cleaning (Cleaning → `START`, Idle → `HOME`), operational state (cleaning, paused, returning → seeking charger, docked, idle, error), pause/resume/go home, battery level and charging |
+
+**A bridged vacuum shows in Google Home and Home Assistant.** Apple Home (iOS 18.4 and later) and Alexa expect a
+robot vacuum as a Matter node of its own: behind a bridge Apple Home shows it at best as "Updating" (and other
+bridges report the Home app failing with a vacuum among other bridged devices), Alexa does not discover it. Rooms
+(Service Area) and cleaning modes (RvcCleanMode) are not mapped.
 
 **Tasmota** — `topic`: the device's MQTT topic (Configuration → MQTT → Topic); the default FullTopic
 `%prefix%/%topic%/`. Actuators read `stat/<topic>/RESULT` and ask for their state at start with an empty

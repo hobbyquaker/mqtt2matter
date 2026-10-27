@@ -16,6 +16,7 @@ import {DoorLockServer} from './lock.ts';
 import {OnOffServer} from './on-off.ts';
 import {powerSourceDefaults, powerSourceStatus, PowerSourceServer} from './power-source.ts';
 import type {FamilyContext} from './registry.ts';
+import {operationalStateDefaults, RvcOperationalStateServer, RvcRunModeServer, runModeDefaults} from './rvc.ts';
 import {SwitchServer, switchEvent} from './switch.ts';
 
 export interface Family {
@@ -175,6 +176,8 @@ export const FAMILIES: readonly Family[] = [
         defaults: (features) => powerSourceDefaults(features),
         status: powerSourceStatus,
     },
+    {cluster: 'RvcRunMode', server: RvcRunModeServer, defaults: () => runModeDefaults()},
+    {cluster: 'RvcOperationalState', server: RvcOperationalStateServer, defaults: () => operationalStateDefaults()},
 ];
 
 export function familyFor(cluster: string): Family | undefined {
@@ -190,3 +193,4 @@ export {DoorLockServer} from './lock.ts';
 export {FanControlServer} from './fan.ts';
 export {SwitchServer} from './switch.ts';
 export {PowerSourceServer} from './power-source.ts';
+export {RvcRunModeServer, RvcOperationalStateServer} from './rvc.ts';

@@ -16,6 +16,13 @@
   channels), shutter, and temperature, temperature/humidity and climate (with pressure) sensors from
   `tele/<topic>/SENSOR`. `tasmota/relay` takes an optional relay index for `POWER1`…`POWERn` and asks for the
   state at start.
+- **Robot vacuums**: a `RoboticVacuumCleaner` family — run mode Idle/Cleaning, operational state, pause,
+  resume and go home routed to mappings — and a **Valetudo preset** over Valetudo's own MQTT topics with the
+  battery. Bridged, it shows in Google Home and Home Assistant; Apple Home and Alexa want a vacuum as a Matter
+  node of its own, which mqtt2matter does not offer yet.
+- The model knows a derived cluster's own enum values and the commands it takes over from its base
+  (`RvcOperationalState`: `Docked`, `SeekingCharger`, `pause`, `resume`), and a rechargeable battery gets its
+  mandatory charge state by default.
 - Templates: `int` takes Home Assistant's default and base, `'ff' | int(0, 16)` reads hexadecimal.
 - A status value that a message does not carry (an extract path that is missing, a template that renders
   nothing) is logged at debug instead of as a warning: topics several mappings share — Tasmota's `RESULT`, a

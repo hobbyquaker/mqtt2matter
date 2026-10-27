@@ -1,0 +1,26 @@
+{
+  "documentation": ["https://valetudo.cloud/pages/integrations/mqtt", "https://homieiot.github.io/specification/ (the $state topic)"],
+  "presets": {
+    "valetudo/vacuum": {
+      "values": {"identifier": "Robot"},
+      "availability": [
+        {"topic": "valetudo/Robot/$state", "payload": "lost", "reachable": false},
+        {"topic": "valetudo/Robot/$state", "payload": "ready", "reachable": true}
+      ],
+      "status": [
+        {"topic": "valetudo/Robot/StatusStateAttribute/status", "payload": "docked", "expect": {"rvcRunMode.currentMode": 0, "rvcOperationalState.operationalState": 66}},
+        {"topic": "valetudo/Robot/BatteryStateAttribute/level", "payload": "42", "expect": {"powerSource.batPercentRemaining": 84}},
+        {"topic": "valetudo/Robot/BatteryStateAttribute/status", "payload": "charging", "expect": {"powerSource.batChargeState": 1}},
+        {"topic": "valetudo/Robot/StatusStateAttribute/status", "payload": "cleaning", "expect": {"rvcRunMode.currentMode": 1, "rvcOperationalState.operationalState": 1}},
+        {"topic": "valetudo/Robot/StatusStateAttribute/status", "payload": "returning", "expect": {"rvcRunMode.currentMode": 0, "rvcOperationalState.operationalState": 64}}
+      ],
+      "commands": [
+        {"action": "runMode", "args": {"mode": 1}, "publishes": [{"topic": "valetudo/Robot/BasicControlCapability/operation/set", "payload": "START"}]},
+        {"action": "pause", "publishes": [{"topic": "valetudo/Robot/BasicControlCapability/operation/set", "payload": "PAUSE"}]},
+        {"action": "resume", "publishes": [{"topic": "valetudo/Robot/BasicControlCapability/operation/set", "payload": "START"}]},
+        {"action": "goHome", "publishes": [{"topic": "valetudo/Robot/BasicControlCapability/operation/set", "payload": "HOME"}]},
+        {"action": "runMode", "args": {"mode": 0}, "publishes": [{"topic": "valetudo/Robot/BasicControlCapability/operation/set", "payload": "HOME"}]}
+      ]
+    }
+  }
+}
