@@ -1,0 +1,47 @@
+{
+  "id": "mqtt-smarthome/light",
+  "name": "mqtt-smarthome light",
+  "description": "An on/off item (true/false) as a light: status/<item> as a plain value or {val, ts, lc}, set/<item> with true/false, <name>/connected 2 = reachable.",
+  "vendor": "mqtt-smarthome",
+  "format": 1,
+  "variables": {
+    "instance": {
+      "label": "Instance name",
+      "description": "The adapter instance's <name>: the first level of its topics (lgtv, hm, cul, …)"
+    },
+    "item": {"label": "Item", "description": "The item below status/ and set/, e.g. light/1/state"},
+    "name": {"label": "Name", "default": "Light"}
+  },
+  "device": {
+    "name": "%name%",
+    "availability": {
+      "topic": "%instance%/connected",
+      "template": "{{ 'online' if value | trim == '2' else 'offline' }}"
+    },
+    "endpoints": [
+      {
+        "deviceTypes": ["OnOffLight"],
+        "mappings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {
+              "topic": "%instance%/status/%item%",
+              "template": "{{ (value_json.val if value_json is mapping else value) | string | lower }}",
+              "map": {
+                "true": true,
+                "false": false,
+                "1": true,
+                "0": false,
+                "on": true,
+                "off": false,
+                "yes": true,
+                "no": false
+              }
+            },
+            "command": {"topic": "%instance%/set/%item%", "format": {"true": "true", "false": "false"}}
+          }
+        ]
+      }
+    ]
+  }
+}

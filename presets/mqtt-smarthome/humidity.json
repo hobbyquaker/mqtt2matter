@@ -1,0 +1,38 @@
+{
+  "id": "mqtt-smarthome/humidity",
+  "name": "mqtt-smarthome humidity",
+  "description": "A relative humidity item in % as a humidity sensor.",
+  "vendor": "mqtt-smarthome",
+  "format": 1,
+  "variables": {
+    "instance": {
+      "label": "Instance name",
+      "description": "The adapter instance's <name>: the first level of its topics (lgtv, hm, cul, …)"
+    },
+    "item": {"label": "Item", "description": "The item below status/, e.g. room/humidity"},
+    "name": {"label": "Name", "default": "Humidity"}
+  },
+  "device": {
+    "name": "%name%",
+    "availability": {
+      "topic": "%instance%/connected",
+      "template": "{{ 'online' if value | trim == '2' else 'offline' }}"
+    },
+    "endpoints": [
+      {
+        "deviceTypes": ["HumiditySensor"],
+        "mappings": [
+          {
+            "attribute": "RelativeHumidityMeasurement.measuredValue",
+            "status": {
+              "topic": "%instance%/status/%item%",
+              "template": "{{ (value_json.val if value_json is mapping else value) }}",
+              "type": "number",
+              "unit": "percent100ths"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

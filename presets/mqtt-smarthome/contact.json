@@ -1,0 +1,37 @@
+{
+  "id": "mqtt-smarthome/contact",
+  "name": "mqtt-smarthome contact",
+  "description": "An open/closed item as a contact sensor: true, 1 or open = open; false, 0 or closed = closed.",
+  "vendor": "mqtt-smarthome",
+  "format": 1,
+  "variables": {
+    "instance": {
+      "label": "Instance name",
+      "description": "The adapter instance's <name>: the first level of its topics (lgtv, hm, cul, …)"
+    },
+    "item": {"label": "Item", "description": "The item below status/, e.g. window/1/open"},
+    "name": {"label": "Name", "default": "Contact"}
+  },
+  "device": {
+    "name": "%name%",
+    "availability": {
+      "topic": "%instance%/connected",
+      "template": "{{ 'online' if value | trim == '2' else 'offline' }}"
+    },
+    "endpoints": [
+      {
+        "deviceTypes": ["ContactSensor"],
+        "mappings": [
+          {
+            "attribute": "BooleanState.stateValue",
+            "status": {
+              "topic": "%instance%/status/%item%",
+              "template": "{{ (value_json.val if value_json is mapping else value) | string | lower }}",
+              "map": {"true": false, "1": false, "open": false, "false": true, "0": true, "closed": true}
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

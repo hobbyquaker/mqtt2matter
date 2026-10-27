@@ -63,6 +63,14 @@ light and dark. `server.enabled: false` turns it off; [docs/api.md](docs/api.md)
 > reverse proxy authenticate (`proxy` mode, the user in a header such as `X-Remote-User`) —
 > [docs/config.md](docs/config.md#access).
 
+### Presets
+
+A preset turns a kind of device into a device entry from a few values (a topic, a name): the device editor
+offers them. Shipped: devices following the mqtt-smarthome convention (switch, light, dimmer, cover, contact,
+occupancy, temperature, humidity, button) and the Tasmota relay — the list with what each needs on the device
+side is in [docs/config.md](docs/config.md#shipped-presets). Your own presets are JSON files in a directory
+named in `presets`.
+
 ### Zigbee2MQTT
 
 ```sh

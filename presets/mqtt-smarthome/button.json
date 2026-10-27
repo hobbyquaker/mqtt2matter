@@ -1,0 +1,47 @@
+{
+  "id": "mqtt-smarthome/button",
+  "name": "mqtt-smarthome button",
+  "description": "A press item as a button: true, 1, single, short or click = a single press; double, triple; long or hold = a long press. Press events are not retained.",
+  "vendor": "mqtt-smarthome",
+  "format": 1,
+  "variables": {
+    "instance": {
+      "label": "Instance name",
+      "description": "The adapter instance's <name>: the first level of its topics (lgtv, hm, cul, …)"
+    },
+    "item": {"label": "Item", "description": "The press item below status/, e.g. remote/1/press"},
+    "name": {"label": "Name", "default": "Button"}
+  },
+  "device": {
+    "name": "%name%",
+    "availability": {
+      "topic": "%instance%/connected",
+      "template": "{{ 'online' if value | trim == '2' else 'offline' }}"
+    },
+    "endpoints": [
+      {
+        "deviceTypes": ["GenericSwitch"],
+        "mappings": [
+          {
+            "event": "Switch",
+            "status": {
+              "topic": "%instance%/status/%item%",
+              "template": "{{ (value_json.val if value_json is mapping else value) | string | lower }}",
+              "map": {
+                "true": "single",
+                "1": "single",
+                "single": "single",
+                "short": "single",
+                "click": "single",
+                "double": "double",
+                "triple": "triple",
+                "long": "long",
+                "hold": "long"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

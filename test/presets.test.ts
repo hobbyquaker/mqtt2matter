@@ -1,6 +1,11 @@
 import {describe, expect, it} from 'vitest';
 
+import {parseConfig} from '../src/config/load.ts';
+import {checkConfig} from '../src/matter/check.ts';
 import {PresetError, applyPreset, parsePreset, placeholdersOf} from '../src/model/presets.ts';
+import {validateDevice} from '../src/model/validate.ts';
+import {loadPresets} from '../src/server/presets.ts';
+import {deviceKeyOf, presetCases} from './helpers/preset-fixtures.ts';
 
 const relay = {
     id: 'tasmota/relay',
@@ -66,5 +71,27 @@ describe('presets', () => {
         expect(() => applyPreset(parsePreset({...relay, device: {...relay.device, name: ''}}), {topic: 't'})).toThrow(
             /the device is invalid/,
         );
+    });
+});
+
+describe('the shipped presets', () => {
+    it('all load, each has a fixture case, and each applied preset validates and passes the strict dry run', async () => {
+        const library = await loadPresets([]);
+        expect(library.problems).toEqual([]);
+        const cases = presetCases();
+        const ids = library.presets.map((p) => p.preset.id).sort();
+        expect(ids).toEqual([...cases.keys()].sort());
+        const devices: Record<string, unknown> = {};
+        for (const {preset, file} of library.presets) {
+            expect(file.endsWith(`${preset.id}.json`), `${preset.id} lives in ${file}`).toBe(true);
+            expect(preset.description, preset.id).toBeTruthy();
+            const device = applyPreset(preset, cases.get(preset.id)!.values);
+            const validation = validateDevice(device);
+            expect(validation.issues, preset.id).toEqual([]);
+            devices[deviceKeyOf(preset.id)] = device;
+        }
+        const result = await checkConfig(parseConfig({log: {matter: 'error'}, devices}));
+        expect(Object.fromEntries(result.devices)).toEqual({});
+        expect(result.ok).toBe(true);
     });
 });

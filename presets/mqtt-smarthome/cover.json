@@ -1,0 +1,50 @@
+{
+  "id": "mqtt-smarthome/cover",
+  "name": "mqtt-smarthome cover",
+  "description": "A position item (0 = closed … full scale = open) as a window covering; a controller's position is scaled and published, stop is not sent.",
+  "vendor": "mqtt-smarthome",
+  "format": 1,
+  "variables": {
+    "instance": {
+      "label": "Instance name",
+      "description": "The adapter instance's <name>: the first level of its topics (lgtv, hm, cul, …)"
+    },
+    "item": {"label": "Item", "description": "The position item below status/ and set/, e.g. blind/1/level"},
+    "max": {
+      "label": "Full scale",
+      "description": "The value the item reports for 100 % (100, 1, 255, …)",
+      "default": "100"
+    },
+    "name": {"label": "Name", "default": "Cover"}
+  },
+  "device": {
+    "name": "%name%",
+    "availability": {
+      "topic": "%instance%/connected",
+      "template": "{{ 'online' if value | trim == '2' else 'offline' }}"
+    },
+    "endpoints": [
+      {
+        "deviceTypes": ["WindowCovering"],
+        "mappings": [
+          {
+            "attribute": "WindowCovering.currentPositionLiftPercent100ths",
+            "status": {
+              "topic": "%instance%/status/%item%",
+              "template": "{{ 100 - ((value_json.val if value_json is mapping else value) | float) * 100 / %max% }}",
+              "type": "number",
+              "unit": "percent100ths"
+            }
+          },
+          {
+            "attribute": "WindowCovering.targetPositionLiftPercent100ths",
+            "command": {
+              "topic": "%instance%/set/%item%",
+              "template": "{% set v = open * %max% / 100 %}{{ v | int if v == v | int else v | round(3) }}"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

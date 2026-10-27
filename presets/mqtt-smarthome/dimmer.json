@@ -1,0 +1,57 @@
+{
+  "id": "mqtt-smarthome/dimmer",
+  "name": "mqtt-smarthome dimmer",
+  "description": "A level item (0 = off … full scale) as a dimmable light: on/off follows the level; off sets 0, on sets the full scale, a level from the controller is scaled.",
+  "vendor": "mqtt-smarthome",
+  "format": 1,
+  "variables": {
+    "instance": {
+      "label": "Instance name",
+      "description": "The adapter instance's <name>: the first level of its topics (lgtv, hm, cul, …)"
+    },
+    "item": {"label": "Item", "description": "The level item below status/ and set/, e.g. light/1/level"},
+    "max": {
+      "label": "Full scale",
+      "description": "The value the item reports for 100 % (100, 1, 255, …)",
+      "default": "100"
+    },
+    "name": {"label": "Name", "default": "Dimmer"}
+  },
+  "device": {
+    "name": "%name%",
+    "availability": {
+      "topic": "%instance%/connected",
+      "template": "{{ 'online' if value | trim == '2' else 'offline' }}"
+    },
+    "endpoints": [
+      {
+        "deviceTypes": ["DimmableLight"],
+        "options": {"light": {"onCommandType": "brightness"}},
+        "mappings": [
+          {
+            "attribute": "OnOff.onOff",
+            "status": {
+              "topic": "%instance%/status/%item%",
+              "template": "{{ 'true' if ((value_json.val if value_json is mapping else value) | float) > 0 else 'false' }}",
+              "map": {"true": true, "false": false}
+            },
+            "command": {"topic": "%instance%/set/%item%", "format": {"true": "%max%", "false": "0"}}
+          },
+          {
+            "attribute": "LevelControl.currentLevel",
+            "status": {
+              "topic": "%instance%/status/%item%",
+              "template": "{% set v = (value_json.val if value_json is mapping else value) | float %}{{ v * 100 / %max% if v > 0 else '' }}",
+              "type": "number",
+              "unit": "percentLevel"
+            },
+            "command": {
+              "topic": "%instance%/set/%item%",
+              "template": "{% set v = percent * %max% / 100 %}{{ v | int if v == v | int else v | round(3) }}"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

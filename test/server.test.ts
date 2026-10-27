@@ -369,10 +369,11 @@ describe('the web server', () => {
 
     it('lists presets and applies one without saving', async () => {
         const list = await api('GET', '/api/presets');
-        expect(list.json.presets).toEqual([
-            expect.objectContaining({id: 'tasmota/relay', shipped: true}),
-            expect.objectContaining({id: 'test/relay', name: 'Test relay', shipped: false}),
-        ]);
+        const presets = list.json.presets as {id: string; shipped: boolean}[];
+        expect(presets).toContainEqual(expect.objectContaining({id: 'tasmota/relay', shipped: true}));
+        // the shipped ones first, the user's after them
+        expect(presets.at(-1)).toEqual(expect.objectContaining({id: 'test/relay', name: 'Test relay', shipped: false}));
+        expect(presets.slice(0, -1).every((p) => p.shipped)).toBe(true);
         const applied = await api('POST', '/api/presets/test%2Frelay/apply', {values: {topic: 'sonoff1'}});
         expect(applied.json.device.name).toBe('Relay');
         expect(applied.json.device.endpoints[0].mappings[0].status.topic).toBe('stat/sonoff1/POWER');

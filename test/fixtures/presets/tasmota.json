@@ -1,0 +1,17 @@
+{
+  "documentation": ["https://tasmota.github.io/docs/MQTT/", "https://tasmota.github.io/docs/Commands/"],
+  "presets": {
+    "tasmota/relay": {
+      "values": {"topic": "plug-1", "name": "Plug"},
+      "availability": [
+        {"topic": "tele/plug-1/LWT", "payload": "Offline", "reachable": false},
+        {"topic": "tele/plug-1/LWT", "payload": "Online", "reachable": true}
+      ],
+      "status": [
+        {"topic": "stat/plug-1/RESULT", "payload": {"POWER": "ON"}, "expect": {"onOff.onOff": true}},
+        {"topic": "stat/plug-1/RESULT", "payload": {"POWER": "OFF"}, "expect": {"onOff.onOff": false}}
+      ],
+      "commands": [{"action": "on", "publishes": [{"topic": "cmnd/plug-1/POWER", "payload": "ON"}]}]
+    }
+  }
+}

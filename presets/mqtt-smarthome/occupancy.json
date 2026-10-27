@@ -1,0 +1,46 @@
+{
+  "id": "mqtt-smarthome/occupancy",
+  "name": "mqtt-smarthome occupancy",
+  "description": "A presence or motion item (true/false) as an occupancy sensor.",
+  "vendor": "mqtt-smarthome",
+  "format": 1,
+  "variables": {
+    "instance": {
+      "label": "Instance name",
+      "description": "The adapter instance's <name>: the first level of its topics (lgtv, hm, cul, …)"
+    },
+    "item": {"label": "Item", "description": "The item below status/, e.g. motion/1/state"},
+    "name": {"label": "Name", "default": "Occupancy"}
+  },
+  "device": {
+    "name": "%name%",
+    "availability": {
+      "topic": "%instance%/connected",
+      "template": "{{ 'online' if value | trim == '2' else 'offline' }}"
+    },
+    "endpoints": [
+      {
+        "deviceTypes": ["OccupancySensor"],
+        "mappings": [
+          {
+            "attribute": "OccupancySensing.occupancy",
+            "status": {
+              "topic": "%instance%/status/%item%",
+              "template": "{{ (value_json.val if value_json is mapping else value) | string | lower }}",
+              "map": {
+                "true": true,
+                "false": false,
+                "1": true,
+                "0": false,
+                "on": true,
+                "off": false,
+                "yes": true,
+                "no": false
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

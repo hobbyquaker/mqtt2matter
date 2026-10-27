@@ -1,0 +1,82 @@
+{
+  "documentation": ["https://github.com/mqtt-smarthome/mqtt-smarthome/blob/master/SPEC.md"],
+  "presets": {
+    "mqtt-smarthome/switch": {
+      "values": {"instance": "fritz", "item": "outlet/1/state", "name": "Outlet"},
+      "availability": [
+        {"topic": "fritz/connected", "payload": "1", "reachable": false},
+        {"topic": "fritz/connected", "payload": "2", "reachable": true}
+      ],
+      "status": [
+        {"topic": "fritz/status/outlet/1/state", "payload": {"val": true, "ts": 1761552000000, "lc": 1761552000000}, "expect": {"onOff.onOff": true}},
+        {"topic": "fritz/status/outlet/1/state", "payload": "false", "expect": {"onOff.onOff": false}}
+      ],
+      "commands": [
+        {"action": "on", "publishes": [{"topic": "fritz/set/outlet/1/state", "payload": "true"}]},
+        {"action": "off", "publishes": [{"topic": "fritz/set/outlet/1/state", "payload": "false"}]}
+      ]
+    },
+    "mqtt-smarthome/light": {
+      "values": {"instance": "cul", "item": "fs20/1a2b01/state"},
+      "status": [
+        {"topic": "cul/status/fs20/1a2b01/state", "payload": {"val": "on", "ts": 1761552000000, "lc": 1761552000000}, "expect": {"onOff.onOff": true}}
+      ],
+      "commands": [{"action": "off", "publishes": [{"topic": "cul/set/fs20/1a2b01/state", "payload": "false"}]}]
+    },
+    "mqtt-smarthome/dimmer": {
+      "values": {"instance": "hm", "item": "kitchen-dimmer/level", "max": "1"},
+      "status": [
+        {"topic": "hm/status/kitchen-dimmer/level", "payload": {"val": 0.5, "ts": 1761552000000, "lc": 1761552000000}, "expect": {"onOff.onOff": true, "levelControl.currentLevel": 127}},
+        {"topic": "hm/status/kitchen-dimmer/level", "payload": "0", "expect": {"onOff.onOff": false}}
+      ],
+      "commands": [
+        {"action": "level", "args": {"level": 254}, "publishes": [{"topic": "hm/set/kitchen-dimmer/level", "payload": "1"}]},
+        {"action": "level", "args": {"level": 64}, "publishes": [{"topic": "hm/set/kitchen-dimmer/level", "payload": "0.25"}]},
+        {"action": "off", "publishes": [{"topic": "hm/set/kitchen-dimmer/level", "payload": "0"}]}
+      ]
+    },
+    "mqtt-smarthome/cover": {
+      "values": {"instance": "hm", "item": "blind/level", "max": "1"},
+      "status": [
+        {"topic": "hm/status/blind/level", "payload": {"val": 1, "ts": 1761552000000, "lc": 1761552000000}, "expect": {"windowCovering.currentPositionLiftPercent100ths": 0}},
+        {"topic": "hm/status/blind/level", "payload": "0.3", "expect": {"windowCovering.currentPositionLiftPercent100ths": 7000}}
+      ],
+      "commands": [
+        {"action": "lift", "args": {"percent100ths": 2500}, "publishes": [{"topic": "hm/set/blind/level", "payload": "0.75"}]}
+      ]
+    },
+    "mqtt-smarthome/contact": {
+      "values": {"instance": "hm", "item": "window/state"},
+      "status": [
+        {"topic": "hm/status/window/state", "payload": {"val": true, "ts": 1761552000000, "lc": 1761552000000}, "expect": {"booleanState.stateValue": false}},
+        {"topic": "hm/status/window/state", "payload": "false", "expect": {"booleanState.stateValue": true}}
+      ]
+    },
+    "mqtt-smarthome/occupancy": {
+      "values": {"instance": "unifi", "item": "client/phone/present"},
+      "status": [
+        {"topic": "unifi/status/client/phone/present", "payload": {"val": true, "ts": 1761552000000, "lc": 1761552000000}, "expect": {"occupancySensing.occupancy": {"occupied": true}}}
+      ]
+    },
+    "mqtt-smarthome/temperature": {
+      "values": {"instance": "cul", "item": "s300th/1/temperature"},
+      "status": [
+        {"topic": "cul/status/s300th/1/temperature", "payload": {"val": 21.4, "ts": 1761552000000, "lc": 1761552000000}, "expect": {"temperatureMeasurement.measuredValue": 2140}},
+        {"topic": "cul/status/s300th/1/temperature", "payload": "-3.5", "expect": {"temperatureMeasurement.measuredValue": -350}}
+      ]
+    },
+    "mqtt-smarthome/humidity": {
+      "values": {"instance": "cul", "item": "s300th/1/humidity"},
+      "status": [
+        {"topic": "cul/status/s300th/1/humidity", "payload": {"val": 55, "ts": 1761552000000, "lc": 1761552000000}, "expect": {"relativeHumidityMeasurement.measuredValue": 5500}}
+      ]
+    },
+    "mqtt-smarthome/button": {
+      "values": {"instance": "hm", "item": "remote/1/press"},
+      "status": [
+        {"topic": "hm/status/remote/1/press", "payload": {"val": true, "ts": 1761552000000, "lc": 1761552000000}, "events": ["initialPress", "shortRelease", "multiPressComplete"]},
+        {"topic": "hm/status/remote/1/press", "payload": "long", "events": ["initialPress", "longPress", "longRelease"]}
+      ]
+    }
+  }
+}

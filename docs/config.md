@@ -405,5 +405,34 @@ A preset is a device template in a JSON file:
 
 `%name%` placeholders stand anywhere in `device`; every one must be declared in `variables` (`label`,
 `description`, `default`, `optional`). Applying a preset substitutes the values into the JSON text and
-validates the result; the device gets `source: {"kind": "preset", "key": "<id>"}`. The shipped Tasmota, Shelly
-and ESPHome presets come with the first release; users add their own files.
+validates the result; the device gets `source: {"kind": "preset", "key": "<id>"}`. Users add their own files
+(`presets` in the top level); an id that is taken already (a shipped one) is reported and skipped.
+
+### Shipped presets
+
+The UI's device editor offers them; `POST /api/presets/:id/apply` ([api.md](api.md)) does the same. Every
+preset has a `name` variable (what controllers show) besides the ones listed here.
+
+**mqtt-smarthome** — adapters that follow the [mqtt-smarthome convention](https://github.com/mqtt-smarthome/mqtt-smarthome/blob/master/SPEC.md)
+(2.0): `<instance>/status/<item>` as a plain value or a `{val, ts, lc}` object (both are read),
+`<instance>/set/<item>` with a plain value, `<instance>/connected` `2` = reachable (`0` and `1` unreachable).
+Variables: `instance` (the adapter's `--name`), `item` (the item path, may have several levels).
+
+| Id                           | Matter            | Notes                                                                                                             |
+| ---------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `mqtt-smarthome/switch`      | OnOffPlugInUnit   | `true`/`false` (also `1`/`0`, `on`/`off`, `yes`/`no`); sends `true`/`false`                                       |
+| `mqtt-smarthome/light`       | OnOffLight        | the same as a light                                                                                               |
+| `mqtt-smarthome/dimmer`      | DimmableLight     | `max`: the value for 100 % (default `100`; `1` for 0…1 levels); on/off follows the level, off sends `0`, on `max` |
+| `mqtt-smarthome/cover`       | WindowCovering    | `max` as above; the item counts 0 = closed … `max` = open; stop is not sent                                       |
+| `mqtt-smarthome/contact`     | ContactSensor     | `true`, `1`, `open` = open                                                                                        |
+| `mqtt-smarthome/occupancy`   | OccupancySensor   | `true`/`false`                                                                                                    |
+| `mqtt-smarthome/temperature` | TemperatureSensor | °C                                                                                                                |
+| `mqtt-smarthome/humidity`    | HumiditySensor    | %                                                                                                                 |
+| `mqtt-smarthome/button`      | GenericSwitch     | `true`, `1`, `single`, `short`, `click` = one press; `double`, `triple`; `long`, `hold` = a long press            |
+
+**Tasmota** — `topic`: the device's MQTT topic (Configuration → MQTT → Topic); the default FullTopic
+`%prefix%/%topic%/`.
+
+| Id              | Matter          | Notes                                                       |
+| --------------- | --------------- | ----------------------------------------------------------- |
+| `tasmota/relay` | OnOffPlugInUnit | `POWER` from `stat/<topic>/RESULT`, availability from `LWT` |

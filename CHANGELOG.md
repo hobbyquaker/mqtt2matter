@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **Presets for the mqtt-smarthome convention**: switch, light, dimmer, cover, contact, occupancy,
+  temperature, humidity and button for any adapter that publishes `<name>/status/<item>` (plain values and
+  `{val, ts, lc}` alike), takes `<name>/set/<item>` and reports `<name>/connected`.
+- A status value that a message does not carry (an extract path that is missing, a template that renders
+  nothing) is logged at debug instead of as a warning: topics several mappings share — Tasmota's `RESULT`, a
+  partial JSON report — carry only some of the values at a time.
+- Every shipped preset is tested: applied, validated, through the strict dry run, and against an in-process
+  broker with its documented status and command messages.
+
 ## 0.1.0
 
 The first release: a generic MQTT → Matter bridge on matter.js 0.18.
