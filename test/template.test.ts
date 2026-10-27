@@ -51,6 +51,11 @@ describe('templates: the registered filters', () => {
         ['{{ value_json.x | default(5) | round(0) }}', {value_json: {}}, '5'],
         ['{{ (value_json.temperature | float) * 9 / 5 + 32 }}', {value_json: {temperature: 20}}, '68.0'],
         ['{{ brightness }},{{ transition | default(0) }}', {brightness: 254}, '254,0'],
+        ['{{ value | int(0, 16) }}', {value: 'ff'}, '255'],
+        ['{{ value[1:3] | int(base=16) }}', {value: '#A0B0C0'}, '160'],
+        ['{{ value | int(-1, 16) }}', {value: 'xyz'}, '-1'],
+        ['{{ value | int(0, 2) }}', {value: '101'}, '5'],
+        ['{{ value | int }} {{ int("7.9") }}', {value: '42.5'}, '42 7'],
     ])('%s', (source, variables, expected) => {
         expect(render(source, variables)).toBe(expected);
     });

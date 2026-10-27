@@ -2,7 +2,8 @@
    not an own evaluator). The library ships Jinja's core — expressions, `if`, loops, the filters `int`,
    `float`, `default`, `lower`, `upper`, `trim`, `abs`, `string`, `join`, `length`, `replace`, `tojson` and
    the tests `defined`, `none`, `number`, `string` — but no way to register filters. The Home Assistant
-   filters it lacks (`round`, `is_defined`, `iif`, `multiply`, `bool`, `is_number`, `max`, `min`) are
+   filters it lacks (`round`, `is_defined`, `iif`, `multiply`, `bool`, `is_number`, `max`, `min`, and `int` with
+   its default and base) are
    added by rewriting the parsed program: a filter expression whose name is one of ours becomes a call of
    a function the environment provides, with the operand as its first argument. The template string stays
    verbatim in the config; only the parsed form is rewritten. */
@@ -97,8 +98,28 @@ function round(value: unknown, ...rest: unknown[]): unknown {
     return precision === 0 ? Math.trunc(result) : result;
 }
 
+/**
+ * Home Assistant's `int(default, base)`: truncated; with a base other than 10 a string is read in that base
+ * (`'ff' | int(0, 16)`, `0x` prefix allowed for 16), as Python's `int(text, base)` does
+ */
+function int(value: unknown, ...rest: unknown[]): unknown {
+    const {positional, keywords} = kwargsOf(rest);
+    const fallback = positional[0] ?? keywords.get('default') ?? 0;
+    const base = toNumber(positional[1] ?? keywords.get('base')) ?? 10;
+    if (base !== 10 && typeof value === 'string') {
+        const text = value.trim().toLowerCase();
+        const digits = base === 16 ? text.replace(/^0x/, '') : text;
+        const alphabet = '0123456789abcdefghijklmnopqrstuvwxyz'.slice(0, base);
+        const valid = digits !== '' && Array.from(digits, (c) => alphabet.includes(c)).every(Boolean);
+        return valid ? Number.parseInt(digits, base) : fallback;
+    }
+    const n = toNumber(value);
+    return n === undefined ? fallback : Math.trunc(n);
+}
+
 const FILTERS: Record<string, Filter> = {
     round,
+    int,
     is_defined: (value) => {
         if (value === undefined) {
             throw new Error('is_defined: the value is undefined');
@@ -231,10 +252,7 @@ export class Template {
         env.set('None', null);
         env.set('iif', FILTERS.iif);
         env.set('float', (v: unknown, fallback?: unknown) => toNumber(v) ?? fallback ?? 0);
-        env.set('int', (v: unknown, fallback?: unknown) => {
-            const n = toNumber(v);
-            return n === undefined ? (fallback ?? 0) : Math.trunc(n);
-        });
+        env.set('int', int);
         env.set('is_number', FILTERS.is_number);
         env.set('max', FILTERS.max);
         env.set('min', FILTERS.min);
