@@ -364,7 +364,11 @@ export class MappingRuntime {
             const shape = ref === undefined ? undefined : target.shapeOf(ref);
             const result = decodeStatus(half, text, shape, {topic, codec: codec?.decode});
             if (!result.ok) {
-                this.log.warn(`${where}: ${topic} ignored, ${result.reason}`);
+                if (result.absent === true) {
+                    this.log.debug(`${where}: ${topic} carries no value, ${result.reason}`);
+                } else {
+                    this.log.warn(`${where}: ${topic} ignored, ${result.reason}`);
+                }
                 continue;
             }
             this.log.debug(`${where} ← ${topic} ${text} = ${JSON.stringify(result.value)}`);

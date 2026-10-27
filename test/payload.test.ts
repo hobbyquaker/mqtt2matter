@@ -105,6 +105,7 @@ describe('decodeStatus: extract, map, type', () => {
         expect(decodeStatus(half, '{"Dimmer":50}')).toEqual({
             ok: false,
             reason: expect.stringContaining('not in payload'),
+            absent: true,
         });
         expect(decodeStatus(half, 'not json')).toEqual({ok: false, reason: expect.stringContaining('not JSON')});
     });
@@ -179,10 +180,12 @@ describe('decodeStatus: templates', () => {
         expect(decodeStatus(status({template: '{{ value_json.missing | default("") }}'}), '{}')).toEqual({
             ok: false,
             reason: expect.stringContaining('empty'),
+            absent: true,
         });
         expect(decodeStatus(status({template: '{{ value | is_defined }}'}), '')).toEqual({
             ok: false,
             reason: expect.stringContaining('template'),
+            absent: true,
         });
     });
 });

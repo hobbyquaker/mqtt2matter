@@ -144,7 +144,12 @@ export interface TargetShape {
 /** a decoded value: a scalar, null for a nullable attribute, or an object for composites and bitmaps */
 export type Decoded = Scalar | null | Record<string, unknown> | unknown[];
 
-export type DecodeResult = {ok: true; value: Decoded} | {ok: false; reason: string};
+/**
+ * `absent`: the message carries no value for this half — the extract path is missing or the template rendered
+ * nothing. Normal on a topic several mappings share (Tasmota's `RESULT`, a partial JSON report), so the runtime
+ * logs it at debug rather than as a failure.
+ */
+export type DecodeResult = {ok: true; value: Decoded} | {ok: false; reason: string; absent?: true};
 
 export type Decoder = (payload: string, context: {topic: string; options: unknown}) => unknown;
 export type Encoder = (
@@ -380,7 +385,7 @@ export function decodeStatus(
         }
         value = extract(json, parsePath(half.extract));
         if (value === undefined) {
-            return {ok: false, reason: `"${half.extract}" not in payload`};
+            return {ok: false, reason: `"${half.extract}" not in payload`, absent: true};
         }
     }
     if (half.template !== undefined) {
@@ -395,7 +400,7 @@ export function decodeStatus(
             return rendered;
         }
         if (rendered.text === '') {
-            return {ok: false, reason: 'the template rendered an empty string'};
+            return {ok: false, reason: 'the template rendered an empty string', absent: true};
         }
         value = rendered.text;
     }
