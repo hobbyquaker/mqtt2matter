@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1
 
 - **Fixed: creating a device from a preset replaced the device created before.** The dialog derived the key from
   the device name, the presets' default names were generic ("Switch"), and `PUT /api/devices/:key` creates or
