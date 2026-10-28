@@ -9,9 +9,10 @@
   create dialog and the duplicate prompt, and the UI creates through the new `POST /api/devices` (`{key, device}`,
   `409` when the key exists), which can never replace a device; `PUT` stays for edits.
 - **Presets name the device after what identifies it** instead of a generic "Switch", "Relay" or "Light": the
-  mqtt-smarthome item (`kitchen/light`), the Tasmota topic, the Shelly device id or MQTT prefix, the WLED topic,
+  mqtt-smarthome item with its slashes as spaces (`kitchen/light` → "kitchen light"), the Tasmota topic, the Shelly device id or MQTT prefix, the WLED topic,
   the OpenBeken client, the Valetudo identifier — with the channel or relay index where the preset is one channel
-  of a device (`shellyplus2pm-… 1`, `plug-1 2`, `obk-th temperature`). In the dialog the name follows those
+  of a device (`shellyplus2pm-… 1`, `plug-1 2`, `obk-th temperature`). A preset's default may reference other
+  variables (`"%item%"`), `%item|words%` with the value's slashes as spaces. In the dialog the name follows those
   fields while you type, until you edit it yourself; a cleared name follows again.
   - **Preset format**: a variable's `default` may reference other variables (`"default": "%topic% %index%"`);
     where no value is given, the references are resolved from the other values and the result trimmed. A

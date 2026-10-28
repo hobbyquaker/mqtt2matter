@@ -4,14 +4,22 @@
    users add their own as JSON files. A placeholder is `%name%`; `variables` declares each with a label
    and a default, so an editor can ask for them. Substitution is textual over the JSON of the template,
    so a placeholder can stand in a topic, a payload or a template string alike. A default may itself
-   name other variables (`"default": "%item%"`): it is resolved from their values when no value is given,
-   so a device's default name can be what identifies it. */
+   name other variables (`"default": "%item%"`, `"%item|words%"` with the value's slashes as spaces): it is
+   resolved from their values when no value is given, so a device's default name can be what identifies it. */
 
 import {z} from 'zod';
 
 import {type DeviceConfig, DeviceSchema} from './schema.ts';
 
 export const PLACEHOLDER_PATTERN = /%([A-Za-z_][A-Za-z0-9_]*)%/g;
+
+/** a reference in a default: `%name%`, or `%name|words%` for the value with its slashes as spaces */
+export const DEFAULT_REFERENCE_PATTERN = /%([A-Za-z_][A-Za-z0-9_]*)(?:\|(words))?%/g;
+
+/** a referenced value as a default takes it: `words` turns `kitchen/ceiling` into `kitchen ceiling` */
+export function referenceValue(value: string, modifier: string | undefined): string {
+    return modifier === 'words' ? value.replace(/\//g, ' ').replace(/\s+/g, ' ').trim() : value;
+}
 
 export const PresetVariableSchema = z
     .object({
@@ -64,7 +72,7 @@ export function placeholdersOf(preset: Preset): string[] {
 
 /** the variables a default references */
 function referencesOf(text: string): string[] {
-    return [...text.matchAll(PLACEHOLDER_PATTERN)].map((match) => match[1] ?? '');
+    return [...text.matchAll(DEFAULT_REFERENCE_PATTERN)].map((match) => match[1] ?? '');
 }
 
 /**
@@ -147,7 +155,11 @@ export function presetValues(preset: Preset, values: Record<string, string>): Re
         if (given !== undefined) {
             value = given;
         } else if (variable?.default !== undefined) {
-            value = variable.default.replace(PLACEHOLDER_PATTERN, (_m, ref: string) => resolve(ref)).trim();
+            value = variable.default
+                .replace(DEFAULT_REFERENCE_PATTERN, (_m, ref: string, modifier: string | undefined) =>
+                    referenceValue(resolve(ref), modifier),
+                )
+                .trim();
         } else {
             if (variable !== undefined && !variable.optional) {
                 missing.push(name);

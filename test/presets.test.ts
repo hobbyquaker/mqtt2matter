@@ -95,6 +95,17 @@ describe('presets', () => {
         expect(() => presetValues(preset, {})).toThrow(/missing values for topic/);
     });
 
+    it('takes a referenced value with its slashes as spaces for %name|words%', () => {
+        const preset = parsePreset({
+            ...relay,
+            variables: {...relay.variables, name: {label: 'Name', default: '%topic|words%'}},
+        });
+        expect(presetValues(preset, {topic: 'kitchen/ceiling//light'}).name).toBe('kitchen ceiling light');
+        expect(() =>
+            parsePreset({...relay, variables: {...relay.variables, name: {label: 'Name', default: '%room|words%'}}}),
+        ).toThrow(/undeclared variables: room/);
+    });
+
     it('refuses a default that references an undeclared variable or a cycle', () => {
         expect(() =>
             parsePreset({...relay, variables: {...relay.variables, name: {label: 'Name', default: '%room%'}}}),
@@ -157,7 +168,12 @@ describe('the shipped presets', () => {
             );
             expect(identifying.length, preset.id).toBeGreaterThan(0);
             expect(
-                identifying.some(([, value]) => value !== '' && device.name.includes(value)),
+                identifying.some(
+                    // as typed, or with its slashes as spaces (`%item|words%`)
+                    ([, value]) =>
+                        value !== '' &&
+                        (device.name.includes(value) || device.name.includes(value.replace(/\//g, ' '))),
+                ),
                 `${preset.id}: "${device.name}" from ${JSON.stringify(values)}`,
             ).toBe(true);
             expect(device.name, preset.id).not.toMatch(

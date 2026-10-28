@@ -421,7 +421,8 @@ A preset is a device template in a JSON file:
 `description`, `default`, `optional`). A `default` may itself name other variables (`"default": "%topic%"`,
 `"%device% %channel%"`): where no value is given for it, the references are replaced by those variables' values
 (given or resolved the same way) and the result is trimmed — so a device's default name can be what identifies
-it. A default may reference declared variables only, and not in a cycle. In the UI's dialog such a field follows
+it. `%name|words%` takes the value with its slashes as spaces (`kitchen/ceiling` → `kitchen ceiling`), as the
+mqtt-smarthome presets do for their item. A default may reference declared variables only, and not in a cycle. In the UI's dialog such a field follows
 the fields it references while the user types, until he edits it himself (a cleared field follows again).
 Applying a preset substitutes the values into the JSON text and validates the result; the device gets
 `source: {"kind": "preset", "key": "<id>"}`. Users add their own files (`presets` in the top level); an id that

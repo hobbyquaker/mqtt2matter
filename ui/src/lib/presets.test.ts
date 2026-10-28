@@ -51,3 +51,10 @@ describe('the preset dialog values', () => {
         });
     });
 });
+
+describe('the words modifier', () => {
+    it('turns the slashes of a referenced value into spaces', () => {
+        const vars = {item: {}, name: {default: '%item|words%'}};
+        expect(resolveValues(vars, {item: 'kitchen/ceiling//light'}, new Set()).name).toBe('kitchen ceiling light');
+    });
+});

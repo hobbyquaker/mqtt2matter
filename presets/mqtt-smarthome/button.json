@@ -10,7 +10,7 @@
       "description": "The adapter instance's <name>: the first level of its topics (lgtv, hm, cul, …)"
     },
     "item": {"label": "Item", "description": "The press item below status/, e.g. remote/1/press"},
-    "name": {"label": "Name", "default": "%item%"}
+    "name": {"label": "Name", "default": "%item|words%"}
   },
   "device": {
     "name": "%name%",

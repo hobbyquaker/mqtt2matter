@@ -3,8 +3,13 @@
    server resolves the same way when a value is not sent (src/model/presets.ts presetValues), so a client
    that sends only the identifying variables gets the same name. */
 
-const PLACEHOLDER_PATTERN = /%([A-Za-z_][A-Za-z0-9_]*)%/g;
-const HAS_REFERENCE = /%[A-Za-z_][A-Za-z0-9_]*%/;
+const REFERENCE_PATTERN = /%([A-Za-z_][A-Za-z0-9_]*)(?:\|(words))?%/g;
+const HAS_REFERENCE = /%[A-Za-z_][A-Za-z0-9_]*(?:\|words)?%/;
+
+/** `%name|words%`: the value with its slashes as spaces, as the server resolves it */
+function referenceValue(value: string, modifier: string | undefined): string {
+    return modifier === 'words' ? value.replace(/\//g, ' ').replace(/\s+/g, ' ').trim() : value;
+}
 
 export interface PresetVariable {
     default?: string;
@@ -38,7 +43,9 @@ export function resolveValues(
             value = values[name] ?? variable.default ?? '';
         } else {
             value = (variable.default ?? '')
-                .replace(PLACEHOLDER_PATTERN, (_m, ref: string) => resolve(ref, [...path, name]))
+                .replace(REFERENCE_PATTERN, (_m, ref: string, modifier: string | undefined) =>
+                    referenceValue(resolve(ref, [...path, name]), modifier),
+                )
                 .trim();
         }
         resolved.set(name, value);

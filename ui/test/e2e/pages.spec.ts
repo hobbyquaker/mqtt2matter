@@ -97,16 +97,16 @@ test('the preset dialog names the device after the item until the name is edited
     const name = dialog.getByTestId('preset-var-name');
     await expect(name).toHaveValue('');
     await dialog.getByTestId('preset-var-item').fill('kitchen/light');
-    await expect(name).toHaveValue('kitchen/light');
+    await expect(name).toHaveValue('kitchen light');
     await dialog.getByTestId('preset-var-instance').fill('hm');
-    await expect(name).toHaveValue('kitchen/light');
+    await expect(name).toHaveValue('kitchen light');
     // an edited name stays
     await name.fill('Kitchen');
     await dialog.getByTestId('preset-var-item').fill('kitchen/lamp');
     await expect(name).toHaveValue('Kitchen');
     // a cleared name follows again
     await name.fill('');
-    await expect(name).toHaveValue('kitchen/lamp');
+    await expect(name).toHaveValue('kitchen lamp');
     await dialog.getByTestId('preset-preview').click();
     await expect(dialog).toContainText('The device validates.');
     await expect(dialog.getByTestId('preset-key')).toHaveValue('kitchen-lamp');
