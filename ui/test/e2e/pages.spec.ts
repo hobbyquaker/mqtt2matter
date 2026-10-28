@@ -90,6 +90,36 @@ test('a preset becomes a device', async ({page}) => {
     await expect(row).toHaveCount(0);
 });
 
+test('two devices from the same preset with the same values are two devices', async ({page}) => {
+    await page.goto('/#/presets');
+    const keys: string[] = [];
+    for (let i = 0; i < 2; i++) {
+        await page.locator('[data-testid=preset][data-id="mqtt-smarthome/switch"]').click();
+        const dialog = page.getByTestId('preset-dialog');
+        await dialog.getByTestId('preset-var-instance').fill('fritz');
+        await dialog.getByTestId('preset-var-item').fill('outlet/1/state');
+        await dialog.getByTestId('preset-preview').click();
+        await expect(dialog).toContainText('The device validates.');
+        const key = await dialog.getByTestId('preset-key').inputValue();
+        expect(key).not.toBe('');
+        keys.push(key);
+        await dialog.getByTestId('preset-create').click();
+        await expect(page.getByTestId('device-editor')).toBeVisible();
+        await page.getByTestId('editor-back').click();
+        await page.goto('/#/presets');
+    }
+    // the second suggestion does not collide with the first device
+    expect(keys[1]).toBe(`${keys[0]}-2`);
+    await page.goto('/#/devices');
+    for (const key of keys) {
+        const row = page.locator(`[data-testid=device-row][data-key="${key}"]`);
+        await expect(row).toBeVisible();
+        await row.getByTestId('delete-device').click();
+        await page.getByTestId('dialog-ok').click();
+        await expect(row).toHaveCount(0);
+    }
+});
+
 test('the configuration page exports, refuses an environment-owned change and imports', async ({page}) => {
     await page.goto('/#/config');
     await expect(page.getByTestId('settings-json')).toHaveValue(/"bridges"/);

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **Fixed: creating a device from a preset replaced the device created before.** The dialog derived the key from
+  the device name, the presets' default names were generic ("Switch"), and `PUT /api/devices/:key` creates or
+  replaces — so the second device silently took the first one's place. Now the suggested key is never one a
+  device has (`switch`, `switch-2`, `switch-3`, …), a taken key is named and refused in the preset dialog, the
+  create dialog and the duplicate prompt, and the UI creates through the new `POST /api/devices` (`{key, device}`,
+  `409` when the key exists), which can never replace a device; `PUT` stays for edits.
+
 ## 0.3.0
 
 - The Presets page has a search box: every word must occur in a preset's name, vendor, id or description

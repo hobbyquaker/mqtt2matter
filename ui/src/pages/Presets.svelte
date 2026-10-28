@@ -6,6 +6,7 @@
     import Issues from '../lib/components/Issues.svelte';
     import {pretty} from '../lib/format.ts';
     import {t} from '../lib/i18n.svelte.ts';
+    import {DEVICE_KEY_PATTERN, freeKey, keyFromName} from '../lib/keys.ts';
     import {notices} from '../lib/notices.svelte.ts';
     import {router} from '../lib/router.svelte.ts';
 
@@ -18,9 +19,11 @@
     let key = $state('');
     let result = $state<{device: Device; issues: Issue[]} | undefined>(undefined);
     let applying = $state(false);
+    /** the keys of the devices that exist: the suggestion avoids them, the dialog refuses them */
+    let taken = $state<string[]>([]);
 
-    const KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:._-]{0,63}$/;
-    const keyValid = $derived(KEY_PATTERN.test(key));
+    const keyTaken = $derived(taken.includes(key));
+    const keyValid = $derived(DEVICE_KEY_PATTERN.test(key) && !keyTaken);
     let query = $state('');
 
     /** every word of the query must occur in the preset's name, vendor, id or description */
@@ -62,6 +65,9 @@
         values = Object.fromEntries(Object.entries(preset.variables).map(([name, v]) => [name, v.default ?? '']));
         key = '';
         result = undefined;
+        api.devices()
+            .then((list) => (taken = list.map((d) => d.key)))
+            .catch((error: unknown) => notices.error(errorMessage(error)));
     }
 
     async function preview(): Promise<void> {
@@ -72,10 +78,7 @@
         try {
             result = await api.applyPreset(current.id, values);
             if (key === '') {
-                key = result.device.name
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]+/g, '-')
-                    .replace(/^-+|-+$/g, '');
+                key = freeKey(keyFromName(result.device.name), taken);
             }
         } catch (error) {
             notices.error(errorMessage(error));
@@ -89,7 +92,7 @@
             return;
         }
         try {
-            await api.saveDevice(key, result.device);
+            await api.createDevice(key, result.device);
             notices.info(t('{name} created', {name: result.device.name}));
             current = undefined;
             router.go('devices', key);
@@ -174,6 +177,7 @@
                 <div class="ui-form-field">
                     <input id="preset-key" class="ui-input ui-mono" class:ui-invalid={!keyValid} bind:value={key} data-testid="preset-key" />
                 </div>
+                {#if keyTaken}<div class="ui-form-help ui-error-text" data-testid="preset-key-taken">{t('A device with this key exists already.')}</div>{/if}
             </div>
             <Issues issues={result.issues} empty={t('The device validates.')} />
             <pre class="ui-pre">{pretty(result.device)}</pre>

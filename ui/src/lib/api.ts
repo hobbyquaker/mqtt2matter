@@ -403,6 +403,9 @@ export const api = {
         request<{saved: boolean; restartNeeded: boolean}>('PUT', '/api/config', settings),
     devices: () => request<DeviceListEntry[]>('GET', '/api/devices'),
     device: (key: string) => request<DeviceDetail>('GET', `/api/devices/${encodeURIComponent(key)}`),
+    /** create only: 409 when the key exists */
+    createDevice: (key: string, device: unknown) => request<DeviceDetail>('POST', '/api/devices', {key, device}),
+    /** create or replace */
     saveDevice: (key: string, device: unknown) =>
         request<DeviceDetail>('PUT', `/api/devices/${encodeURIComponent(key)}`, device),
     deleteDevice: (key: string) => request<void>('DELETE', `/api/devices/${encodeURIComponent(key)}`),

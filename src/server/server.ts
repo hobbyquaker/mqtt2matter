@@ -742,6 +742,18 @@ export class Server {
         this.authRoutes();
 
         r.add('GET', '/api/devices', () => this.listDevices());
+        r.add('POST', '/api/devices', async (request, response) => {
+            // create only: an existing key is 409, so no client replaces a device by accident (PUT does)
+            const b = body(request);
+            const key = b.key;
+            if (typeof key !== 'string' || key === '') {
+                throw new HttpError(400, 'expected {key, device}');
+            }
+            if (this.app.config.devices[key] !== undefined) {
+                throw new HttpError(409, `a device with the key ${key} exists already`, {key});
+            }
+            sendJson(response, 201, await this.saveDevice(key, b.device));
+        });
         r.add('GET', '/api/devices/:key', (request) => this.deviceJson(request.params.key ?? ''));
         r.add('PUT', '/api/devices/:key', async (request) => {
             return await this.saveDevice(request.params.key ?? '', request.body);

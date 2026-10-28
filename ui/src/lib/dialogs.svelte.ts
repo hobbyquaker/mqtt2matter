@@ -13,6 +13,8 @@ export interface PromptOptions extends ConfirmOptions {
     placeholder?: string;
     /** a pattern the value must match before OK is enabled */
     pattern?: RegExp;
+    /** the problem with a value that matches the pattern, shown under the input; OK is disabled while there is one */
+    validate?: (value: string) => string | undefined;
 }
 
 export type Pending =

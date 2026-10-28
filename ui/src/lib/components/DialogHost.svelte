@@ -7,7 +7,9 @@
     let input = $state<HTMLInputElement | undefined>(undefined);
 
     const pending = $derived(dialogs.pending);
-    const valid = $derived(pending?.kind !== 'prompt' || pending.options.pattern === undefined || pending.options.pattern.test(value));
+    const matches = $derived(pending?.kind !== 'prompt' || pending.options.pattern === undefined || pending.options.pattern.test(value));
+    const problem = $derived(pending?.kind === 'prompt' && matches ? pending.options.validate?.(value) : undefined);
+    const valid = $derived(matches && problem === undefined);
 
     $effect(() => {
         if (pending?.kind === 'prompt') {
@@ -50,6 +52,7 @@
                 }}
                 data-testid="dialog-input"
             />
+            {#if problem !== undefined}<div class="ui-form-help ui-error-text" data-testid="dialog-problem">{problem}</div>{/if}
         {/if}
         {#snippet buttons()}
             <button type="button" class="ui-button" onclick={() => dialogs.settle(pending.kind === 'prompt' ? null : false)}>

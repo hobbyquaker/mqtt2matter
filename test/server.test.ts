@@ -301,6 +301,22 @@ describe('the web server', () => {
         await waitFor(async () => (await api('GET', '/api/devices/lamp/state')).json.main.state.OnOff.onOff === true);
     });
 
+    it('creates a device only where the key is free', async () => {
+        const device = {name: 'Second plug', endpoints: [{deviceTypes: ['OnOffPlugInUnit']}]};
+        const created = await api('POST', '/api/devices', {key: 'plug-2', device});
+        expect(created.status).toBe(201);
+        expect(created.json.key).toBe('plug-2');
+        expect(created.json.device.name).toBe('Second plug');
+        // the same key again: refused, the first device untouched
+        const again = await api('POST', '/api/devices', {key: 'plug-2', device: {...device, name: 'Third plug'}});
+        expect(again.status).toBe(409);
+        expect(again.json.details).toEqual({key: 'plug-2'});
+        expect((await api('GET', '/api/devices/plug-2')).json.device.name).toBe('Second plug');
+        expect((await api('POST', '/api/devices', {device})).status).toBe(400);
+        expect((await api('POST', '/api/devices', {key: 'bad key', device})).status).toBe(400);
+        expect((await api('DELETE', '/api/devices/plug-2')).status).toBe(204);
+    });
+
     it('refuses an invalid device with the issues, validates and checks', async () => {
         const invalid = await api('PUT', '/api/devices/bad', {name: 'Bad', endpoints: [{deviceTypes: []}]});
         expect(invalid.status).toBe(400);

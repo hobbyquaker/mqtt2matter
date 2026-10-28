@@ -113,3 +113,42 @@ test('editing a device validates live and refuses an unsaved exit without asking
     await page.goto('/#/devices/living-room-lamp');
     await expect(editor.getByTestId('mapping-row')).toHaveCount(3);
 });
+
+test('a copy of a device gets a free key, a taken key is refused', async ({page}) => {
+    await page.goto('/#/devices');
+    const keys = ['living-room-lamp-copy', 'living-room-lamp-copy-2'];
+    for (const key of keys) {
+        await page
+            .locator('[data-testid=device-row][data-key=living-room-lamp]')
+            .getByTestId('duplicate-device')
+            .click();
+        const prompt = page.getByTestId('dialog-prompt');
+        await expect(prompt.getByTestId('dialog-input')).toHaveValue(key);
+        // a key that exists is named and refused
+        await prompt.getByTestId('dialog-input').fill('living-room-lamp');
+        await expect(prompt.getByTestId('dialog-problem')).toContainText('exists already');
+        await expect(prompt.getByTestId('dialog-ok')).toBeDisabled();
+        await prompt.getByTestId('dialog-input').fill(key);
+        await expect(prompt.getByTestId('dialog-problem')).toHaveCount(0);
+        await prompt.getByTestId('dialog-ok').click();
+        await expect(page.getByTestId('device-editor')).toBeVisible();
+        expect(page.url()).toContain(`#/devices/${key}`);
+        await page.getByTestId('editor-back').click();
+    }
+    // the create dialog suggests a free key too and refuses a taken one
+    await page.getByTestId('new-device').click();
+    const dialog = page.getByTestId('create-dialog');
+    await dialog.getByTestId('new-name').fill('Living room lamp');
+    await dialog.getByTestId('new-name').blur();
+    await expect(dialog.getByTestId('new-key')).toHaveValue('living-room-lamp-2');
+    await dialog.getByTestId('new-key').fill('living-room-lamp');
+    await expect(dialog.getByTestId('new-key-help')).toContainText('exists already');
+    await expect(dialog.getByTestId('create-device')).toBeDisabled();
+    await page.keyboard.press('Escape');
+    for (const key of keys) {
+        const row = page.locator(`[data-testid=device-row][data-key=${key}]`);
+        await row.getByTestId('delete-device').click();
+        await page.getByTestId('dialog-ok').click();
+        await expect(row).toHaveCount(0);
+    }
+});

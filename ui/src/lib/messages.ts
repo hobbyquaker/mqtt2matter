@@ -113,6 +113,10 @@ export const MESSAGES: Record<string, Message> = {
     Disable: m('Deaktivieren', 'Disable'),
     Enable: m('Aktivieren', 'Enable'),
     'Key of the copy': m('Schlüssel der Kopie', 'Key of the copy'),
+    'A device with this key exists already.': m(
+        'Ein Gerät mit diesem Schlüssel gibt es schon.',
+        'A device with this key exists already.',
+    ),
     'Delete {name}? Controllers lose the device, its rooms and automations.': m(
         '{name} löschen? Controller verlieren das Gerät, seine Räume und Automationen.',
         'Delete {name}? Controllers lose the device, its rooms and automations.',

@@ -8,6 +8,7 @@
     import {events} from '../lib/events.svelte.ts';
     import {download, pretty} from '../lib/format.ts';
     import {t} from '../lib/i18n.svelte.ts';
+    import {DEVICE_KEY_PATTERN, freeKey, keyFromName} from '../lib/keys.ts';
     import {notices} from '../lib/notices.svelte.ts';
     import {router} from '../lib/router.svelte.ts';
     import DeviceEditor from './DeviceEditor.svelte';
@@ -25,8 +26,8 @@
     let typeFilter = $state('');
 
     const editing = $derived(router.route.rest);
-    const KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:._-]{0,63}$/;
-    const keyValid = $derived(KEY_PATTERN.test(newKey) && !devices.some((d) => d.key === newKey));
+    const keyTaken = $derived(devices.some((d) => d.key === newKey));
+    const keyValid = $derived(DEVICE_KEY_PATTERN.test(newKey) && !keyTaken);
 
     const shown = $derived.by(() => {
         const needle = filter.trim().toLowerCase();
@@ -76,11 +77,10 @@
 
     function suggestKey(): void {
         if (newKey === '' || !keyValid) {
-            newKey = newName
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-+|-+$/g, '')
-                .slice(0, 64);
+            newKey = freeKey(
+                keyFromName(newName),
+                devices.map((d) => d.key),
+            );
         }
     }
 
@@ -89,7 +89,7 @@
             return;
         }
         try {
-            await api.saveDevice(newKey, {name: newName.trim(), endpoints: [{deviceTypes: [newType]}]});
+            await api.createDevice(newKey, {name: newName.trim(), endpoints: [{deviceTypes: [newType]}]});
             creating = false;
             router.go('devices', newKey);
         } catch (error) {
@@ -108,13 +108,19 @@
     }
 
     async function duplicate(entry: DeviceListEntry): Promise<void> {
-        const key = await dialogs.prompt(t('Key of the copy'), {value: `${entry.key}-copy`, pattern: KEY_PATTERN, confirm: t('Duplicate')});
+        const taken = devices.map((d) => d.key);
+        const key = await dialogs.prompt(t('Key of the copy'), {
+            value: freeKey(`${entry.key}-copy`, taken),
+            pattern: DEVICE_KEY_PATTERN,
+            validate: (value) => (taken.includes(value) ? t('A device with this key exists already.') : undefined),
+            confirm: t('Duplicate'),
+        });
         if (key === null) {
             return;
         }
         try {
             const detail = await api.device(entry.key);
-            await api.saveDevice(key, {...detail.device, name: `${detail.device.name} 2`.slice(0, 32), source: {kind: 'manual'}, bridge: undefined});
+            await api.createDevice(key, {...detail.device, name: `${detail.device.name} 2`.slice(0, 32), source: {kind: 'manual'}, bridge: undefined});
             router.go('devices', key);
         } catch (error) {
             notices.error(errorMessage(error));
@@ -216,8 +222,12 @@
                                     >
                                         {#if entry.enabled}<Icon name="pause" />{:else}<Icon name="play" />{/if}
                                     </button>
-                                    <button type="button" class="ui-icon-button" title={t('Duplicate')} onclick={() => duplicate(entry)}
-                                        ><Icon name="copy" /></button
+                                    <button
+                                        type="button"
+                                        class="ui-icon-button"
+                                        title={t('Duplicate')}
+                                        onclick={() => duplicate(entry)}
+                                        data-testid="duplicate-device"><Icon name="copy" /></button
                                     >
                                     <button type="button" class="ui-icon-button" title={t('Export')} onclick={() => exportOne(entry)}
                                         ><Icon name="download" /></button
@@ -244,7 +254,11 @@
             <div class="ui-form-field">
                 <input id="new-key" class="ui-input ui-mono" class:ui-invalid={newKey !== '' && !keyValid} bind:value={newKey} data-testid="new-key" />
             </div>
-            <div class="ui-form-help">{t('The key is the Matter endpoint id: stable, never renamed. Letters, digits, : . _ -')}</div>
+            <div class="ui-form-help" class:ui-error-text={keyTaken} data-testid="new-key-help">
+                {keyTaken
+                    ? t('A device with this key exists already.')
+                    : t('The key is the Matter endpoint id: stable, never renamed. Letters, digits, : . _ -')}
+            </div>
             <label class="ui-form-label" for="type-filter">{t('Device type')}</label>
             <div class="ui-form-field"><input id="type-filter" class="ui-input" placeholder={t('Filter')} bind:value={typeFilter} /></div>
             <div class="ui-form-full">
