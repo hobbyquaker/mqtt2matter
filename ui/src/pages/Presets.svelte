@@ -8,6 +8,7 @@
     import {t} from '../lib/i18n.svelte.ts';
     import {DEVICE_KEY_PATTERN, freeKey, keyFromName} from '../lib/keys.ts';
     import {notices} from '../lib/notices.svelte.ts';
+    import {resolveValues} from '../lib/presets.ts';
     import {router} from '../lib/router.svelte.ts';
 
     let presets = $state<PresetEntry[]>([]);
@@ -16,6 +17,8 @@
 
     let current = $state<PresetEntry | undefined>(undefined);
     let values = $state<Record<string, string>>({});
+    /** the variables the user typed into: a following default (`%item%`) stops following them */
+    let edited = new Set<string>();
     let key = $state('');
     let result = $state<{device: Device; issues: Issue[]} | undefined>(undefined);
     let applying = $state(false);
@@ -62,12 +65,25 @@
 
     function open(preset: PresetEntry): void {
         current = preset;
-        values = Object.fromEntries(Object.entries(preset.variables).map(([name, v]) => [name, v.default ?? '']));
+        edited = new Set();
+        values = resolveValues(preset.variables, {}, edited);
         key = '';
         result = undefined;
         api.devices()
             .then((list) => (taken = list.map((d) => d.key)))
             .catch((error: unknown) => notices.error(errorMessage(error)));
+    }
+
+    function input(name: string, value: string): void {
+        if (current === undefined) {
+            return;
+        }
+        if (value === '') {
+            edited.delete(name);
+        } else {
+            edited.add(name);
+        }
+        values = resolveValues(current.variables, {...values, [name]: value}, edited);
     }
 
     async function preview(): Promise<void> {
@@ -159,7 +175,8 @@
                     <input
                         id="var-{name}"
                         class="ui-input"
-                        bind:value={values[name]}
+                        value={values[name] ?? ''}
+                        oninput={(event) => input(name, event.currentTarget.value)}
                         placeholder={variable.optional ? t('optional') : ''}
                         data-testid="preset-var-{name}"
                     />

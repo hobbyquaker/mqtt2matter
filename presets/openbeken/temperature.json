@@ -15,7 +15,7 @@
       "description": "1 for Temperature, 10 for Temperature_div10, 100 for Temperature_div100",
       "default": "10"
     },
-    "name": {"label": "Name", "default": "Temperature"}
+    "name": {"label": "Name", "default": "%client% temperature"}
   },
   "device": {
     "name": "%name%",

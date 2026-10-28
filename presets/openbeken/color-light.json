@@ -9,7 +9,7 @@
       "label": "Client topic",
       "description": "OpenBeken → Config → MQTT → Client Topic (Base Topic): the first level of its topics"
     },
-    "name": {"label": "Name", "default": "Light"}
+    "name": {"label": "Name", "default": "%client%"}
   },
   "device": {
     "name": "%name%",

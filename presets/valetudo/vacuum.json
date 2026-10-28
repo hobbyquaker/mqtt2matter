@@ -14,7 +14,7 @@
       "label": "Identifier",
       "description": "Valetudo → Connectivity → MQTT → Identifier (the robot's name in the topics)"
     },
-    "name": {"label": "Name", "default": "Vacuum"}
+    "name": {"label": "Name", "default": "%identifier%"}
   },
   "device": {
     "name": "%name%",

@@ -7,7 +7,7 @@
   "variables": {
     "topic": {"label": "Tasmota topic", "description": "The device's MQTT topic (Configuration → MQTT → Topic)"},
     "index": {"label": "Shutter", "description": "The shutter's number: 1, 2, …", "default": "1"},
-    "name": {"label": "Name", "default": "Shutter"}
+    "name": {"label": "Name", "default": "%topic% %index%"}
   },
   "device": {
     "name": "%name%",

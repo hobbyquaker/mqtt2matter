@@ -9,7 +9,7 @@
       "label": "MQTT prefix",
       "description": "Settings → MQTT → MQTT prefix; by default the device id (shellyplus1pm-a8032abe54dc)"
     },
-    "name": {"label": "Name", "default": "Shelly H&T"}
+    "name": {"label": "Name", "default": "%prefix%"}
   },
   "device": {
     "name": "%name%",

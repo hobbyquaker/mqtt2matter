@@ -11,7 +11,7 @@
       "description": "The sensor's key in tele/<topic>/SENSOR (SHT3X, AM2301, DHT11, SI7021, …)",
       "default": "SHT3X"
     },
-    "name": {"label": "Name", "default": "Climate"}
+    "name": {"label": "Name", "default": "%topic%"}
   },
   "device": {
     "name": "%name%",

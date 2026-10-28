@@ -3,7 +3,9 @@
    values. The format is fixed here; the shipped presets for Tasmota, Shelly and ESPHome come later and
    users add their own as JSON files. A placeholder is `%name%`; `variables` declares each with a label
    and a default, so an editor can ask for them. Substitution is textual over the JSON of the template,
-   so a placeholder can stand in a topic, a payload or a template string alike. */
+   so a placeholder can stand in a topic, a payload or a template string alike. A default may itself
+   name other variables (`"default": "%item%"`): it is resolved from their values when no value is given,
+   so a device's default name can be what identifies it. */
 
 import {z} from 'zod';
 
@@ -16,6 +18,7 @@ export const PresetVariableSchema = z
         /** what the editor asks for */
         label: z.string().min(1),
         description: z.string().optional(),
+        /** may reference other variables (`%item%`): resolved from their values, then trimmed */
         default: z.string().optional(),
         /** no default and not optional: the user must fill it */
         optional: z.boolean().default(false),
@@ -59,7 +62,15 @@ export function placeholdersOf(preset: Preset): string[] {
     return [...names].sort();
 }
 
-/** parse a preset file's JSON; every placeholder must be declared in `variables` */
+/** the variables a default references */
+function referencesOf(text: string): string[] {
+    return [...text.matchAll(PLACEHOLDER_PATTERN)].map((match) => match[1] ?? '');
+}
+
+/**
+ * parse a preset file's JSON; every placeholder must be declared in `variables`, and a default may reference
+ * only declared variables, without a cycle
+ */
 export function parsePreset(raw: unknown): Preset {
     const result = PresetSchema.safeParse(raw);
     if (!result.success) {
@@ -70,7 +81,87 @@ export function parsePreset(raw: unknown): Preset {
     if (undeclared.length > 0) {
         throw new PresetError(`preset ${preset.id}: placeholders without a variable: ${undeclared.join(', ')}`);
     }
+    for (const [name, variable] of Object.entries(preset.variables)) {
+        const references = referencesOf(variable.default ?? '');
+        const unknown = references.filter((ref) => !(ref in preset.variables));
+        if (unknown.length > 0) {
+            throw new PresetError(
+                `preset ${preset.id}: the default of ${name} references undeclared variables: ${unknown.join(', ')}`,
+            );
+        }
+    }
+    const cycle = defaultCycle(preset);
+    if (cycle !== undefined) {
+        throw new PresetError(
+            `preset ${preset.id}: the defaults reference each other in a cycle: ${cycle.join(' → ')}`,
+        );
+    }
     return preset;
+}
+
+/** the first cycle among the defaults' references, as the names on it */
+function defaultCycle(preset: Preset): string[] | undefined {
+    const done = new Set<string>();
+    const visit = (name: string, path: string[]): string[] | undefined => {
+        const at = path.indexOf(name);
+        if (at >= 0) {
+            return [...path.slice(at), name];
+        }
+        if (done.has(name)) {
+            return undefined;
+        }
+        for (const ref of referencesOf(preset.variables[name]?.default ?? '')) {
+            const found = visit(ref, [...path, name]);
+            if (found !== undefined) {
+                return found;
+            }
+        }
+        done.add(name);
+        return undefined;
+    };
+    for (const name of Object.keys(preset.variables)) {
+        const found = visit(name, []);
+        if (found !== undefined) {
+            return found;
+        }
+    }
+    return undefined;
+}
+
+/**
+ * The value of every variable: the given one, else its default with the references to other variables
+ * resolved the same way and the result trimmed, else empty for an optional one. A variable without a value,
+ * a default or `optional` is missing.
+ */
+export function presetValues(preset: Preset, values: Record<string, string>): Record<string, string> {
+    const missing: string[] = [];
+    const resolved = new Map<string, string>();
+    const resolve = (name: string): string => {
+        const known = resolved.get(name);
+        if (known !== undefined) {
+            return known;
+        }
+        const variable = preset.variables[name];
+        const given = values[name];
+        let value: string;
+        if (given !== undefined) {
+            value = given;
+        } else if (variable?.default !== undefined) {
+            value = variable.default.replace(PLACEHOLDER_PATTERN, (_m, ref: string) => resolve(ref)).trim();
+        } else {
+            if (variable !== undefined && !variable.optional) {
+                missing.push(name);
+            }
+            value = '';
+        }
+        resolved.set(name, value);
+        return value;
+    };
+    const filled = Object.fromEntries(Object.keys(preset.variables).map((name) => [name, resolve(name)]));
+    if (missing.length > 0) {
+        throw new PresetError(`preset ${preset.id}: missing values for ${missing.join(', ')}`);
+    }
+    return filled;
 }
 
 function escapeForJson(value: string): string {
@@ -82,22 +173,7 @@ function escapeForJson(value: string): string {
  * they are escaped as JSON strings; a placeholder that forms a whole JSON string stays a string.
  */
 export function applyPreset(preset: Preset, values: Record<string, string>): DeviceConfig {
-    const missing: string[] = [];
-    const filled: Record<string, string> = {};
-    for (const [name, variable] of Object.entries(preset.variables)) {
-        const value = values[name] ?? variable.default;
-        if (value === undefined) {
-            if (!variable.optional) {
-                missing.push(name);
-            }
-            filled[name] = '';
-        } else {
-            filled[name] = value;
-        }
-    }
-    if (missing.length > 0) {
-        throw new PresetError(`preset ${preset.id}: missing values for ${missing.join(', ')}`);
-    }
+    const filled = presetValues(preset, values);
     const text = JSON.stringify(preset.device).replace(PLACEHOLDER_PATTERN, (_m, name: string) =>
         escapeForJson(filled[name] ?? ''),
     );

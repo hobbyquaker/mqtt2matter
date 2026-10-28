@@ -14,7 +14,7 @@
       "description": "The relay's channel number (the pin's channel in Configure Module)",
       "default": "1"
     },
-    "name": {"label": "Name", "default": "Relay"}
+    "name": {"label": "Name", "default": "%client% %channel%"}
   },
   "device": {
     "name": "%name%",

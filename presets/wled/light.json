@@ -9,7 +9,7 @@
       "label": "Device topic",
       "description": "WLED's MQTT device topic (Config → Sync Interfaces → MQTT → Device Topic; default wled/<MAC>)"
     },
-    "name": {"label": "Name", "default": "WLED"}
+    "name": {"label": "Name", "default": "%topic%"}
   },
   "device": {
     "name": "%name%",

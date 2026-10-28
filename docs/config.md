@@ -395,7 +395,7 @@ A preset is a device template in a JSON file:
   "format": 1,
   "variables": {
     "topic": {"label": "Tasmota topic"},
-    "name": {"label": "Name", "default": "Relay"}
+    "name": {"label": "Name", "default": "%topic%"}
   },
   "device": {
     "name": "%name%",
@@ -418,14 +418,22 @@ A preset is a device template in a JSON file:
 ```
 
 `%name%` placeholders stand anywhere in `device`; every one must be declared in `variables` (`label`,
-`description`, `default`, `optional`). Applying a preset substitutes the values into the JSON text and
-validates the result; the device gets `source: {"kind": "preset", "key": "<id>"}`. Users add their own files
-(`presets` in the top level); an id that is taken already (a shipped one) is reported and skipped.
+`description`, `default`, `optional`). A `default` may itself name other variables (`"default": "%topic%"`,
+`"%device% %channel%"`): where no value is given for it, the references are replaced by those variables' values
+(given or resolved the same way) and the result is trimmed — so a device's default name can be what identifies
+it. A default may reference declared variables only, and not in a cycle. In the UI's dialog such a field follows
+the fields it references while the user types, until he edits it himself (a cleared field follows again).
+Applying a preset substitutes the values into the JSON text and validates the result; the device gets
+`source: {"kind": "preset", "key": "<id>"}`. Users add their own files (`presets` in the top level); an id that
+is taken already (a shipped one) is reported and skipped.
 
 ### Shipped presets
 
 The UI's device editor offers them; `POST /api/presets/:id/apply` ([api.md](api.md)) does the same. Every
-preset has a `name` variable (what controllers show) besides the ones listed here.
+preset has a `name` variable (what controllers show) besides the ones listed here; its default is what
+identifies the device — the mqtt-smarthome item, the Tasmota topic, the Shelly device id or prefix, the WLED
+topic, the OpenBeken client, the Valetudo identifier — plus the channel or relay index where the preset is one
+channel of a device (`shellyplus2pm-… 1`, `plug-1 2`, `obk-th temperature`).
 
 **mqtt-smarthome** — adapters that follow the [mqtt-smarthome convention](https://github.com/mqtt-smarthome/mqtt-smarthome/blob/master/SPEC.md)
 (2.0): `<instance>/status/<item>` as a plain value or a `{val, ts, lc}` object (both are read),

@@ -9,7 +9,7 @@
       "label": "Device id",
       "description": "The device's MQTT id: <model>-<deviceid>, as in its topics shellies/<id>/… (shellyswitch25-B929CC)"
     },
-    "name": {"label": "Name", "default": "Shelly roller"}
+    "name": {"label": "Name", "default": "%device%"}
   },
   "device": {
     "name": "%name%",

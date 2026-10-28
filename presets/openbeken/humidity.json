@@ -11,7 +11,7 @@
     },
     "channel": {"label": "Channel", "description": "The humidity's channel number", "default": "2"},
     "divisor": {"label": "Divisor", "description": "1 for Humidity, 10 for Humidity_div10", "default": "1"},
-    "name": {"label": "Name", "default": "Humidity"}
+    "name": {"label": "Name", "default": "%client% humidity"}
   },
   "device": {
     "name": "%name%",

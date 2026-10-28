@@ -14,7 +14,7 @@
       "description": "The light component's id: 0, or 1 for a Pro Dimmer 2PM's second",
       "default": "0"
     },
-    "name": {"label": "Name", "default": "Shelly dimmer"}
+    "name": {"label": "Name", "default": "%prefix% %channel%"}
   },
   "device": {
     "name": "%name%",

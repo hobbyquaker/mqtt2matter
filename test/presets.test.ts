@@ -2,7 +2,7 @@ import {describe, expect, it} from 'vitest';
 
 import {parseConfig} from '../src/config/load.ts';
 import {checkConfig} from '../src/matter/check.ts';
-import {PresetError, applyPreset, parsePreset, placeholdersOf} from '../src/model/presets.ts';
+import {PresetError, applyPreset, parsePreset, placeholdersOf, presetValues} from '../src/model/presets.ts';
 import {validateDevice} from '../src/model/validate.ts';
 import {loadPresets} from '../src/server/presets.ts';
 import {deviceKeyOf, presetCases} from './helpers/preset-fixtures.ts';
@@ -66,6 +66,54 @@ describe('presets', () => {
         ).toBe('cmnd/t/POWER2');
     });
 
+    it('resolves a default that references other variables', () => {
+        const preset = parsePreset({
+            ...relay,
+            variables: {
+                ...relay.variables,
+                name: {label: 'Name', default: '%topic% %index%'},
+                room: {label: 'Room', default: 'Office'},
+                label: {label: 'Label', default: ' %room% / %name% '},
+            },
+        });
+        // no name given: from the topic, the empty index trimmed away
+        expect(presetValues(preset, {topic: 'plug-1'})).toEqual({
+            topic: 'plug-1',
+            name: 'plug-1',
+            index: '',
+            room: 'Office',
+            label: 'Office / plug-1',
+        });
+        expect(presetValues(preset, {topic: 'plug-1', index: '2'}).name).toBe('plug-1 2');
+        // a given name wins, and a reference to it sees the given one
+        expect(presetValues(preset, {topic: 'plug-1', name: 'Desk'})).toMatchObject({
+            name: 'Desk',
+            label: 'Office / Desk',
+        });
+        expect(applyPreset(preset, {topic: 'plug-1'}).name).toBe('plug-1');
+        // the referenced variable has no value and no default: missing, as when it is used directly
+        expect(() => presetValues(preset, {})).toThrow(/missing values for topic/);
+    });
+
+    it('refuses a default that references an undeclared variable or a cycle', () => {
+        expect(() =>
+            parsePreset({...relay, variables: {...relay.variables, name: {label: 'Name', default: '%room%'}}}),
+        ).toThrow(/the default of name references undeclared variables: room/);
+        expect(() =>
+            parsePreset({
+                ...relay,
+                variables: {
+                    ...relay.variables,
+                    name: {label: 'Name', default: '%label%'},
+                    label: {label: 'Label', default: 'x %name%'},
+                },
+            }),
+        ).toThrow(/cycle: name → label → name/);
+        expect(() =>
+            parsePreset({...relay, variables: {...relay.variables, name: {label: 'Name', default: '%name%'}}}),
+        ).toThrow(/cycle: name → name/);
+    });
+
     it('reports missing values and an invalid result', () => {
         expect(() => applyPreset(parsePreset(relay), {})).toThrow(/missing values for topic/);
         expect(() => applyPreset(parsePreset({...relay, device: {...relay.device, name: ''}}), {topic: 't'})).toThrow(
@@ -93,5 +141,30 @@ describe('the shipped presets', () => {
         const result = await checkConfig(parseConfig({log: {matter: 'error'}, devices}));
         expect(Object.fromEntries(result.devices)).toEqual({});
         expect(result.ok).toBe(true);
+    });
+
+    it('each gives a device applied without a name a name that identifies it, not a generic word', async () => {
+        const library = await loadPresets([]);
+        const cases = presetCases();
+        for (const {preset} of library.presets) {
+            const values = Object.fromEntries(
+                Object.entries(cases.get(preset.id)!.values).filter(([v]) => v !== 'name'),
+            );
+            const device = applyPreset(preset, values);
+            // the name is made of what the user typed: the identifying variable (and the channel) is in it
+            const identifying = Object.entries(values).filter(
+                ([variable]) => !['max', 'divisor', 'sensor'].includes(variable),
+            );
+            expect(identifying.length, preset.id).toBeGreaterThan(0);
+            expect(
+                identifying.some(([, value]) => value !== '' && device.name.includes(value)),
+                `${preset.id}: "${device.name}" from ${JSON.stringify(values)}`,
+            ).toBe(true);
+            expect(device.name, preset.id).not.toMatch(
+                /^(Switch|Light|Dimmer|Relay|Cover|Shutter|Contact|Occupancy|Temperature|Humidity|Climate|Button|Vacuum|WLED|Shelly.*)$/,
+            );
+            expect(device.name, preset.id).toBe(device.name.trim());
+            expect(validateDevice(device).issues, preset.id).toEqual([]);
+        }
     });
 });

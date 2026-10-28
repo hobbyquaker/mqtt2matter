@@ -8,6 +8,15 @@
   device has (`switch`, `switch-2`, `switch-3`, …), a taken key is named and refused in the preset dialog, the
   create dialog and the duplicate prompt, and the UI creates through the new `POST /api/devices` (`{key, device}`,
   `409` when the key exists), which can never replace a device; `PUT` stays for edits.
+- **Presets name the device after what identifies it** instead of a generic "Switch", "Relay" or "Light": the
+  mqtt-smarthome item (`kitchen/light`), the Tasmota topic, the Shelly device id or MQTT prefix, the WLED topic,
+  the OpenBeken client, the Valetudo identifier — with the channel or relay index where the preset is one channel
+  of a device (`shellyplus2pm-… 1`, `plug-1 2`, `obk-th temperature`). In the dialog the name follows those
+  fields while you type, until you edit it yourself; a cleared name follows again.
+  - **Preset format**: a variable's `default` may reference other variables (`"default": "%topic% %index%"`);
+    where no value is given, the references are resolved from the other values and the result trimmed. A
+    reference to an undeclared variable or a cycle is a preset problem. An addition: every preset that was valid
+    stays valid and yields the same device.
 
 ## 0.3.0
 

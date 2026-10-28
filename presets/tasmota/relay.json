@@ -12,7 +12,7 @@
       "default": "",
       "optional": true
     },
-    "name": {"label": "Name", "default": "Relay"}
+    "name": {"label": "Name", "default": "%topic% %index%"}
   },
   "device": {
     "name": "%name%",

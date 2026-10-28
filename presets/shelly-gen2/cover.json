@@ -14,7 +14,7 @@
       "description": "The cover component's id: 0, or 1 for a Pro Dual Cover's second",
       "default": "0"
     },
-    "name": {"label": "Name", "default": "Shelly cover"}
+    "name": {"label": "Name", "default": "%prefix% %channel%"}
   },
   "device": {
     "name": "%name%",
