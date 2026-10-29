@@ -71,11 +71,21 @@ function snapshot(key: string): Snapshot {
 }
 
 async function goTo(key: string, percent100ths: number): Promise<void> {
-    // the family's own write of the last report may still hold the state lock
-    await sleep(50);
-    await device(key).endpoint.act((agent) =>
-        commands(agent.get(WindowCoveringServer)).goToLiftPercentage!({liftPercent100thsValue: percent100ths}),
-    );
+    // the family's own write of the last report may still hold the state lock, and the command takes it
+    // synchronously: try again until it is free (a controller's command waits for it instead)
+    for (let attempt = 0; ; attempt++) {
+        try {
+            await device(key).endpoint.act((agent) =>
+                commands(agent.get(WindowCoveringServer)).goToLiftPercentage!({liftPercent100thsValue: percent100ths}),
+            );
+            return;
+        } catch (error) {
+            if (attempt >= 40 || (error as {id?: string}).id !== 'synchronous-transaction-conflict') {
+                throw error;
+            }
+            await sleep(25);
+        }
+    }
 }
 
 async function expectPublished(topic: string, payload: string): Promise<void> {
