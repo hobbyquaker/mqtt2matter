@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.2
 
 - **A device key or endpoint id with a `.` is refused** with a validation error that names it and says why:
   matter.js uses `.` as the separator of its endpoint id paths and refused such a device when the bridge built
