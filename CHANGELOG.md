@@ -37,6 +37,10 @@
     key order differed from the importer's); now only the devices whose content changed.
 - **Fixed: the device editor's sections overlapped** when a device was taller than the page (several child
   endpoints): the page shrank them instead of scrolling. It scrolls now.
+- **Fixed: a fan's percent set from a controller failed when its command half has a template** — only 0 and 100
+  reached the device through the mode. The template of a written attribute now sees the family's fields, as the
+  documentation says: `percent`, `mode` and `speed` for a fan. Zigbee2MQTT fans with numbered speeds (IKEA
+  STARKVIND) take any percent again; their template needed `percent`, which was undefined on this path.
 
 ## 0.3.1
 

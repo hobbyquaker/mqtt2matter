@@ -10,7 +10,7 @@ import type {Decoded} from '../engine/payload.ts';
 import type {Options} from '../model/options.ts';
 import {climateDefaults, climateFeatures, ThermostatServer} from './climate.ts';
 import {coverStatus, WindowCoveringServer} from './cover.ts';
-import {FanControlServer, fanStatus, fanWrite} from './fan.ts';
+import {FanControlServer, fanStatus, fanWrite, fanWriteFields} from './fan.ts';
 import {ColorControlServer, colorStatusPatch, LevelControlServer} from './light.ts';
 import {DoorLockServer} from './lock.ts';
 import {OnOffServer} from './on-off.ts';
@@ -34,6 +34,8 @@ export interface Family {
     ) => Promise<Record<string, unknown> | boolean>;
     /** a controller wrote a writable attribute (already applied) */
     write?: (context: FamilyContext, attribute: string, value: unknown) => Promise<void>;
+    /** the template fields of a written attribute's command half (the fan's `percent`, `mode`, `speed`) */
+    writeFields?: (context: FamilyContext, attribute: string, value: unknown) => Record<string, unknown>;
     /** writable attributes the family watches even without a mapping (the fan derives one from the other) */
     writes?: readonly string[];
     /** the event channel of the cluster */
@@ -140,6 +142,7 @@ export const FAMILIES: readonly Family[] = [
         }),
         status: fanStatus,
         write: fanWrite,
+        writeFields: fanWriteFields,
         writes: ['fanMode', 'percentSetting', 'speedSetting'],
     },
     {

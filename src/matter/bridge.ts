@@ -223,7 +223,7 @@ export class EndpointHandle implements EndpointTarget {
             if (context?.offline === true) {
                 return;
             }
-            const fields: Record<string, unknown> = {};
+            const fields: Record<string, unknown> = {...family?.writeFields?.(this.context, attribute, value)};
             const shape = this.shapeOf({cluster, attribute, behaviorId});
             if (typeof value === 'number' && shape?.enumMembers !== undefined) {
                 for (const [name, id] of shape.enumMembers) {

@@ -312,4 +312,25 @@ describe('a fan with numbered speeds', () => {
         }
         expect(logLines.filter((l) => l.includes('starkvind'))).toEqual([]);
     });
+
+    it("a controller's percent write publishes the speed step its template computes", async () => {
+        const fan = device(FAN);
+        const events = (
+            fan.endpoint.events as unknown as Record<
+                string,
+                Record<string, {emit(value: unknown, old: unknown, context: {offline: boolean}): void}>
+            >
+        ).fanControl!;
+        published.length = 0;
+        for (const [percent, step] of [
+            [40, '4'],
+            [100, '9'],
+            [0, 'off'],
+        ] as const) {
+            await fan.endpoint.set({fanControl: {percentSetting: percent}} as never);
+            events.percentSetting$Changed!.emit(percent, null, {offline: false});
+            await expectPublished('zigbee2mqtt/starkvind/set', JSON.stringify({fan_mode: step}));
+        }
+        expect(logLines.filter((l) => l.includes('starkvind') && l.includes('failed'))).toEqual([]);
+    });
 });

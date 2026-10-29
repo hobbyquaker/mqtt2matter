@@ -72,6 +72,24 @@ function speedPatch(context: FamilyContext, percent: number): Record<string, unk
     return {speedSetting: speed, speedCurrent: speed};
 }
 
+/** the fields a written attribute's command template sees, as on the family's own routes */
+export function fanWriteFields(context: FamilyContext, attribute: string, value: unknown): Record<string, unknown> {
+    if (typeof value !== 'number') {
+        return {};
+    }
+    if (attribute === 'percentSetting') {
+        return {percent: value};
+    }
+    if (attribute === 'fanMode') {
+        const percent = modeToPercent(context, value);
+        return percent === undefined ? {mode: value} : {percent, mode: value};
+    }
+    if (attribute === 'speedSetting' && context.options.fan.speedMax > 0) {
+        return {percent: Math.round((value / context.options.fan.speedMax) * 100), speed: value};
+    }
+    return {};
+}
+
 /** a controller wrote `fanMode` or `percentSetting` (already applied): keep the rest consistent, publish the rest */
 export async function fanWrite(context: FamilyContext, attribute: string, value: unknown): Promise<void> {
     if (attribute === 'percentSetting' && typeof value === 'number') {
