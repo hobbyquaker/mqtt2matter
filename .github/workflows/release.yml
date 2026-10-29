@@ -31,6 +31,7 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - run: npm run test:ui
       # a version published by hand (the package's first one) is not published again
       - id: published
         run: |

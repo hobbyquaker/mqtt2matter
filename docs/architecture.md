@@ -118,4 +118,4 @@ colour logic, `lockDoor`).
   temporary directory, the zigbee2mqtt importer with the test corpus); `ui/test/e2e/` are the Playwright
   tests of the UI, against the same stack started by `ui/test/serve.ts` on an ephemeral port (the global
   setup starts it and hands the address to the tests). The UI's own unit tests (`ui/src/**/*.test.ts`, run
-  with `ui/vitest.config.ts`) check among other things that every string has both languages.
+  with `ui/vitest.config.ts`: `npm run test:ui`, in CI too) check among other things that every string has both languages.

@@ -161,6 +161,7 @@ has a built-in Matter controller and MQTT.
 npm run lint        # eslint + prettier
 npm run typecheck
 npm test            # vitest: unit tests, the strict dry run, and end-to-end tests with an in-process broker and matter.js node
+npm run test:ui     # vitest: the UI's unit tests (messages in both languages, model helpers, router, formatting)
 npm run test:e2e    # Playwright: the UI against the real stack on ephemeral ports (Chromium in CI, Firefox elsewhere; PW_BROWSER overrides)
 npm run dev:ui      # Vite with hot reload, the API proxied to a running mqtt2matter on 127.0.0.1:8282 (UI_API overrides)
 ```
