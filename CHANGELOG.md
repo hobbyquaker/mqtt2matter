@@ -35,6 +35,8 @@
     an adopted device's entry in the file about half again as large). Nothing to change in a file.
   - **Fixed along**: `POST /api/adopt/resync` rewrote and rebuilt every adopted device, changed or not (the file's
     key order differed from the importer's); now only the devices whose content changed.
+- **Fixed: the device editor's sections overlapped** when a device was taller than the page (several child
+  endpoints): the page shrank them instead of scrolling. It scrolls now.
 
 ## 0.3.1
 

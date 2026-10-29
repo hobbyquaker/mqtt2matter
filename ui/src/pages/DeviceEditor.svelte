@@ -681,6 +681,11 @@
         gap: 10px;
     }
 
+    /* a device taller than the page scrolls; without this its sections are shrunk and overlap */
+    .column > :global(*) {
+        flex-shrink: 0;
+    }
+
     .json {
         flex: 1 1 auto;
         min-height: 300px;

@@ -114,6 +114,18 @@ test('editing a device validates live and refuses an unsaved exit without asking
     await expect(editor.getByTestId('mapping-row')).toHaveCount(3);
 });
 
+test('the editor scrolls a device taller than the page instead of squeezing its sections', async ({page}) => {
+    await page.setViewportSize({width: 1280, height: 420});
+    await page.goto('/#/devices/living-room-lamp');
+    const editor = page.getByTestId('device-editor');
+    await expect(editor.getByTestId('mapping-row')).toHaveCount(3);
+    // the page's blocks (the device and availability pair, the endpoints) keep their content height
+    const squeezed = await editor
+        .locator('.ui-page-scroll > *')
+        .evaluateAll((blocks) => blocks.filter((b) => b.scrollHeight > b.clientHeight + 1).length);
+    expect(squeezed).toBe(0);
+});
+
 test('a copy of a device gets a free key, a taken key is refused', async ({page}) => {
     await page.goto('/#/devices');
     const keys = ['living-room-lamp-copy', 'living-room-lamp-copy-2'];
