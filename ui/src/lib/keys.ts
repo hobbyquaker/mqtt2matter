@@ -1,7 +1,7 @@
 /* Device keys: the pattern the server accepts (src/model/schema.ts DEVICE_KEY_PATTERN), a key suggested
    from a name, and a key that no existing device has. */
 
-export const DEVICE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:._-]{0,63}$/;
+export const DEVICE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:_-]{0,63}$/;
 
 const MAX_KEY = 64;
 

@@ -72,7 +72,7 @@ export function rawHash(raw: RawDevice): string {
 
 /** a device key the schema accepts: `ha:` plus the identity, cleaned; long ones are cut and hashed */
 export function deviceKey(identity: string): string {
-    const cleaned = identity.replace(/[^A-Za-z0-9:._-]/g, '_');
+    const cleaned = identity.replace(/[^A-Za-z0-9:_-]/g, '_');
     const key = `ha:${cleaned}`;
     if (key.length <= MAX_KEY) {
         return key;
@@ -83,7 +83,7 @@ export function deviceKey(identity: string): string {
 
 /** an endpoint id the schema accepts */
 export function endpointId(name: string): string {
-    const cleaned = name.replace(/[^A-Za-z0-9:._-]/g, '_').slice(0, MAX_KEY);
+    const cleaned = name.replace(/[^A-Za-z0-9:_-]/g, '_').slice(0, MAX_KEY);
     return /^[A-Za-z0-9]/.test(cleaned) ? cleaned : `e${cleaned}`;
 }
 

@@ -9,8 +9,17 @@ import {z} from 'zod';
 
 import {OptionsSchema} from './options.ts';
 
-/** a device key: the stable Matter endpoint id, so Matter endpoint numbers stay stable across restarts */
-export const DEVICE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:._-]{0,63}$/;
+/**
+ * a device key: the stable Matter endpoint id, so Matter endpoint numbers stay stable across restarts. No `.`:
+ * matter.js uses it as the separator of its endpoint id paths and refuses an endpoint id that contains one.
+ */
+export const DEVICE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:_-]{0,63}$/;
+
+/** why a key or endpoint id was refused */
+export const DEVICE_KEY_MESSAGE =
+    'a device key is 1–64 characters of A–Z a–z 0–9 : _ - and starts with a letter or digit; no "." (matter.js uses it as its path separator)';
+export const ENDPOINT_ID_MESSAGE =
+    'an endpoint id is 1–64 characters of A–Z a–z 0–9 : _ - and starts with a letter or digit; no "." (matter.js uses it as its path separator)';
 
 /** `Cluster.attribute` in matter.js' names, e.g. `OnOff.onOff`, `LevelControl.currentLevel` */
 export const ATTRIBUTE_PATTERN = /^[A-Z][A-Za-z0-9]*\.[a-z][A-Za-z0-9]*$/;
@@ -207,7 +216,7 @@ export function mappingTarget(mapping: Mapping): {kind: 'attribute' | 'invoke' |
 export const EndpointSchema = z
     .object({
         /** the endpoint's id within the device; `main` is the bridged node itself, others are children */
-        id: z.string().regex(DEVICE_KEY_PATTERN).default('main'),
+        id: z.string().regex(DEVICE_KEY_PATTERN, ENDPOINT_ID_MESSAGE).default('main'),
         /** matter.js device type names, e.g. `OnOffPlugInUnit`, `DimmableLight`; the first is the endpoint's type */
         deviceTypes: z.array(z.string().min(1)).min(1),
         /** cluster features to enable on top of the device types' defaults, e.g. `{PowerSource: ['Battery']}` */
@@ -288,9 +297,9 @@ export type EndpointInput = z.input<typeof EndpointSchema>;
 export type MappingInput = z.input<typeof MappingSchema>;
 export type SourceInput = z.input<typeof SourceSchema>;
 
-export const DevicesSchema = z.record(
-    z.string().regex(DEVICE_KEY_PATTERN, 'a device key is 1–64 characters of A–Z a–z 0–9 : . _ -'),
-    DeviceSchema,
-);
+export const DevicesSchema = z.record(z.string().regex(DEVICE_KEY_PATTERN, DEVICE_KEY_MESSAGE), DeviceSchema, {
+    // zod reports a refused record key as "Invalid key in record"; say which rule it broke
+    error: (issue) => (issue.code === 'invalid_key' ? DEVICE_KEY_MESSAGE : undefined),
+});
 export type Devices = z.infer<typeof DevicesSchema>;
 export type DevicesInput = z.input<typeof DevicesSchema>;

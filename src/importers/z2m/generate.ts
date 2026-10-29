@@ -91,7 +91,7 @@ const label = (text: string | undefined): string | undefined =>
 
 /** an endpoint id the schema accepts */
 export function endpointId(name: string): string {
-    const cleaned = name.replace(/[^A-Za-z0-9:._-]/g, '_');
+    const cleaned = name.replace(/[^A-Za-z0-9:_-]/g, '_');
     return /^[A-Za-z0-9]/.test(cleaned) ? cleaned : `e${cleaned}`;
 }
 

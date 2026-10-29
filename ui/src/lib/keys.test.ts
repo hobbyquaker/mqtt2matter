@@ -8,6 +8,8 @@ describe('device keys', () => {
         expect(keyFromName('  Küche / Licht 2 ')).toBe('k-che-licht-2');
         expect(keyFromName('x'.repeat(80))).toHaveLength(64);
         expect(keyFromName('---')).toBe('');
+        expect(keyFromName('tasmota.relay 1')).toBe('tasmota-relay-1');
+        expect(DEVICE_KEY_PATTERN.test('tasmota.relay')).toBe(false);
         expect(DEVICE_KEY_PATTERN.test(keyFromName('Desk relay'))).toBe(true);
     });
 

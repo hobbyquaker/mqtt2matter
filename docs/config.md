@@ -121,8 +121,11 @@ there for a new one.
 }
 ```
 
-The **device key** (`living-room-lamp`) is the Matter endpoint id: 1–64 characters of `A–Z a–z 0–9 : . _ -`.
-It keeps the device's endpoint number stable; rename through `name`, never through the key.
+The **device key** (`living-room-lamp`) is the Matter endpoint id: 1–64 characters of `A–Z a–z 0–9 : _ -`,
+starting with a letter or digit. **No `.`**: matter.js uses it as the separator of its endpoint id paths and
+refuses an endpoint id that contains one, so a file with such a key (or endpoint `id`) fails to load with a
+validation error that names it. It keeps the device's endpoint number stable; rename through `name`, never
+through the key.
 
 | Key                         | Default              | Meaning                                                                                                                                                      |
 | --------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -157,7 +160,7 @@ device is unreachable when availability says so or any expired topic has not rep
 
 | Key           | Default  | Meaning                                                                                              |
 | ------------- | -------- | ---------------------------------------------------------------------------------------------------- |
-| `id`          | `main`   | the endpoint within the device; unique per device                                                    |
+| `id`          | `main`   | the endpoint within the device; unique per device; the device key's characters (no `.`)              |
 | `deviceTypes` | required | matter.js device type names; the first is the endpoint's type, the others are added (`PowerSource`)  |
 | `features`    | —        | cluster features on top of what the device types require, e.g. `{"PowerSource": ["Battery"]}`        |
 | `attributes`  | —        | fixed attribute values and defaults, e.g. `{"PowerSource": {"description": "2×AA"}}`                 |

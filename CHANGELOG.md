@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **A device key or endpoint id with a `.` is refused** with a validation error that names it and says why:
+  matter.js uses `.` as the separator of its endpoint id paths and refused such a device when the bridge built
+  it. The configuration schema, `POST /api/devices` and `PUT /api/devices/:key`, the UI's key fields and the
+  importers agree now: the Home Assistant importer turns a `.` in a device identifier or entity id into `_`, the
+  Zigbee2MQTT importer one in an endpoint name. A configuration file with such a key no longer loads — such a
+  device never worked, so nothing that ran is lost; rename its key (`a.b` → `a-b`).
+
 ## 0.3.1
 
 - **Fixed: creating a device from a preset replaced the device created before.** The dialog derived the key from

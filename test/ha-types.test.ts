@@ -127,6 +127,9 @@ describe('topics', () => {
         expect(ha.deviceIdentity(undefined)).toBeUndefined();
         expect(ha.deviceKey('wasser/zähler status')).toBe('ha:wasser_z_hler_status');
         expect(ha.deviceKey('x'.repeat(100))).toMatch(/^ha:x{52}-[0-9a-f]{8}$/);
+        // matter.js refuses a "." in an endpoint id, so the schema does too
+        expect(ha.deviceKey('shelly1.local')).toBe('ha:shelly1_local');
+        expect(ha.endpointId('sensor.temperature')).toBe('sensor_temperature');
     });
 });
 

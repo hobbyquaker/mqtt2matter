@@ -831,6 +831,7 @@ describe('hand-written descriptions', () => {
         expect(d.endpoints[0]!.id).toBeUndefined();
         expect(z2m.endpointId('left side')).toBe('left_side');
         expect(z2m.endpointId('_x')).toBe('e_x');
+        expect(z2m.endpointId('l.1')).toBe('l_1');
     });
 });
 

@@ -314,6 +314,10 @@ describe('the web server', () => {
         expect((await api('GET', '/api/devices/plug-2')).json.device.name).toBe('Second plug');
         expect((await api('POST', '/api/devices', {device})).status).toBe(400);
         expect((await api('POST', '/api/devices', {key: 'bad key', device})).status).toBe(400);
+        const dotted = await api('POST', '/api/devices', {key: 'plug.3', device});
+        expect(dotted.status).toBe(400);
+        expect(JSON.stringify(dotted.json)).toMatch(/plug\.3: .*no \\"\.\\"/);
+        expect((await api('PUT', '/api/devices/plug.3', device)).status).toBe(400);
         expect((await api('DELETE', '/api/devices/plug-2')).status).toBe(204);
     });
 

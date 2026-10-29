@@ -257,7 +257,7 @@
             <div class="ui-form-help" class:ui-error-text={keyTaken} data-testid="new-key-help">
                 {keyTaken
                     ? t('A device with this key exists already.')
-                    : t('The key is the Matter endpoint id: stable, never renamed. Letters, digits, : . _ -')}
+                    : t('The key is the Matter endpoint id: stable, never renamed. Letters, digits, : _ - (no dot)')}
             </div>
             <label class="ui-form-label" for="type-filter">{t('Device type')}</label>
             <div class="ui-form-field"><input id="type-filter" class="ui-input" placeholder={t('Filter')} bind:value={typeFilter} /></div>

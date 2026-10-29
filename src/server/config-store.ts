@@ -9,7 +9,7 @@ import {dirname} from 'node:path';
 import {z} from 'zod';
 
 import {ConfigSchema, type Config} from '../config/schema.ts';
-import {DEVICE_KEY_PATTERN, DeviceSchema, type DeviceConfig} from '../model/schema.ts';
+import {DEVICE_KEY_MESSAGE, DEVICE_KEY_PATTERN, DeviceSchema, type DeviceConfig} from '../model/schema.ts';
 import {HttpError} from './http.ts';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -89,7 +89,7 @@ export class ConfigStore {
 
     static checkKey(key: string): void {
         if (!DEVICE_KEY_PATTERN.test(key)) {
-            throw new HttpError(400, 'a device key is 1–64 characters of A–Z a–z 0–9 : . _ -');
+            throw new HttpError(400, `${key}: ${DEVICE_KEY_MESSAGE}`);
         }
     }
 

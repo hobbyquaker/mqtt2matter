@@ -6,9 +6,9 @@
 
 import {createHash} from 'node:crypto';
 
-/** the characters matter.js accepts in an endpoint id; anything else becomes `_` */
+/** the characters matter.js accepts in an endpoint id (not `.`, its path separator); anything else becomes `_` */
 export function sanitizeId(text: string): string {
-    return text.replace(/[^A-Za-z0-9:._-]/g, '_');
+    return text.replace(/[^A-Za-z0-9:_-]/g, '_');
 }
 
 export function deviceEndpointId(deviceKey: string): string {

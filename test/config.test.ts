@@ -71,6 +71,17 @@ describe('parseConfig', () => {
         expect(() => parseConfig({bridges: {}})).toThrow(/at least one bridge/);
     });
 
+    it('refuses a "." in a device key or an endpoint id: matter.js uses it as its path separator', () => {
+        expect(() => parseConfig({devices: {'tasmota.relay': plug}})).toThrow(
+            /no "\." \(matter\.js uses it as its path separator\).*devices\["tasmota\.relay"\]/s,
+        );
+        const child = {deviceTypes: ['OnOffPlugInUnit'], id: 'l.1', mappings: plug.endpoints[0]!.mappings};
+        expect(() => parseConfig({devices: {p: {...plug, endpoints: [plug.endpoints[0]!, child]}}})).toThrow(
+            /an endpoint id is .*no "\."/s,
+        );
+        expect(() => parseConfig({devices: {'tasmota-relay': plug}})).not.toThrow();
+    });
+
     it('lists every problem with its path', () => {
         try {
             parseConfig({mqtt: {url: ''}, storage: 7});

@@ -122,9 +122,9 @@ export const MESSAGES: Record<string, Message> = {
         'Delete {name}? Controllers lose the device, its rooms and automations.',
     ),
     '{name} deleted': m('{name} gelöscht', '{name} deleted'),
-    'The key is the Matter endpoint id: stable, never renamed. Letters, digits, : . _ -': m(
-        'Der Schlüssel ist die Matter-Endpunkt-Id: stabil, wird nie umbenannt. Buchstaben, Ziffern, : . _ -',
-        'The key is the Matter endpoint id: stable, never renamed. Letters, digits, : . _ -',
+    'The key is the Matter endpoint id: stable, never renamed. Letters, digits, : _ - (no dot)': m(
+        'Der Schlüssel ist die Matter-Endpunkt-Id: stabil, wird nie umbenannt. Buchstaben, Ziffern, : _ - (kein Punkt)',
+        'The key is the Matter endpoint id: stable, never renamed. Letters, digits, : _ - (no dot)',
     ),
     'The device type brings its mandatory clusters; their mappings are filled in the editor.': m(
         'Der Gerätetyp bringt seine Pflicht-Cluster mit; ihre Zuordnungen werden im Editor ausgefüllt.',
