@@ -1,11 +1,13 @@
 # Importers
 
 An importer turns a foreign description into ordinary `devices` entries of the manual model
-([config.md](config.md)) with `source: {kind, key, version, raw}`, so the user can edit the result like any
-other device. The imported **baseline** and the user's **edits** are kept apart: on a re-sync the baseline is
-regenerated from the new description, the edits are reapplied, and an edit on a path the new baseline changed
-too is a **conflict** — reported, never silently resolved (the edit wins; the report says what the importer
-would have written). A device whose description disappears is marked **orphaned** (`source.orphaned: true`) and
+([config.md](config.md)) with `source: {kind, key, version, raw, baseline}`, so the user can edit the result like
+any other device. The imported **baseline** and the user's **edits** are kept apart: the baseline the device was
+adopted or last re-synced from is stored with it (`source.baseline`), the edits are the difference between it and
+the device. On a re-sync the baseline is generated anew — from the new description and with the current
+generator, so an improvement of the importer reaches adopted devices like a change of the description — the
+edits are reapplied, and an edit on a path the new baseline changed too is a **conflict** — reported, never
+silently resolved (the edit wins; the report says what the importer would have written). A device whose description disappears is marked **orphaned** (`source.orphaned: true`) and
 never removed by the importer; removal is the user's click.
 
 Importers depend on `model/` and `mqtt/` only ([architecture.md](architecture.md)); the runtime does not know
@@ -32,6 +34,13 @@ subtrees, deletes of removed ones. `applyOps(edits, oldBaseline, newBaseline)` r
 
 `resync(oldBaseline, current, newBaseline)` does the whole round and returns the device, the edits and the
 conflicts; endpoints and mappings keep the new baseline's order, the user's additions follow.
+
+The old baseline is `source.baseline`: the generated device without its own `source`, stored when the device is
+adopted and replaced by the new baseline on every re-sync (also when nothing changed). A device stored without
+one — adopted by a version before 0.3.2 — has its old baseline regenerated from `source.raw` with the current
+generator instead; what an older generator produced differently then cannot be told from an edit (it counts as
+one and is kept), and the device gets `source.baseline` at its next re-sync. Such a device takes a generator
+improvement made before that only when it is re-adopted (removed and adopted again) or edited by hand.
 
 ## Zigbee2MQTT (`src/importers/z2m/`)
 
@@ -87,8 +96,9 @@ of the common controllers is known to offer them for a bridged device.
 ```
 
 `raw` is the description trimmed to what regenerates the baseline (a group's `raw` carries the computed
-union instead of the members' descriptions); `version` is `<generator version>.<hash of raw>`. A device
-without a usable `raw` is kept as it is on a re-sync and only its `source` refreshed.
+union instead of the members' descriptions); `version` is `<generator version>.<hash of raw>`; `baseline` is
+the device as generated then (see above, left out of the example). A device without a usable `raw` and without a
+`baseline` is kept as it is on a re-sync and only its `source` refreshed.
 
 ### The API (`src/importers/z2m/sync.ts`, `source.ts`)
 
@@ -107,7 +117,7 @@ const {devices, report} = z2m.adopt(config.devices, discovery, {keys?, resync?, 
 //   covered?: the key that covers a `covered` entry; twins?: configured devices for the same physical device
 // adopt(devices, discovery, {keys?, resync?, orphan?, force?, replace?}) — `force` takes the covered ones in `keys`
 z2m.orphaned(devices);                                      // the keys marked orphaned
-z2m.edits(device);                                          // the user's edits against the baseline
+z2m.edits(device);                                          // the user's edits against the stored baseline
 z2m.generate(raw);                                          // the baseline for a stored `source.raw`
 ```
 
@@ -223,7 +233,8 @@ with an `entity_category` or `enabled_by_default: false` are not offered.
 ```
 
 `raw` holds the expanded configs trimmed of what the generator does not read (`icon`, `entity_picture`,
-`json_attributes_*`, `configuration_url`, …), in a stable order; `version` is `<generator version>.<hash of raw>`.
+`json_attributes_*`, `configuration_url`, …), in a stable order; `version` is `<generator version>.<hash of raw>`; `baseline` is the device as generated when
+it was adopted or last re-synced (as for zigbee2mqtt, left out of the example).
 `classes` (optional) holds the classes the user chose for binary sensors announced without one, by entity id
 (`{"MotionSensor": "motion"}`).
 

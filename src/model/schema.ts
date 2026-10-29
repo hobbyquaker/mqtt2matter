@@ -238,6 +238,9 @@ export const SourceSchema = z
         key: z.string().optional(),
         version: z.string().optional(),
         raw: z.unknown().optional(),
+        /** the baseline the importer generated when the device was adopted or last re-synced (a device without
+            its `source`): what tells the user's edits from the importer's output on the next re-sync */
+        baseline: z.unknown().optional(),
         /** the discovered description disappeared; the device stays until removed by hand */
         orphaned: z.boolean().optional(),
     })

@@ -18,6 +18,23 @@
   ("Apply"). Such entries are shown without "show unsupported".
   - **API**: `GET /api/adopt` entries carry `unclassed: [{id, name, class?}]`; `POST /api/adopt/:kind/:key`
     takes `classes: {<entity id>: <class> | null}` (Home Assistant only, `400` for an unknown entity or class).
+- **Fixed: an improvement of an importer never reached the devices adopted before it.** The re-sync regenerated
+  the device's old baseline from its stored description with the _current_ importer, so when only the importer
+  had changed (not the zigbee2mqtt or Home Assistant description), old and new baseline were the same: the device
+  stayed `unchanged` on the Adopt page, offered no "Update", and what the older importer had generated differently
+  counted as your edits (a fan adopted before 0.2.0 never got its auto mode, and showed edits nobody made). Now the
+  baseline a device was adopted or last updated from is stored with it (`source.baseline`) and compared with the
+  one generated now: an importer improvement shows the device as `updated`, "Update" applies it and keeps your
+  real edits, an edit on a part the importer changed too is reported as a conflict as before, and the edit count
+  counts only your edits. Both importers.
+  - **Devices adopted before 0.3.2** have no stored baseline yet: they are judged as before, and get one at their
+    next update or re-sync ("Re-sync" on the Adopt page stores it for every adopted device at once). An importer fix from
+    before that cannot be detected for them — its difference still counts as an edit; re-adopt such a device or
+    make the change by hand.
+  - **Configuration**: `source.baseline` is an addition (the device as generated, without its `source`; it makes
+    an adopted device's entry in the file about half again as large). Nothing to change in a file.
+  - **Fixed along**: `POST /api/adopt/resync` rewrote and rebuilt every adopted device, changed or not (the file's
+    key order differed from the importer's); now only the devices whose content changed.
 
 ## 0.3.1
 

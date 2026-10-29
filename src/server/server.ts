@@ -28,6 +28,7 @@ import {Auth, hashPassword} from './auth.ts';
 import {HttpError, type Request, Router, sendJson, serveStatic} from './http.ts';
 import {Updater} from './update.ts';
 import {BINARY_SENSOR_CLASSES} from '../importers/ha/generate.ts';
+import {deepEqual} from '../importers/patch.ts';
 import type {Importer, SyncEntry} from './importers.ts';
 import type {LogBuffer} from './log-buffer.ts';
 import {loadPresets} from './presets.ts';
@@ -115,6 +116,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** what answers without a login: the login itself, and what the UI needs to show it */
 const PUBLIC_PATHS: ReadonlySet<string> = new Set(['/api/auth', '/api/auth/login', '/api/auth/logout']);
+
+/** a value as it would be written: undefined members dropped */
+function asJson(value: unknown): unknown {
+    return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+}
 
 function body(request: Request): Record<string, unknown> {
     return isRecord(request.body) ? request.body : {};
@@ -627,7 +633,9 @@ export class Server {
             if (only !== undefined && !only.has(key)) {
                 continue;
             }
-            if (JSON.stringify(before[key]) === JSON.stringify(device)) {
+            // the file's key order is the schema's, the importer's is its own: compare the content, or every
+            // re-sync would rewrite and rebuild every adopted device
+            if (deepEqual(asJson(before[key]), asJson(device))) {
                 continue;
             }
             await this.saveDevice(key, device);

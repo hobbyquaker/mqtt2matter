@@ -204,6 +204,67 @@ describe('re-sync', () => {
     });
 });
 
+/** the relay as an older generator would have adopted it (no area tag; stored or not), edited by the user */
+function relayByOlderGenerator(device: DeviceInput, edit: (device: DeviceInput) => void, stored = true): DeviceInput {
+    const {baseline, ...source} = structuredClone(device.source!);
+    const old = structuredClone(baseline) as DeviceInput;
+    delete old.endpoints[0]!.features;
+    delete old.endpoints[0]!.attributes;
+    const result: DeviceInput = {...structuredClone(old), source: stored ? {...source, baseline: old} : source};
+    edit(result);
+    return result;
+}
+
+describe('stored baseline', () => {
+    it('a generator change shows as updated; the update applies it and keeps the real edit', () => {
+        const {source, devices} = adoptedCorpus();
+        const {source: stored, ...generated} = devices[RELAY]!;
+        expect(stored!.baseline).toEqual(generated);
+        devices[RELAY] = relayByOlderGenerator(devices[RELAY]!, (d) => {
+            d.name = 'Garden lights';
+        });
+        expect(ha.edits(devices[RELAY])).toEqual([{op: 'set', path: ['name'], value: 'Garden lights'}]);
+        const {devices: synced, report} = ha.adopt(structuredClone(devices), source.discover());
+        expect(entry(report, RELAY)).toMatchObject({status: 'updated', edits: 1, conflicts: []});
+        const result = synced[RELAY]!;
+        expect(result.name).toBe('Garden lights');
+        expect(result.endpoints[0]!.attributes).toEqual(generated.endpoints[0]!.attributes);
+        expect(result.source!.baseline).toEqual(generated);
+        expect(ha.edits(result)).toHaveLength(1);
+    });
+
+    it('an edit on a part the generator changed is a conflict; the edit wins', () => {
+        const {source, devices} = adoptedCorpus();
+        devices[RELAY] = relayByOlderGenerator(devices[RELAY]!, (d) => {
+            d.endpoints[0]!.features = {Descriptor: ['TagList']};
+        });
+        const {devices: synced, report} = ha.adopt(structuredClone(devices), source.discover());
+        const e = entry(report, RELAY);
+        expect(e).toMatchObject({status: 'updated', edits: 1});
+        expect(e.conflicts).toEqual([
+            expect.objectContaining({path: 'endpoints.main.features', before: undefined, applied: true}),
+        ]);
+        expect(synced[RELAY]!.endpoints[0]!.attributes).toBeDefined();
+    });
+
+    it('a device without a stored baseline is judged as before, then gets it stored', () => {
+        const {source, devices} = adoptedCorpus();
+        const generated = structuredClone(devices[RELAY]!.source!.baseline);
+        devices[RELAY] = relayByOlderGenerator(
+            devices[RELAY]!,
+            (d) => {
+                d.name = 'Garden lights';
+            },
+            false,
+        );
+        expect(ha.edits(devices[RELAY])).toHaveLength(3);
+        const {devices: synced, report} = ha.adopt(structuredClone(devices), source.discover());
+        expect(entry(report, RELAY)).toMatchObject({status: 'unchanged', edits: 3});
+        expect(synced[RELAY]!.endpoints).toEqual(devices[RELAY].endpoints);
+        expect(synced[RELAY]!.source!.baseline).toEqual(generated);
+    });
+});
+
 describe('binary sensors without a class', () => {
     const CAMERA = 'ha:cam00001';
     const motion = {[CAMERA]: {MotionSensor: 'motion'}};

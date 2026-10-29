@@ -94,6 +94,7 @@ export interface Source {
     key?: string;
     version?: string;
     raw?: unknown;
+    baseline?: unknown;
     orphaned?: boolean;
 }
 

@@ -127,15 +127,15 @@ refuses an endpoint id that contains one, so a file with such a key (or endpoint
 validation error that names it. It keeps the device's endpoint number stable; rename through `name`, never
 through the key.
 
-| Key                         | Default              | Meaning                                                                                                                                                      |
-| --------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `name`                      | required             | the label controllers show (≤ 32)                                                                                                                            |
-| `vendor`, `model`, `serial` | —                    | `BridgedDeviceBasicInformation`; the serial defaults to the key                                                                                              |
-| `enabled`                   | `true`               | a disabled device is not built                                                                                                                               |
-| `bridge`                    | assigned             | the bridge id; default: assigned once and remembered in `shards.json`                                                                                        |
-| `source`                    | `{"kind": "manual"}` | where the device came from: `manual`, `z2m`, `ha-discovery`, `preset`; `key`, `version`, `raw`, `orphaned` are the importer's ([importers.md](importers.md)) |
-| `availability`              | —                    | one availability topic (short form) or `{topics: [...], mode}` → `reachable`, see below                                                                      |
-| `endpoints`                 | required             | at least one; the first is the bridged node, the others are its child endpoints (ids `<key>~<id>`)                                                           |
+| Key                         | Default              | Meaning                                                                                                                                                                  |
+| --------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `name`                      | required             | the label controllers show (≤ 32)                                                                                                                                        |
+| `vendor`, `model`, `serial` | —                    | `BridgedDeviceBasicInformation`; the serial defaults to the key                                                                                                          |
+| `enabled`                   | `true`               | a disabled device is not built                                                                                                                                           |
+| `bridge`                    | assigned             | the bridge id; default: assigned once and remembered in `shards.json`                                                                                                    |
+| `source`                    | `{"kind": "manual"}` | where the device came from: `manual`, `z2m`, `ha-discovery`, `preset`; `key`, `version`, `raw`, `baseline`, `orphaned` are the importer's ([importers.md](importers.md)) |
+| `availability`              | —                    | one availability topic (short form) or `{topics: [...], mode}` → `reachable`, see below                                                                                  |
+| `endpoints`                 | required             | at least one; the first is the bridged node, the others are its child endpoints (ids `<key>~<id>`)                                                                       |
 
 ### Availability
 

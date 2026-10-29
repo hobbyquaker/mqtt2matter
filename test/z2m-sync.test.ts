@@ -208,6 +208,118 @@ describe('re-sync', () => {
     });
 });
 
+/**
+ * The device as an older generator would have adopted it: its baseline `A` is today's baseline changed by
+ * `older`, stored in `source.baseline` (or, with `stored: false`, not stored — adopted before baselines were
+ * kept), and the device is `A` with the user's `edit` on top.
+ */
+function adoptedByOlderGenerator(
+    device: DeviceInput,
+    older: (baseline: DeviceInput) => void,
+    edit: (device: DeviceInput) => void,
+    stored = true,
+): DeviceInput {
+    const {baseline: today, ...source} = clone(device.source!);
+    const old = clone(today) as DeviceInput;
+    older(old);
+    const result: DeviceInput = {...clone(old), source: stored ? {...source, baseline: clone(old)} : source};
+    edit(result);
+    return result;
+}
+
+/** the light's older generator: another minimum colour temperature and no colour mode mapping */
+const olderLight = (baseline: DeviceInput): void => {
+    const main = baseline.endpoints[0]!;
+    main.options = {...main.options, light: {...main.options?.light, minMireds: 150}};
+    main.mappings = main.mappings!.filter((b) => !('attribute' in b && b.attribute === 'ColorControl.colorMode'));
+};
+const hasColorMode = (device: DeviceInput): boolean =>
+    device.endpoints[0]!.mappings!.some((b) => 'attribute' in b && b.attribute === 'ColorControl.colorMode');
+
+describe('stored baseline', () => {
+    it('adopting stores the generated baseline, without its own source, in source.baseline', () => {
+        const devices = adoptedCorpus();
+        const light = devices[LIGHT]!;
+        const {source, ...rest} = light;
+        expect(source!.baseline).toEqual(rest);
+        expect(z2m.edits(light)).toEqual([]);
+    });
+
+    it('a generator change shows as updated; the update applies it and keeps the real edit', () => {
+        const devices = adoptedCorpus();
+        devices[LIGHT] = adoptedByOlderGenerator(devices[LIGHT]!, olderLight, (d) => {
+            d.name = 'Kitchen ceiling';
+        });
+        expect(z2m.edits(devices[LIGHT])).toEqual([{op: 'set', path: ['name'], value: 'Kitchen ceiling'}]);
+        const discovery = z2m.discover({devices: corpusDevices(), groups: corpusGroups()});
+        const {devices: synced, report} = z2m.adopt(clone(devices), discovery);
+        expect(entry(report, LIGHT)).toMatchObject({status: 'updated', edits: 1, conflicts: []});
+        expect(statuses(report)).toEqual({updated: 1, unchanged: 37, unsupported: 7});
+        const result = synced[LIGHT]!;
+        expect(result.name).toBe('Kitchen ceiling');
+        expect(result.endpoints[0]!.options).toEqual({light: {minMireds: 158, maxMireds: 495}});
+        expect(hasColorMode(result)).toBe(true);
+        // from now on the stored baseline is today's: one edit, nothing left to update
+        expect(result.source!.baseline).toEqual(adoptedCorpus()[LIGHT]!.source!.baseline);
+        expect(z2m.edits(result)).toEqual([{op: 'set', path: ['name'], value: 'Kitchen ceiling'}]);
+        const again = z2m.adopt(clone(synced), discovery);
+        expect(entry(again.report, LIGHT)).toMatchObject({status: 'unchanged', edits: 1});
+        expect(again.devices[LIGHT]).toEqual(result);
+    });
+
+    it('an edit on a part the generator changed is a conflict; the edit wins', () => {
+        const devices = adoptedCorpus();
+        devices[LIGHT] = adoptedByOlderGenerator(devices[LIGHT]!, olderLight, (d) => {
+            const main = d.endpoints[0]!;
+            main.options = {...main.options, light: {...main.options?.light, minMireds: 160}};
+        });
+        const {devices: synced, report} = z2m.adopt(
+            clone(devices),
+            z2m.discover({devices: corpusDevices(), groups: corpusGroups()}),
+        );
+        expect(entry(report, LIGHT)).toMatchObject({status: 'updated', edits: 1});
+        expect(entry(report, LIGHT).conflicts).toEqual([
+            expect.objectContaining({
+                path: 'endpoints.main.options.light.minMireds',
+                user: 160,
+                before: 150,
+                now: 158,
+                applied: true,
+            }),
+        ]);
+        expect(synced[LIGHT]!.endpoints[0]!.options).toEqual({light: {minMireds: 160, maxMireds: 495}});
+        expect(hasColorMode(synced[LIGHT]!)).toBe(true);
+    });
+
+    it('a device without a stored baseline is judged against a regenerated one, then gets it stored', () => {
+        const devices = adoptedCorpus();
+        devices[LIGHT] = adoptedByOlderGenerator(
+            devices[LIGHT]!,
+            olderLight,
+            (d) => {
+                d.name = 'Kitchen ceiling';
+            },
+            false,
+        );
+        expect(devices[LIGHT].source!.baseline).toBeUndefined();
+        // the older generator's output cannot be told from an edit: three edits, nothing to update
+        expect(z2m.edits(devices[LIGHT])).toHaveLength(3);
+        const discovery = z2m.discover({devices: corpusDevices(), groups: corpusGroups()});
+        const {devices: synced, report} = z2m.adopt(clone(devices), discovery);
+        expect(entry(report, LIGHT)).toMatchObject({status: 'unchanged', edits: 3, conflicts: []});
+        const result = synced[LIGHT]!;
+        expect(withoutSource(result)).toEqual(withoutSource(devices[LIGHT]));
+        expect(result.source!.baseline).toEqual(adoptedCorpus()[LIGHT]!.source!.baseline);
+        expect(z2m.edits(result)).toHaveLength(3);
+    });
+});
+
+const withoutSource = (device: DeviceInput): DeviceInput => {
+    const copy = clone(device);
+    delete copy.source;
+    return copy;
+};
+
 describe('orphaning', () => {
     it('a device gone from bridge/devices is marked, never removed; back again it is restored', () => {
         const devices = adoptedCorpus();

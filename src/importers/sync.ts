@@ -1,11 +1,12 @@
 /* What every importer does with its discoveries, once: the report over a `devices` record (`diff`) and the
-   adoption (`adopt`) — new entries added, known ones re-synced from their stored `source.raw` with the
-   user's edits carried over and conflicts reported, missing ones marked orphaned and never removed,
+   adoption (`adopt`) — new entries added, known ones re-synced: the baseline they were adopted or last
+   re-synced from (`source.baseline`) against the one generated now, the user's edits carried over and
+   conflicts reported, missing ones marked orphaned and never removed,
    orphaned ones restored when they are back, manual devices untouched. An importer brings its kind, how
    to recognise and regenerate its `source.raw`, and its discovery; everything else is here. */
 
 import {type DeviceInput, type DevicesInput, DeviceSchema, type SourceInput} from '../model/index.ts';
-import {type Conflict, deepEqual, editsOf, resync} from './patch.ts';
+import {type Conflict, deepEqual, editsOf, isRecord, resync} from './patch.ts';
 import {isLive, twinsOf} from './twins.ts';
 
 export interface Generated {
@@ -130,6 +131,26 @@ function withoutSource(device: DeviceInput): Omit<DeviceInput, 'source'> {
     return rest as Omit<DeviceInput, 'source'>;
 }
 
+/** a stored `source.baseline` that looks like a device (its endpoints a list), else undefined */
+function storedBaseline(device: DeviceInput): DeviceInput | undefined {
+    const baseline: unknown = device.source?.baseline;
+    if (!isRecord(baseline) || !Array.isArray(baseline.endpoints)) {
+        return undefined;
+    }
+    return baseline as unknown as DeviceInput;
+}
+
+/** a generated baseline's `source` with the baseline itself stored in it (without its own `source`), so a later
+    re-sync tells the user's edits from what the generator produced then */
+function sourceWithBaseline(baseline: DeviceInput): SourceInput {
+    return {...structuredClone(baseline.source ?? {kind: 'manual'}), baseline: withoutSource(baseline)};
+}
+
+/** a new device as adopted: the generated baseline, with itself stored in its source */
+function adoptedDevice(baseline: DeviceInput): DeviceInput {
+    return {...structuredClone(baseline), source: sourceWithBaseline(baseline)};
+}
+
 function validationNotes(device: DeviceInput): string[] {
     const parsed = DeviceSchema.safeParse(device);
     return parsed.success ? [] : parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`);
@@ -174,8 +195,17 @@ export class Sync<Raw> {
             .map(([key]) => key);
     }
 
-    /** the old baseline from `source.raw`, or undefined when it cannot be regenerated */
+    /**
+     * The baseline the device was adopted or last re-synced from: `source.baseline` as stored then. A device
+     * stored without one (adopted before the baseline was kept) gets it regenerated from `source.raw` with
+     * today's generator — which cannot tell a change of the generator since from an edit of the user's.
+     * Undefined when there is neither.
+     */
     private oldBaselineOf(current: DeviceInput): DeviceInput | undefined {
+        const stored = storedBaseline(current);
+        if (stored !== undefined) {
+            return stored;
+        }
         const raw: unknown = current.source?.raw;
         return this.source.isRaw(raw) ? this.source.generate(raw)?.device : undefined;
     }
@@ -219,7 +249,7 @@ export class Sync<Raw> {
         }
         const result = resync(oldBaseline, current, newBaseline);
         const device = result.device;
-        device.source = structuredClone(newBaseline.source);
+        device.source = sourceWithBaseline(newBaseline);
         const notes = validationNotes(device);
         if (notes.length > 0) {
             const kept = structuredClone(current);
@@ -284,7 +314,7 @@ export class Sync<Raw> {
                 status: !item.supported ? 'unsupported' : covered === undefined ? 'new' : 'covered',
                 ...(item.supported && covered !== undefined ? {covered} : {}),
                 ...(twins.length > 0 ? {twins} : {}),
-                ...(item.baseline === undefined ? {} : {device: item.baseline}),
+                ...(item.baseline === undefined ? {} : {device: adoptedDevice(item.baseline)}),
                 conflicts: [],
                 edits: 0,
                 unmapped: item.unmapped,

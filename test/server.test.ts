@@ -481,6 +481,19 @@ describe('the web server', () => {
         expect(adopted.json.entry.status).toBe('new');
         expect((await api('GET', '/api/devices')).json.map((d: any) => d.key)).toContain(LIGHT);
         expect((await entryOf(LIGHT)).status).toBe('unchanged');
+        const baselineInFile = async (): Promise<unknown> =>
+            JSON.parse(await readFile(join(dir, 'mqtt2matter.json'), 'utf8')).devices[LIGHT].source.baseline;
+        const baseline = await baselineInFile();
+        expect(baseline).toMatchObject({name: 'Gledopto RGBCTT light I'});
+        // a device stored without its baseline (adopted by an older version) gets it on the next re-sync
+        const older = structuredClone(adopted.json.device);
+        delete older.source.baseline;
+        expect((await api('PUT', `/api/devices/${encodeURIComponent(LIGHT)}`, older)).status).toBe(200);
+        expect(await baselineInFile()).toBeUndefined();
+        expect((await api('POST', '/api/adopt/resync')).json.written).toEqual([LIGHT]);
+        expect(await baselineInFile()).toEqual(baseline);
+        // nothing changed since: nothing is written (nor rebuilt)
+        expect((await api('POST', '/api/adopt/resync')).json.written).toEqual([]);
         expect((await api('POST', `/api/adopt/z2m/${encodeURIComponent(unsupported.key)}`, {})).status).toBe(409);
         expect((await api('POST', '/api/adopt/z2m/nope', {})).status).toBe(404);
         expect((await api('POST', '/api/adopt/ha-discovery/x', {})).status).toBe(404);
