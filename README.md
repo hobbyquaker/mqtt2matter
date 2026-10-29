@@ -1,5 +1,7 @@
 # mqtt2matter
 
+[![mqtt-smarthome](https://img.shields.io/badge/mqtt-smarthome-blue.svg)](https://github.com/mqtt-smarthome/mqtt-smarthome)
+
 A generic MQTT → Matter bridge. Compose Matter devices by hand — device types, endpoints, clusters,
 attributes — and map them onto MQTT topics with configurable payloads: JSON paths, value maps, scaling,
 templates. Importers add devices with one click: Zigbee2MQTT natively (`bridge/devices`) and anything that
