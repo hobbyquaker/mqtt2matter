@@ -543,7 +543,7 @@ describe('the web server', () => {
             name: 'Fairy lights',
             area: 'Küche',
             unmapped: [
-                'binary_sensor "button": no device_class; a binary sensor without one has no Matter sensor type',
+                'binary_sensor "button": no device_class; a binary sensor without one has no Matter sensor type until one is chosen',
             ],
         });
         const adopted = await api('POST', `/api/adopt/ha-discovery/${encodeURIComponent(KEY)}`, {});
@@ -565,6 +565,47 @@ describe('the web server', () => {
         expect(resynced.json.written).toEqual([KEY]);
         expect((await api('GET', `/api/devices/${encodeURIComponent(KEY)}`)).json.device.source.orphaned).toBe(true);
         expect((await api('DELETE', `/api/devices/${encodeURIComponent(KEY)}`)).status).toBe(204);
+    }, 60_000);
+
+    it('adopts a Home Assistant device whose binary sensor has no class once a type is chosen', async () => {
+        const KEY = 'ha:cam00001';
+        const url = `/api/adopt/ha-discovery/${encodeURIComponent(KEY)}`;
+        const entryOf = async (key: string): Promise<any> =>
+            (await api('GET', '/api/adopt')).json.entries.find((e: any) => e.key === key);
+        const messages = corpusMessages('misc').filter((m) => m.topic.includes('/scrypted-65c22a2f-51/'));
+        expect(messages).toHaveLength(2);
+        for (const message of messages) {
+            await observer.publishAsync(message.topic, message.payload, {retain: true});
+        }
+        await waitFor(async () => (await entryOf(KEY))?.unclassed?.length === 2, 10_000, 'discovery');
+        expect(await entryOf(KEY)).toMatchObject({
+            status: 'unsupported',
+            unclassed: [
+                {id: 'MotionSensor', name: 'MotionSensor'},
+                {id: 'Online', name: 'Online'},
+            ],
+        });
+        // without a choice: refused; a bad class or an unknown entity: refused
+        expect((await api('POST', url, {})).status).toBe(409);
+        expect((await api('POST', url, {classes: {MotionSensor: 'tamper'}})).status).toBe(400);
+        expect((await api('POST', url, {classes: {Nope: 'motion'}})).status).toBe(400);
+        expect((await api('POST', '/api/adopt/z2m/z2m:0x1', {classes: {}})).status).toBe(400);
+
+        const adopted = await api('POST', url, {classes: {MotionSensor: 'motion'}});
+        expect(adopted.status).toBe(200);
+        expect(adopted.json.device.endpoints[0].deviceTypes).toEqual(['OccupancySensor']);
+        expect(adopted.json.device.source.raw.classes).toEqual({MotionSensor: 'motion'});
+        expect(adopted.json.built).toBe(true);
+        // the choice is kept: the entry is unchanged after a re-sync and still shows it
+        await api('POST', '/api/adopt/resync');
+        expect(await entryOf(KEY)).toMatchObject({
+            status: 'unchanged',
+            unclassed: [{id: 'MotionSensor', class: 'motion'}, {id: 'Online'}],
+        });
+        expect((await api('DELETE', `/api/devices/${encodeURIComponent(KEY)}`)).status).toBe(204);
+        for (const message of messages) {
+            await observer.publishAsync(message.topic, '', {retain: true});
+        }
     }, 60_000);
 
     it('never adopts one Zigbee device twice without being told: natively and through its HA discovery', async () => {

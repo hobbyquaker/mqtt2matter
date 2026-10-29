@@ -8,6 +8,16 @@
   importers agree now: the Home Assistant importer turns a `.` in a device identifier or entity id into `_`, the
   Zigbee2MQTT importer one in an endpoint name. A configuration file with such a key no longer loads — such a
   device never worked, so nothing that ran is lost; rename its key (`a.b` → `a-b`).
+- **A Home Assistant binary sensor announced without a `device_class` gets its sensor type chosen on the Adopt
+  page.** Some publishers (camera motion sensors from an NVR's MQTT plugin, for one) announce motion as a plain
+  on/off binary sensor; the importer listed it as unmapped and a device whose only function it was could not be
+  adopted. The details of such an entry now offer a type per sensor — motion / occupancy, contact, water leak,
+  frost, smoke, CO, battery low, battery charging — or "not mapped"; the entity is generated as if it had
+  announced that class, and the device becomes adoptable. Nothing is guessed from names. The choice is stored in
+  the device's `source.raw.classes` and kept across re-syncs; an adopted device can be given a type later
+  ("Apply"). Such entries are shown without "show unsupported".
+  - **API**: `GET /api/adopt` entries carry `unclassed: [{id, name, class?}]`; `POST /api/adopt/:kind/:key`
+    takes `classes: {<entity id>: <class> | null}` (Home Assistant only, `400` for an unknown entity or class).
 
 ## 0.3.1
 

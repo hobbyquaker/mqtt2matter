@@ -18,6 +18,41 @@
     let filter = $state('');
     let showUnsupported = $state(false);
     let detailsOf = $state<AdoptEntry | undefined>(undefined);
+    /** the sensor types chosen in the details dialog for its binary sensors without a class: entity id → class or '' */
+    let chosen = $state<Record<string, string>>({});
+
+    /** the classes a binary sensor without one can be given, one per Matter sensor type the importer generates */
+    const SENSOR_TYPES: {value: string; label: string}[] = $derived([
+        {value: 'motion', label: t('Motion / occupancy')},
+        {value: 'opening', label: t('Contact (door, window)')},
+        {value: 'moisture', label: t('Water leak')},
+        {value: 'cold', label: t('Frost')},
+        {value: 'smoke', label: t('Smoke alarm')},
+        {value: 'carbon_monoxide', label: t('CO alarm')},
+        {value: 'battery', label: t('Battery low')},
+        {value: 'battery_charging', label: t('Battery charging')},
+    ]);
+
+    function showDetails(entry: AdoptEntry): void {
+        chosen = Object.fromEntries((entry.unclassed ?? []).map((u) => [u.id, u.class ?? '']));
+        detailsOf = entry;
+    }
+
+    /** what the dialog's choice changes against the stored one: entity id → class, null clears; undefined when nothing */
+    function classChanges(entry: AdoptEntry): Record<string, string | null> | undefined {
+        const changes: Record<string, string | null> = {};
+        for (const u of entry.unclassed ?? []) {
+            const now = chosen[u.id] ?? '';
+            if (now !== (u.class ?? '')) {
+                changes[u.id] = now === '' ? null : now;
+            }
+        }
+        return Object.keys(changes).length === 0 ? undefined : changes;
+    }
+
+    /** an unsupported entry becomes adoptable once a binary sensor has a type */
+    const anyChosen = $derived(Object.values(chosen).some((c) => c !== ''));
+    const untyped = (entry: AdoptEntry): number => (entry.unclassed ?? []).filter((u) => u.class === undefined).length;
 
     const ORDER: Record<AdoptEntry['status'], number> = {
         new: 0,
@@ -32,10 +67,13 @@
 
     const shown = $derived.by(() => {
         const needle = filter.trim().toLowerCase();
-        return entries
-            .filter((e) => showUnsupported || e.status !== 'unsupported')
-            .filter((e) => needle === '' || `${e.name} ${e.key} ${e.area ?? ''} ${e.notes.join(' ')}`.toLowerCase().includes(needle))
-            .sort((a, b) => ORDER[a.status] - ORDER[b.status] || a.name.localeCompare(b.name));
+        return (
+            entries
+                // an unsupported entry that a sensor type would make adoptable is shown: it needs the user
+                .filter((e) => showUnsupported || e.status !== 'unsupported' || (e.unclassed ?? []).length > 0)
+                .filter((e) => needle === '' || `${e.name} ${e.key} ${e.area ?? ''} ${e.notes.join(' ')}`.toLowerCase().includes(needle))
+                .sort((a, b) => ORDER[a.status] - ORDER[b.status] || a.name.localeCompare(b.name))
+        );
     });
     const counts = $derived.by(() => {
         const c: Record<string, number> = {};
@@ -117,8 +155,8 @@
         return ok ? {force: true, replace: false} : undefined;
     }
 
-    async function adopt(entry: AdoptEntry): Promise<void> {
-        let options = {};
+    async function adopt(entry: AdoptEntry, classes?: Record<string, string | null>): Promise<void> {
+        let options: {force?: boolean; replace?: boolean; classes?: Record<string, string | null>} = {};
         if (entry.status === 'covered') {
             const confirmed = await confirmCovered(entry);
             if (confirmed === undefined) {
@@ -140,9 +178,16 @@
                 return;
             }
         }
+        if (classes !== undefined) {
+            options = {...options, classes};
+        }
         try {
             const detail = await api.adoptDevice(entry.importer, entry.key, options);
-            notices.info(t('{name} adopted as {key}', {name: entry.name, key: detail.key}));
+            notices.info(
+                entry.status === 'unchanged'
+                    ? t('Sensor types of {name} saved', {name: entry.name})
+                    : t('{name} adopted as {key}', {name: entry.name, key: detail.key}),
+            );
             detailsOf = undefined;
             await load();
         } catch (error) {
@@ -277,10 +322,13 @@
                                 {#if entry.unmapped.length > 0}<span class="ui-badge" title={entry.unmapped.join(', ')}
                                         >{t('{count} unmapped', {count: entry.unmapped.length})}</span
                                     >{/if}
+                                {#if untyped(entry) > 0}<span class="ui-badge ui-badge-warn" data-testid="untyped"
+                                        >{t('{count} without a type', {count: untyped(entry)})}</span
+                                    >{/if}
                                 <span class="ui-muted">{entry.notes.join('; ')}</span>
                             </td>
                             <td class="ui-actions">
-                                <button type="button" class="ui-icon-button" title={t('Details')} onclick={() => (detailsOf = entry)} data-testid="show-details"
+                                <button type="button" class="ui-icon-button" title={t('Details')} onclick={() => showDetails(entry)} data-testid="show-details"
                                     ><Icon name="info" /></button
                                 >
                                 {#if entry.status === 'new'}
@@ -302,6 +350,10 @@
                                     >
                                 {:else if entry.status === 'unchanged' || entry.status === 'invalid'}
                                     <button type="button" class="ui-button" onclick={() => router.go('devices', entry.key)}>{t('Open')}</button>
+                                {:else if entry.status === 'unsupported' && (entry.unclassed ?? []).length > 0}
+                                    <button type="button" class="ui-button" onclick={() => showDetails(entry)} data-testid="choose-types"
+                                        >{t('Choose types')}</button
+                                    >
                                 {/if}
                             </td>
                         </tr>
@@ -349,6 +401,27 @@
                 <dd>{detailsOf.edits}</dd>
             {/if}
         </dl>
+        {#if (detailsOf.unclassed ?? []).length > 0}
+            <h3>{t('Sensor types')}</h3>
+            <p class="ui-muted">
+                {t(
+                    'These binary sensors are announced without a device class, so their sensor type is not known. Choose one for each; the choice is kept when the device announces itself again.',
+                )}
+            </p>
+            <dl class="ui-kv">
+                {#each detailsOf.unclassed ?? [] as sensor (sensor.id)}
+                    <dt>{sensor.name}</dt>
+                    <dd>
+                        <select class="ui-input" bind:value={chosen[sensor.id]} data-testid="sensor-type" data-entity={sensor.id}>
+                            <option value="">{t('not mapped')}</option>
+                            {#each SENSOR_TYPES as type (type.value)}
+                                <option value={type.value}>{type.label}</option>
+                            {/each}
+                        </select>
+                    </dd>
+                {/each}
+            </dl>
+        {/if}
         {#if detailsOf.conflicts.length > 0}
             <h3>{t('Conflicts')}</h3>
             <p class="ui-muted">{t('Your edit and the new description changed the same value; your edit stays.')}</p>
@@ -368,15 +441,32 @@
         {#snippet buttons()}
             {#if detailsOf}
                 {@const entry = detailsOf}
+                {@const changes = classChanges(entry)}
                 <button type="button" class="ui-button" onclick={() => (detailsOf = undefined)}>{t('Close')}</button>
                 {#if entry.status === 'new' || entry.status === 'updated' || entry.status === 'restored'}
-                    <button type="button" class="ui-button ui-button-primary" onclick={() => adopt(entry)}>
+                    <button type="button" class="ui-button ui-button-primary" onclick={() => adopt(entry, changes)} data-testid="details-adopt">
                         {entry.status === 'new' ? t('Adopt') : t('Update')}
                     </button>
                 {:else if entry.status === 'covered'}
-                    <button type="button" class="ui-button" onclick={() => adopt(entry)}>
+                    <button type="button" class="ui-button" onclick={() => adopt(entry, changes)}>
                         {entry.native === undefined && (entry.twins ?? []).length > 0 ? t('Replace') : t('Adopt anyway')}
                     </button>
+                {:else if entry.status === 'unsupported' && (entry.unclassed ?? []).length > 0}
+                    <button
+                        type="button"
+                        class="ui-button ui-button-primary"
+                        disabled={!anyChosen}
+                        onclick={() => adopt(entry, changes)}
+                        data-testid="details-adopt">{t('Adopt')}</button
+                    >
+                {:else if entry.status === 'unchanged' && (entry.unclassed ?? []).length > 0}
+                    <button
+                        type="button"
+                        class="ui-button ui-button-primary"
+                        disabled={changes === undefined}
+                        onclick={() => adopt(entry, changes)}
+                        data-testid="details-apply">{t('Apply')}</button
+                    >
                 {/if}
             {/if}
         {/snippet}

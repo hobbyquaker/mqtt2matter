@@ -169,6 +169,10 @@ async function main(): Promise<void> {
             await client.publishAsync(message.topic, message.payload, {retain: true});
         }
     }
+    // a camera whose motion binary sensor is announced without a device class: the user picks its type
+    for (const message of corpusMessages('misc').filter((m) => m.topic.includes('/scrypted-65c22a2f-51/'))) {
+        await client.publishAsync(message.topic, message.payload, {retain: true});
+    }
     let tick = 0;
     const ticker = setInterval(() => {
         tick++;

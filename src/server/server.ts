@@ -27,6 +27,7 @@ import {AuthConfigSchema} from '../config/schema.ts';
 import {Auth, hashPassword} from './auth.ts';
 import {HttpError, type Request, Router, sendJson, serveStatic} from './http.ts';
 import {Updater} from './update.ts';
+import {BINARY_SENSOR_CLASSES} from '../importers/ha/generate.ts';
 import type {Importer, SyncEntry} from './importers.ts';
 import type {LogBuffer} from './log-buffer.ts';
 import {loadPresets} from './presets.ts';
@@ -571,6 +572,50 @@ export class Server {
         );
     }
 
+    /**
+     * The `classes` of an adopt request — entity id → a binary sensor class, or null to clear the choice —
+     * checked against the entry's binary sensors without a class; undefined when none were sent.
+     */
+    private chosenClasses(
+        importer: Importer,
+        key: string,
+        devices: DevicesInput,
+        value: unknown,
+    ): Record<string, string | null> | undefined {
+        if (value === undefined) {
+            return undefined;
+        }
+        if (importer.kind !== 'ha-discovery') {
+            throw new HttpError(400, 'classes: only the Home Assistant importer takes them');
+        }
+        if (!isRecord(value)) {
+            throw new HttpError(400, 'classes: an object of entity id → class (or null)');
+        }
+        const open = new Set(
+            importer
+                .diff(devices)
+                .find((e) => e.key === key)
+                ?.unclassed?.map((e) => e.id) ?? [],
+        );
+        const classes: Record<string, string | null> = {};
+        for (const [entity, deviceClass] of Object.entries(value)) {
+            if (!open.has(entity)) {
+                throw new HttpError(400, `classes: ${key} has no binary sensor ${entity} without a class`);
+            }
+            if (
+                deviceClass !== null &&
+                (typeof deviceClass !== 'string' || !Object.hasOwn(BINARY_SENSOR_CLASSES, deviceClass))
+            ) {
+                throw new HttpError(
+                    400,
+                    `classes: ${JSON.stringify(deviceClass)} is not one of ${Object.keys(BINARY_SENSOR_CLASSES).join(', ')}`,
+                );
+            }
+            classes[entity] = deviceClass;
+        }
+        return classes;
+    }
+
     /** write the devices an adoption changed into the file and the bridge; returns the keys written */
     private async applyAdoption(
         before: DevicesInput,
@@ -926,12 +971,14 @@ export class Server {
             const force = b.force === true;
             const replace = force && b.replace === true;
             const before = structuredClone(this.store.rawDevices) as DevicesInput;
+            const classes = this.chosenClasses(importer, key, before, b.classes);
             const {devices, report} = importer.adopt(before, {
                 keys: [key],
                 resync: true,
                 orphan: false,
                 force,
                 replace,
+                ...(classes === undefined ? {} : {classes: {[key]: classes}}),
             });
             const entry = report.find((e) => e.key === key);
             if (entry === undefined) {

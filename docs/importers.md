@@ -180,7 +180,7 @@ identifiers (`0x…`). The shared sync makes it a rule for both importers, the A
 | `lock` (`payload_lock/unlock`, `state_locked/unlocked/jammed`)                                                                                                                            | `DoorLock.lockState` (`Locked`, `Unlocked`, `NotFullyLocked`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `fan` (`percentage_*`, `speed_range_max`, `preset_modes`)                                                                                                                                 | `Fan`: `OnOff.onOff`, `percentSetting` `scale [0, speed_range_max] → [0, 100]`, `fanMode` from the preset modes named `off` / `low` / `medium` / `high` / `auto` (`auto` adds the `Auto` feature; the percentage's `None` is `null` while in auto); oscillation and direction listed; `coalesce: 50`                                                                                                                                                                                                                                                                                                                                                                                            |
 | `valve` (`state_open/opening/closed/closing`, `payload_open/close`)                                                                                                                       | `WaterValve`: `ValveConfigurationAndControl.currentState`, `open` / `close`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `binary_sensor` by `device_class`                                                                                                                                                         | door / window / opening / garage_door → `ContactSensor` (inverted: Home Assistant's on is the open contact); motion / occupancy / presence / moving → `OccupancySensor`; moisture → `WaterLeakDetector`; cold → `WaterFreezeDetector`; smoke, carbon_monoxide → `SmokeCoAlarm`; battery → `PowerSource.batChargeLevel`, battery_charging → `batChargeState` (the `Rechargeable` feature); every other class and no class: listed                                                                                                                                                                                                                                                                |
+| `binary_sensor` by `device_class`                                                                                                                                                         | door / window / opening / garage_door → `ContactSensor` (inverted: Home Assistant's on is the open contact); motion / occupancy / presence / moving → `OccupancySensor`; moisture → `WaterLeakDetector`; cold → `WaterFreezeDetector`; smoke, carbon_monoxide → `SmokeCoAlarm`; battery → `PowerSource.batChargeLevel`, battery_charging → `batChargeState` (the `Rechargeable` feature); every other class: listed; no class: listed until the user chooses one (below)                                                                                                                                                                                                                        |
 | `sensor` by `device_class` and `unit_of_measurement`                                                                                                                                      | temperature (°C, °F) → `TemperatureSensor`; humidity → `HumiditySensor`; pressure / atmospheric_pressure (hPa, mbar, kPa, Pa, bar, psi, inHg, mmHg) → `PressureSensor`; illuminance (lx) → `LightSensor`; battery (%) → `PowerSource.batPercentRemaining`; carbon_dioxide, carbon_monoxide (ppm), pm1 / pm25 / pm10 (µg/m³), volatile_organic_compounds(_parts), nitrogen_dioxide, ozone, formaldehyde (ppb; ppm × 1000) → `AirQualitySensor`; aqi → `AirQuality.airQuality` through the US bands; volume_flow_rate (m³/h) → `FlowSensor`; °C / °F / lx without a class count as temperature / illuminance; everything else listed (the electrical classes until electrical measurement exists) |
 | `event` (`event_types`, payload `{"event_type": …}`)                                                                                                                                      | one `GenericSwitch` per button the event types name (`single` / `double` / `long` / `single_push` / `double_press` …, the shared press-kind table), `extract: event_type` unless a `value_template` renders it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `device_trigger` / `device_automation` (`topic`, `type`, `subtype`, `payload`)                                                                                                            | accumulated per device: one button per `subtype` (Tasmota's `button_1`), the kind from the `type` (`button_short_press`, `button_double_press`, `button_long_press`, …) or, for zigbee2mqtt's `type: action`, from the subtype as the zigbee2mqtt importer reads actions; continuous actions listed                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -206,6 +206,16 @@ switch, the mode string for a climate or a fan, `LOCK` / `UNLOCK` for a lock; `p
 are the open-percentage for a cover. A `value_template` on a `light` is read as its `state_value_template`
 (what Tasmota sends).
 
+**A binary sensor without a `device_class`** has no Matter type of its own: Home Assistant shows it as plain
+on/off, and the importer does not guess one from its name. The Adopt page lists such entities with the entry
+(`unclassed`) and lets the user choose, per entity, one of the classes the table above maps — motion /
+occupancy, opening (contact), moisture, cold, smoke, carbon monoxide, battery, battery charging — or leave it
+unmapped. The entity is then generated as if it had announced that class, and a device that was `unsupported`
+only because of such entities becomes adoptable. The choice is stored in `source.raw.classes` (entity id →
+class); a re-sync reads it from there, so it survives a new announcement and the user's edits are carried over
+as usual. A choice for an entity that disappears or starts announcing a class of its own is dropped. Entities
+with an `entity_category` or `enabled_by_default: false` are not offered.
+
 ### `source`
 
 ```json
@@ -214,6 +224,8 @@ are the open-percentage for a cover. A `value_template` on a `light` is read as 
 
 `raw` holds the expanded configs trimmed of what the generator does not read (`icon`, `entity_picture`,
 `json_attributes_*`, `configuration_url`, …), in a stable order; `version` is `<generator version>.<hash of raw>`.
+`classes` (optional) holds the classes the user chose for binary sensors announced without one, by entity id
+(`{"MotionSensor": "motion"}`).
 
 ### The API (`src/importers/ha/sync.ts`, `source.ts`)
 
@@ -222,11 +234,14 @@ import {ha} from 'mqtt2matter';
 
 const source = new ha.HaSource('homeassistant');     // .topics = ['homeassistant/#']; .handle(topic, payload); .load(cache)
 const discovery = source.discover();                 // or ha.discover({entities, prefix, seen})
-//   Discovery {prefix, items: Discovered[], seen}
-//   Discovered {key, kind: 'device', name, vendor?, model?, area?, native?, supported, reason?, baseline?, unmapped}
+//   Discovery {prefix, items: Discovered[], seen, raws?}
+//   Discovered {key, kind: 'device', name, vendor?, model?, area?, native?, unclassed?, supported, reason?, baseline?, unmapped}
+//   unclassed: [{id, name, class?}] — binary sensors without a device_class, with the class chosen for each
 
-const report = ha.diff(discovery, config.devices);   // SyncEntry[] as the zigbee2mqtt importer's, plus `area` and `native`
-const {devices, report} = ha.adopt(config.devices, discovery, {keys?, resync?, orphan?});
+const report = ha.diff(discovery, config.devices);   // SyncEntry[] as the zigbee2mqtt importer's, plus `area`, `native`, `unclassed`
+const {devices, report} = ha.adopt(config.devices, discovery, {keys?, resync?, orphan?, classes?});
+//   classes: {[device key]: {[entity id]: class | null}} — a choice for a binary sensor without a class; null clears it
+ha.BINARY_SENSOR_CLASSES;                            // {motion: 'OccupancySensor', opening: 'ContactSensor', …}: the classes that can be chosen
 ha.orphaned(devices);
 ha.edits(device);
 ha.generate(raw);

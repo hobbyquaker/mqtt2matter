@@ -22,7 +22,7 @@ import type {
     StatusHalfSchema,
 } from '../../model/index.ts';
 import {type Button, multiPressMax, parseAction, parseActions} from '../actions.ts';
-import type {Generated} from '../sync.ts';
+import type {Generated, UnclassedEntity} from '../sync.ts';
 import {areaTag} from './areas.ts';
 import {checkTemplate} from './templates.ts';
 import {type DeviceInfo, deviceIdentity, type EntityConfig, type Origin} from './types.ts';
@@ -51,6 +51,11 @@ export interface RawDevice {
     device: DeviceInfo;
     origin?: Origin;
     entities: RawEntity[];
+    /**
+     * the user's choice for binary sensors announced without a `device_class`, by entity id: the class the
+     * entity is generated as. Kept here so a re-sync regenerates the same device; never guessed.
+     */
+    classes?: Record<string, string>;
 }
 
 export function isRaw(value: unknown): value is RawDevice {
@@ -64,6 +69,55 @@ export function isRaw(value: unknown): value is RawDevice {
         typeof raw.identity === 'string' &&
         Array.isArray(raw.entities)
     );
+}
+
+/**
+ * The `device_class`es of a binary sensor the generator maps, with the Matter device type each becomes: the
+ * types a user can choose for a binary sensor announced without a class.
+ */
+export const BINARY_SENSOR_CLASSES: Readonly<Record<string, string>> = {
+    motion: 'OccupancySensor',
+    occupancy: 'OccupancySensor',
+    presence: 'OccupancySensor',
+    moving: 'OccupancySensor',
+    opening: 'ContactSensor',
+    door: 'ContactSensor',
+    window: 'ContactSensor',
+    garage_door: 'ContactSensor',
+    moisture: 'WaterLeakDetector',
+    cold: 'WaterFreezeDetector',
+    smoke: 'SmokeCoAlarm',
+    carbon_monoxide: 'SmokeCoAlarm',
+    battery: 'PowerSource',
+    battery_charging: 'PowerSource',
+};
+
+/** the binary sensors of a device that are announced without a `device_class` and would be generated otherwise */
+export function unclassedEntities(raw: RawDevice): UnclassedEntity[] {
+    return raw.entities
+        .filter(
+            (e) =>
+                e.component === 'binary_sensor' &&
+                str(e.config.device_class) === undefined &&
+                str(e.config.entity_category) === undefined &&
+                e.config.enabled_by_default !== false,
+        )
+        .map((e) => {
+            const chosen = raw.classes?.[e.id];
+            return {id: e.id, name: entityName(e), ...(chosen === undefined ? {} : {class: chosen})};
+        });
+}
+
+/** the raw description with the chosen classes applied: a chosen entity reads as if it had that class */
+function withChosenClasses(raw: RawDevice): RawEntity[] {
+    const chosen = raw.classes ?? {};
+    const open = new Set(unclassedEntities(raw).map((e) => e.id));
+    return raw.entities.map((entity) => {
+        const deviceClass = chosen[entity.id];
+        return deviceClass !== undefined && open.has(entity.id) && BINARY_SENSOR_CLASSES[deviceClass] !== undefined
+            ? {...entity, config: {...entity.config, device_class: deviceClass}}
+            : entity;
+    });
 }
 
 export function rawHash(raw: RawDevice): string {
@@ -1313,7 +1367,7 @@ class Builder {
                 this.skip(
                     entity,
                     deviceClass === undefined
-                        ? 'no device_class; a binary sensor without one has no Matter sensor type'
+                        ? 'no device_class; a binary sensor without one has no Matter sensor type until one is chosen'
                         : `device_class ${deviceClass} has no Matter sensor type`,
                 );
         }
@@ -1724,7 +1778,7 @@ class Builder {
 /** the baseline for a device description, or — when nothing of it maps onto Matter — only the reasons */
 export function generateReport(raw: RawDevice): {device?: DeviceInput; unmapped: string[]} {
     const builder = new Builder();
-    builder.walk(raw.entities);
+    builder.walk(withChosenClasses(raw));
     const area = label(str(raw.device.suggested_area));
     const endpoints = builder.endpoints(area);
     if (endpoints === undefined) {

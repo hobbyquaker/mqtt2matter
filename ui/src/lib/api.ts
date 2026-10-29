@@ -299,6 +299,13 @@ export interface Conflict {
 }
 
 /** the importer's report entry (docs/importers.md), tagged with the importer */
+/** a Home Assistant binary sensor announced without a class, with the class chosen for it */
+export interface UnclassedEntity {
+    id: string;
+    name: string;
+    class?: string;
+}
+
 export interface AdoptEntry {
     importer: string;
     key: string;
@@ -311,6 +318,8 @@ export interface AdoptEntry {
     notes: string[];
     /** the area the source suggests (Home Assistant's suggested_area) */
     area?: string;
+    /** Home Assistant: binary sensors announced without a class; the user chooses their sensor type */
+    unclassed?: UnclassedEntity[];
     /** another importer describes the same device natively (its key): native preferred */
     native?: string;
     /** for `covered`: the description that covers it — the native one or an adopted twin */
@@ -433,7 +442,11 @@ export const api = {
         request<void>('DELETE', `/api/bridges/${encodeURIComponent(id)}/fabrics/${index}`),
     adopt: () => request<{importers: string[]; entries: AdoptEntry[]}>('GET', '/api/adopt'),
     resync: () => request<{importers: string[]; entries: AdoptEntry[]; written: string[]}>('POST', '/api/adopt/resync'),
-    adoptDevice: (kind: string, key: string, options: {force?: boolean; replace?: boolean} = {}) =>
+    adoptDevice: (
+        kind: string,
+        key: string,
+        options: {force?: boolean; replace?: boolean; classes?: Record<string, string | null>} = {},
+    ) =>
         request<DeviceDetail & {entry: AdoptEntry}>(
             'POST',
             `/api/adopt/${encodeURIComponent(kind)}/${encodeURIComponent(key)}`,

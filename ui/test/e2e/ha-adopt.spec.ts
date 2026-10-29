@@ -65,3 +65,41 @@ test('adopt a Home Assistant discovery device with its area; a zigbee2mqtt-publi
     await page.getByTestId('dialog-ok').click();
     await expect(row).toHaveCount(0);
 });
+
+test('a binary sensor announced without a class: choose its sensor type, adopt, and the choice is kept', async ({
+    page,
+}) => {
+    const CAMERA = 'ha:cam00001';
+    await page.goto('/#/adopt');
+    const camera = page.locator(`[data-testid=adopt-row][data-key="${CAMERA}"]`);
+    // unsupported, but shown without "show unsupported": a type would make it adoptable
+    await expect(camera).toHaveAttribute('data-status', 'unsupported');
+    await expect(camera.getByTestId('untyped')).toHaveText('2 without a type');
+
+    await camera.getByTestId('choose-types').click();
+    const dialog = page.getByTestId('details-dialog');
+    await expect(dialog).toContainText('Sensor types');
+    await expect(dialog.getByTestId('details-adopt')).toBeDisabled();
+    await dialog.locator('[data-testid=sensor-type][data-entity=MotionSensor]').selectOption('motion');
+    await expect(dialog.locator('[data-testid=sensor-type][data-entity=Online]')).toHaveValue('');
+    await dialog.getByTestId('details-adopt').click();
+    await expect(dialog).toHaveCount(0);
+    await expect(camera).toHaveAttribute('data-status', 'unchanged');
+    await expect(camera.getByTestId('untyped')).toHaveText('1 without a type');
+
+    // the choice is shown again and survives a re-sync
+    await page.getByTestId('resync').click();
+    await page.getByTestId('dialog-ok').click();
+    await expect(camera).toHaveAttribute('data-status', 'unchanged');
+    await camera.getByTestId('show-details').click();
+    await expect(dialog.locator('[data-testid=sensor-type][data-entity=MotionSensor]')).toHaveValue('motion');
+    await expect(dialog.getByTestId('details-apply')).toBeDisabled();
+    await dialog.getByText('Close').click();
+
+    await page.getByTestId('tab-devices').click();
+    const row = page.locator(`[data-testid=device-row][data-key="${CAMERA}"]`);
+    await expect(row).toContainText('Staircase');
+    await row.getByTestId('delete-device').click();
+    await page.getByTestId('dialog-ok').click();
+    await expect(row).toHaveCount(0);
+});

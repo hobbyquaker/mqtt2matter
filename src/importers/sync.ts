@@ -32,6 +32,17 @@ export interface Discovered {
     reason?: string;
     baseline?: DeviceInput;
     unmapped: string[];
+    /** Home Assistant: the binary sensors announced without a class, each with the class chosen for it */
+    unclassed?: UnclassedEntity[];
+}
+
+/** a binary sensor announced without a class, which the user can give one */
+export interface UnclassedEntity {
+    /** the entity's id within the device */
+    id: string;
+    name: string;
+    /** the class the user chose, when one is stored */
+    class?: string;
 }
 
 export type SyncStatus =
@@ -71,6 +82,8 @@ export interface SyncEntry {
     covered?: string;
     /** the configured devices (not disabled, not orphaned) that stand for the same physical device */
     twins?: string[];
+    /** Home Assistant: the binary sensors announced without a class, each with the class chosen for it */
+    unclassed?: UnclassedEntity[];
 }
 
 export interface AdoptOptions {
@@ -185,6 +198,7 @@ export class Sync<Raw> {
             notes: [],
             ...(item.area === undefined ? {} : {area: item.area}),
             ...(item.native === undefined ? {} : {native: item.native}),
+            ...(item.unclassed === undefined ? {} : {unclassed: item.unclassed}),
         };
         const wasOrphaned = current.source?.orphaned === true;
         const newBaseline = item.baseline;
@@ -277,6 +291,7 @@ export class Sync<Raw> {
                 notes: item.reason === undefined ? [] : [item.reason],
                 ...(item.area === undefined ? {} : {area: item.area}),
                 ...(item.native === undefined ? {} : {native: item.native}),
+                ...(item.unclassed === undefined ? {} : {unclassed: item.unclassed}),
             });
         }
         return entries;

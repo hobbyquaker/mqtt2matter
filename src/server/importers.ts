@@ -11,6 +11,9 @@ import type {TopicCache} from '../mqtt/topic-cache.ts';
 
 export type {AdoptOptions, AdoptResult, SyncEntry};
 
+/** the adopt options of every importer; `classes` only the Home Assistant importer takes */
+export type ImporterAdoptOptions = ha.HaAdoptOptions;
+
 export interface Importer {
     readonly kind: 'z2m' | 'ha-discovery';
     /** the topics to subscribe for the source */
@@ -22,7 +25,7 @@ export interface Importer {
     /** what adopting would do to `devices`; nothing is touched */
     diff(devices: DevicesInput): SyncEntry[];
     /** the devices record after adopting, with the report */
-    adopt(devices: DevicesInput, options?: AdoptOptions): AdoptResult;
+    adopt(devices: DevicesInput, options?: ImporterAdoptOptions): AdoptResult;
 }
 
 export class Z2mImporter implements Importer {
@@ -101,7 +104,7 @@ export class HaImporter implements Importer {
         return ha.diff(this.source.discover(), devices);
     }
 
-    adopt(devices: DevicesInput, options: AdoptOptions = {}): AdoptResult {
+    adopt(devices: DevicesInput, options: ImporterAdoptOptions = {}): AdoptResult {
         return ha.adopt(devices, this.source.discover(), options);
     }
 }

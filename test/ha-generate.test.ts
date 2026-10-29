@@ -108,7 +108,7 @@ describe('ESPHome (per-entity form, abbreviated, identifiers as a string)', () =
             command: {topic: 'usb-relay-02/set/relay', format: {true: 'ON', false: 'OFF'}},
         });
         expect(item(key).unmapped).toEqual([
-            'binary_sensor "button": no device_class; a binary sensor without one has no Matter sensor type',
+            'binary_sensor "button": no device_class; a binary sensor without one has no Matter sensor type until one is chosen',
         ]);
     });
 

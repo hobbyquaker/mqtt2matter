@@ -8,7 +8,11 @@
    A device is keyed `ha:<first identifier or connection>`; an entity without a device block is listed as
    unsupported (Home Assistant itself requires `device` and `unique_id` for an entity to be grouped). A
    device that zigbee2mqtt announces through its own discovery is marked `native` with the zigbee2mqtt
-   importer's key: the native description is preferred. */
+   importer's key: the native description is preferred.
+
+   A binary sensor announced without a `device_class` has no Matter type until the user chooses one
+   (`classes`, by entity id, on `adopt`). The choice is stored in the device's `source.raw.classes`; a
+   re-sync reads it from there and regenerates the discovered description with it, so it survives. */
 
 import {createHash} from 'node:crypto';
 
@@ -24,6 +28,7 @@ import {
     type SyncStatus,
 } from '../sync.ts';
 import {
+    BINARY_SENSOR_CLASSES,
     deviceKey,
     generate,
     generateReport,
@@ -35,6 +40,7 @@ import {
     trimConfig,
     trimDevice,
     trimOrigin,
+    unclassedEntities,
 } from './generate.ts';
 import type {Entity} from './source.ts';
 import {deviceIdentity} from './types.ts';
@@ -46,6 +52,16 @@ export interface Discovery {
     items: Discovered[];
     /** a discovery message was seen: devices missing from the view are orphaned */
     seen: boolean;
+    /** the raw description behind each item, by key: what a chosen class regenerates the item from */
+    raws?: ReadonlyMap<string, RawDevice>;
+}
+
+/** the classes chosen for binary sensors without one: device key → entity id → class, `null` clears a choice */
+export type ChosenClasses = Readonly<Record<string, Readonly<Record<string, string | null>>>>;
+
+/** the Home Assistant importer's adopt options: the generic ones and the chosen classes */
+export interface HaAdoptOptions extends AdoptOptions {
+    classes?: ChosenClasses | undefined;
 }
 
 export interface DiscoverInput {
@@ -110,32 +126,95 @@ export function discover(input: DiscoverInput): Discovery {
         }
         group.push(entity);
     }
+    const raws = new Map<string, RawDevice>();
     for (const [identity, entities] of byIdentity) {
         const raw = rawDevice(prefix, identity, entities);
-        const area = typeof raw.device.suggested_area === 'string' ? raw.device.suggested_area.trim() : '';
-        const native = nativeKey(identity, raw.device);
-        const base = {
-            key: deviceKey(identity),
-            kind: 'device' as const,
-            name: raw.device.name ?? identity,
-            ...(raw.device.manufacturer === undefined ? {} : {vendor: raw.device.manufacturer}),
-            ...(raw.device.model === undefined ? {} : {model: raw.device.model}),
-            ...(area === '' ? {} : {area}),
-            ...(native === undefined ? {} : {native}),
-        };
-        const generated = generateReport(raw);
-        if (generated.device === undefined) {
-            items.push({
-                ...base,
-                supported: false,
-                reason: 'nothing of its entities maps onto Matter',
-                unmapped: generated.unmapped,
-            });
-            continue;
-        }
-        items.push({...base, supported: true, baseline: generated.device, unmapped: generated.unmapped});
+        const item = itemOf(raw);
+        raws.set(item.key, raw);
+        items.push(item);
     }
-    return {prefix, items, seen: input.seen ?? true};
+    return {prefix, items, seen: input.seen ?? true, raws};
+}
+
+/** the discovered item of one raw description: its baseline, or why it has none */
+function itemOf(raw: RawDevice): Discovered {
+    const identity = raw.identity;
+    const area = typeof raw.device.suggested_area === 'string' ? raw.device.suggested_area.trim() : '';
+    const native = nativeKey(identity, raw.device);
+    const unclassed = unclassedEntities(raw);
+    const base = {
+        key: deviceKey(identity),
+        kind: 'device' as const,
+        name: raw.device.name ?? identity,
+        ...(raw.device.manufacturer === undefined ? {} : {vendor: raw.device.manufacturer}),
+        ...(raw.device.model === undefined ? {} : {model: raw.device.model}),
+        ...(area === '' ? {} : {area}),
+        ...(native === undefined ? {} : {native}),
+        ...(unclassed.length === 0 ? {} : {unclassed}),
+    };
+    const generated = generateReport(raw);
+    if (generated.device === undefined) {
+        return {
+            ...base,
+            supported: false,
+            reason:
+                unclassed.length === 0
+                    ? 'nothing of its entities maps onto Matter'
+                    : 'nothing of its entities maps onto Matter unless a sensor type is chosen for a binary sensor without a class',
+            unmapped: generated.unmapped,
+        };
+    }
+    return {...base, supported: true, baseline: generated.device, unmapped: generated.unmapped};
+}
+
+/** a chosen class the importer can generate; throws on one it cannot */
+export function checkClass(deviceClass: string): void {
+    if (!Object.hasOwn(BINARY_SENSOR_CLASSES, deviceClass)) {
+        throw new Error(
+            `${deviceClass} is not a binary sensor class the importer maps (${Object.keys(BINARY_SENSOR_CLASSES).join(', ')})`,
+        );
+    }
+}
+
+/**
+ * The discovery with the classes applied: those stored in the configured devices' `source.raw.classes`, then
+ * the ones chosen now. A choice for an entity that is gone or announces a class of its own is dropped.
+ */
+function withClasses(discovery: Discovery, devices: DevicesInput, chosen: ChosenClasses = {}): Discovery {
+    const raws = discovery.raws;
+    if (raws === undefined) {
+        return discovery;
+    }
+    const nextRaws = new Map(raws);
+    const items = discovery.items.map((item) => {
+        const raw = raws.get(item.key);
+        if (raw === undefined) {
+            return item;
+        }
+        const stored: unknown = devices[item.key]?.source?.raw;
+        const classes = new Map(Object.entries(isRaw(stored) ? (stored.classes ?? {}) : {}));
+        for (const [entity, deviceClass] of Object.entries(chosen[item.key] ?? {})) {
+            if (deviceClass === null || deviceClass === '') {
+                classes.delete(entity);
+            } else {
+                checkClass(deviceClass);
+                classes.set(entity, deviceClass);
+            }
+        }
+        const open = new Set(unclassedEntities(raw).map((e) => e.id));
+        for (const [entity, deviceClass] of classes) {
+            if (!open.has(entity) || !Object.hasOwn(BINARY_SENSOR_CLASSES, deviceClass)) {
+                classes.delete(entity);
+            }
+        }
+        if (classes.size === 0) {
+            return item;
+        }
+        const next: RawDevice = {...raw, classes: Object.fromEntries(classes)};
+        nextRaws.set(item.key, next);
+        return itemOf(next);
+    });
+    return {...discovery, items, raws: nextRaws};
 }
 
 const sync = new Sync<RawDevice>({
@@ -163,12 +242,12 @@ export function orphaned(devices: DevicesInput): string[] {
 
 /** what adopting the discovery onto `devices` would do, entry by entry */
 export function diff(discovery: Discovery, devices: DevicesInput): SyncEntry[] {
-    return sync.diff(syncDiscovery(discovery), devices);
+    return sync.diff(syncDiscovery(withClasses(discovery, devices)), devices);
 }
 
 /** the `devices` record after adopting: existing entries in place and order, new ones appended */
-export function adopt(devices: DevicesInput, discovery: Discovery, options: AdoptOptions = {}): AdoptResult {
-    return sync.adopt(devices, syncDiscovery(discovery), options);
+export function adopt(devices: DevicesInput, discovery: Discovery, options: HaAdoptOptions = {}): AdoptResult {
+    return sync.adopt(devices, syncDiscovery(withClasses(discovery, devices, options.classes)), options);
 }
 
 /** the user's edits of a device against its baseline; empty when it is untouched or has no baseline */
