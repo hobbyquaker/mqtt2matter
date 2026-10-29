@@ -169,6 +169,21 @@ npm run dev:ui      # Vite with hot reload, the API proxied to a running mqtt2ma
 `node ui/test/serve.ts` starts a throw-away stack — broker, bridge, UI, zigbee2mqtt's test corpus — on an
 ephemeral port it prints, for a look at the UI without a configuration of your own.
 
+## Credits
+
+mqtt2matter stands on [matter.js](https://github.com/matter-js/matter.js), the TypeScript implementation of Matter
+by Ingo Fischer ([@Apollon77](https://github.com/Apollon77)) and its contributors — the device model, the
+commissioning and the whole protocol stack are theirs. Thank you!
+
+## Trademark and Certification Notices
+
+> [!IMPORTANT]
+> This project implements the Matter protocol. Matter™ is a trademark of the Connectivity Standards Alliance.
+>
+> This project is **not** certified by, endorsed by, supported by, or affiliated with the Connectivity Standards
+> Alliance, nor with OASIS or the MQTT project. By default it uses the specification's test vendor id
+> (`0xFFF1`), so controllers show the bridge as an uncertified accessory.
+
 ## License
 
 Apache-2.0, see [LICENSE](LICENSE) and [NOTICE](NOTICE).
