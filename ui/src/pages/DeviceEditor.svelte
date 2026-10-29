@@ -296,7 +296,7 @@
         const known: Record<string, string[]> = {
             onOff: ['momentary'],
             light: ['onCommandType', 'transition', 'minMireds', 'maxMireds'],
-            cover: ['echoFilter', 'reportTimeout', 'tolerance'],
+            cover: ['echoFilter', 'reportTimeout', 'reportGap', 'tolerance'],
             climate: ['minHeat', 'maxHeat', 'minCool', 'maxCool', 'deadband'],
             fan: ['low', 'medium', 'speedMax'],
             switch: ['kind', 'numberOfPositions', 'multiPressMax', 'multiPressDelay', 'longPressDelay', 'pressDuration'],
@@ -308,7 +308,7 @@
     const OPTION_DEFAULTS: Record<string, Record<string, unknown>> = {
         onOff: {momentary: 0},
         light: {onCommandType: 'last', transition: true, minMireds: 153, maxMireds: 500},
-        cover: {echoFilter: false, reportTimeout: 30, tolerance: 100},
+        cover: {echoFilter: false, reportTimeout: 30, reportGap: 3, tolerance: 100},
         climate: {minHeat: 7, maxHeat: 30, minCool: 16, maxCool: 32, deadband: 2},
         fan: {low: 33, medium: 66, speedMax: 0},
         switch: {kind: 'momentary', numberOfPositions: 2, multiPressMax: 3, multiPressDelay: 300, longPressDelay: 500, pressDuration: 50},

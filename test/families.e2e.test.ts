@@ -159,7 +159,7 @@ const config = () =>
                 endpoints: [
                     {
                         deviceTypes: ['WindowCovering'],
-                        options: {cover: {reportTimeout: 0.5, echoFilter: true}},
+                        options: {cover: {reportTimeout: 0.5, reportGap: 0.5, echoFilter: true}},
                         mappings: [
                             {
                                 attribute: 'WindowCovering.currentPositionLiftPercent100ths',

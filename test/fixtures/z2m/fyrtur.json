@@ -1,0 +1,83 @@
+[
+  {
+    "ieee_address": "0x00124b0000000004",
+    "friendly_name": "blind",
+    "type": "EndDevice",
+    "power_source": "Battery",
+    "manufacturer": "IKEA of Sweden",
+    "model_id": "FYRTUR block-out roller blind",
+    "software_build_id": "2.3.088",
+    "supported": true,
+    "disabled": false,
+    "interview_completed": true,
+    "interviewing": false,
+    "endpoints": {
+      "1": {
+        "bindings": [],
+        "clusters": {
+          "input": ["genBasic", "genPowerCfg", "closuresWindowCovering"],
+          "output": []
+        },
+        "configured_reportings": [],
+        "scenes": []
+      }
+    },
+    "definition": {
+      "model": "E1757",
+      "vendor": "IKEA",
+      "description": "FYRTUR roller blind",
+      "supports_ota": true,
+      "options": [],
+      "exposes": [
+        {
+          "type": "cover",
+          "features": [
+            {
+              "type": "enum",
+              "name": "state",
+              "label": "State",
+              "property": "state",
+              "access": 3,
+              "values": ["OPEN", "CLOSE", "STOP"]
+            },
+            {
+              "type": "numeric",
+              "name": "position",
+              "label": "Position",
+              "property": "position",
+              "access": 7,
+              "value_min": 0,
+              "value_max": 100,
+              "unit": "%",
+              "description": "Position of this cover"
+            }
+          ]
+        },
+        {
+          "type": "numeric",
+          "name": "battery",
+          "label": "Battery",
+          "property": "battery",
+          "access": 5,
+          "unit": "%",
+          "value_min": 0,
+          "value_max": 100,
+          "description": "Remaining battery in %, can take up to 24 hours before reported",
+          "category": "diagnostic"
+        },
+        {
+          "type": "numeric",
+          "name": "linkquality",
+          "label": "Linkquality",
+          "property": "linkquality",
+          "access": 1,
+          "unit": "lqi",
+          "value_min": 0,
+          "value_max": 255,
+          "description": "Link quality (signal strength)",
+          "category": "diagnostic"
+        }
+      ]
+    }
+  }
+]

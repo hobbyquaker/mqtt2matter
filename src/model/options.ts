@@ -29,11 +29,16 @@ export type LightOptions = z.infer<typeof LightOptionsSchema>;
 
 export const CoverOptionsSchema = z
     .object({
-        /** hold back a position report that merely echoes the previous position right after a command until a
-         *  second report corroborates it or `reportTimeout` passes (the FYRTUR target echo) */
+        /** hold back what a bridge publishes right after a command before the cover moves: the previous position
+         *  repeated (until a second report or `reportTimeout`) and the commanded target echoed (until a report of
+         *  the travel drops it, or `reportGap`, which applies it) — zigbee2mqtt with IKEA FYRTUR/KADRILJ */
         echoFilter: z.boolean().default(false),
-        /** seconds after the last position report before a movement counts as stopped */
+        /** seconds a command waits for the first position report (and a stop for the final one) before the
+         *  movement counts as stopped */
         reportTimeout: z.number().positive().default(30),
+        /** seconds after the last position report of a running movement before it counts as stopped (a cover
+         *  reporting its travel stops reporting when it stops); covers with movement reports keep `reportTimeout` */
+        reportGap: z.number().positive().default(3),
         /** percent100ths within which current and target count as equal */
         tolerance: z.number().int().min(0).max(10000).default(100),
     })

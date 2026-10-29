@@ -316,16 +316,19 @@ A controller's `moveToLevelWithOnOff` publishes the level and, per `onCommandTyp
 uses `scale: {"from": [0, 100], "to": [10000, 0]}` — or `motion` plus `invoke` mappings for `upOrOpen`,
 `downOrClose`, `stopMotion` for a state-only one; tilt uses the `…Tilt…` attributes.
 
-| Option          | Default | Meaning                                                                                                              |
-| --------------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
-| `echoFilter`    | `false` | hold back a first report after a command that repeats the old position until a second report or the timeout (FYRTUR) |
-| `reportTimeout` | `30`    | seconds after the last report before a movement counts as ended (target snaps to current)                            |
-| `tolerance`     | `100`   | percent100ths within which current and target count as equal                                                         |
+| Option          | Default | Meaning                                                                                                                                                                                                                                                                                                      |
+| --------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `echoFilter`    | `false` | hold back what the bridge publishes right after a command before the cover moves: the old position repeated (until a second report or `reportTimeout`) and the commanded target echoed (until the travel is reported; applied after `reportGap` when nothing follows) — zigbee2mqtt with IKEA FYRTUR/KADRILJ |
+| `reportTimeout` | `30`    | seconds a command waits for the first position report (and a stop for the final one) before the movement counts as ended (target snaps to current)                                                                                                                                                           |
+| `reportGap`     | `3`     | seconds after the last position report of a running movement before it counts as ended; a cover with `motion` reports keeps `reportTimeout` here                                                                                                                                                             |
+| `tolerance`     | `100`   | percent100ths within which current and target count as equal                                                                                                                                                                                                                                                 |
 
 A command sets the target and publishes it; reports drive the current position; `operationalStatus` follows
 from target vs current; a report while no command is in flight is an external move whose predicted target (the
 direction's extreme) is written before the current position; after a stop the next report is the final
-position.
+position. A cover that reports its travel (about once a second for zigbee2mqtt) stops reporting when it stops:
+`reportGap` ends the movement there, so a move stopped at the cover shows as stopped within seconds; raise it
+for a cover that reports its travel less often.
 
 **climate** (`Thermostat`): temperatures in Matter's 0.01 °C (`unit: celsius`). Features follow the mappings:
 `Heating` with `occupiedHeatingSetpoint`, `Cooling` with `occupiedCoolingSetpoint`, `AutoMode` with both and

@@ -41,6 +41,18 @@
   reached the device through the mode. The template of a written attribute now sees the family's fields, as the
   documentation says: `percent`, `mode` and `speed` for a fan. Zigbee2MQTT fans with numbered speeds (IKEA
   STARKVIND) take any percent again; their template needed `percent`, which was undefined on this path.
+- **Fixed: a roller blind without movement reports showed wrong states in the controllers while it moved**
+  (IKEA FYRTUR and KADRILJ through Zigbee2MQTT, which echoes a commanded position right away and then reports the
+  travel about once a second). After a command the blind jumped to the target at once, then back, and showed the
+  wrong direction; a move started at the blind and stopped there kept "opening" or "closing" for up to 30 s, until
+  the next move turned it around. Now the echo filter (`options.cover.echoFilter`, on for these blinds) also holds
+  back the echoed target until the travel is reported — a cover that reports only where it ended still gets there,
+  after the report gap — so a command shows its target and the real travel; and a movement whose reports stop ends
+  `reportGap` seconds after the last one.
+  - **Configuration**: `options.cover.reportGap` is new (seconds, default `3`): how long a running movement waits
+    for its next position report. `reportTimeout` (default `30`) keeps applying until a command's first report and
+    after a stop, and to covers with movement reports (`motion`). Raise `reportGap` for a cover that reports its
+    travel less often than every few seconds. The device editor offers it.
 
 ## 0.3.1
 

@@ -3,10 +3,15 @@
    device's position reports drive the current position; `operationalStatus` follows from target vs
    current; a report timeout ends a movement nobody reported the end of; an external move (a report while
    no command is in flight) writes a predicted target — the direction's extreme — before the current
-   position, so controllers deriving the direction from target/current show it; the echo filter holds back
-   a first report after a command that merely repeats the old position until a second report or the
-   timeout. State-only covers and `moving`/`motor_state` reports bind the composite `motion`. Tilt runs
-   the same machine on its own attributes. */
+   position, so controllers deriving the direction from target/current show it. Two timeouts end a movement
+   nobody reported the end of: `reportTimeout` while a command waits for its first report, `reportGap` once
+   reports arrive (a cover reporting its travel stops reporting when it stops). The echo filter holds back
+   what a bridge like zigbee2mqtt publishes right after a command before the cover moves: the old position
+   repeated (until a second report or the report timeout) and the commanded target itself (until a report
+   of the travel drops it, or for the report gap: then it was the only report, the end of the movement).
+   State-only covers and `moving`/`motor_state` reports bind the composite `motion`; they report the end of
+   a movement, so their position reports keep the report timeout. Tilt runs the same machine on its own
+   attributes. */
 
 import {
     MovementDirection,
@@ -16,7 +21,7 @@ import {
 import {WindowCovering} from '@matter/main/clusters/window-covering';
 
 import type {Decoded} from '../engine/payload.ts';
-import {type FamilyContext, contextOf, hasCommand, hasFeature, route, scratch} from './registry.ts';
+import {type FamilyContext, contextOf, hasCommand, hasFeature, hasStatus, route, scratch} from './registry.ts';
 
 const {MovementStatus} = WindowCovering;
 
@@ -29,6 +34,8 @@ export const MOTION_KEY = 'WindowCovering.motion';
 
 const OPEN = 0;
 const CLOSED = 10000;
+/** a report at the commanded target this far from the current position is taken for an echo (a fifth of the travel) */
+const ECHO_JUMP = 2000;
 
 interface Axis {
     readonly name: 'lift' | 'tilt';
@@ -58,8 +65,8 @@ interface AxisState {
     inFlight: boolean;
     /** the first report after a command is still to come (the echo filter watches it) */
     awaitingFirstReport: boolean;
-    /** a report held back by the echo filter */
-    held: number | undefined;
+    /** a report at the target held back by the echo filter: an echo or the only report of the movement */
+    candidate: number | undefined;
     /** an external move was detected and runs */
     external: boolean;
     timer: NodeJS.Timeout | undefined;
@@ -73,7 +80,7 @@ function axisState(context: FamilyContext, axis: Axis): AxisState {
     return scratch(context, `cover.${axis.name}`, () => ({
         inFlight: false,
         awaitingFirstReport: true,
-        held: undefined,
+        candidate: undefined,
         external: false,
         timer: undefined,
         viaUpDown: false,
@@ -88,14 +95,20 @@ function clearTimer(state: AxisState): void {
     }
 }
 
-function armTimeout(context: FamilyContext, axis: Axis, state: AxisState, onExpiry: () => Promise<void>): void {
+function armTimeout(
+    context: FamilyContext,
+    axis: Axis,
+    state: AxisState,
+    seconds: number,
+    onExpiry: () => Promise<void>,
+): void {
     clearTimer(state);
     state.timer = setTimeout(() => {
         state.timer = undefined;
         onExpiry().catch((error: unknown) => {
             context.log.error(`cover ${axis.name}: report timeout handling failed`, error);
         });
-    }, context.options.cover.reportTimeout * 1000);
+    }, seconds * 1000);
     state.timer.unref();
 }
 
@@ -116,7 +129,7 @@ async function stopAxis(context: FamilyContext, axis: Axis, state: AxisState, sn
     state.inFlight = false;
     state.external = false;
     state.stopping = false;
-    state.held = undefined;
+    state.candidate = undefined;
     const current = wcState(context);
     const patch: Record<string, unknown> = {
         operationalStatus: {...current.operationalStatus, [axis.name]: MovementStatus.Stopped},
@@ -133,10 +146,17 @@ async function stopAxis(context: FamilyContext, axis: Axis, state: AxisState, sn
     await setWc(context, patch);
 }
 
+/** seconds without a report before a movement whose reports arrive counts as ended */
+function gapSeconds(context: FamilyContext): number {
+    const {reportGap, reportTimeout} = context.options.cover;
+    // a cover with movement reports says when it stops; its position may be reported less often
+    return hasStatus(context, MOTION_KEY) ? reportTimeout : reportGap;
+}
+
 /** a device's position report on an axis */
 async function reportPosition(context: FamilyContext, axis: Axis, value: number): Promise<void> {
     const state = axisState(context, axis);
-    const {tolerance, echoFilter} = context.options.cover;
+    const {tolerance, echoFilter, reportTimeout} = context.options.cover;
     const wc = wcState(context);
     const previous = wc[axis.current] as number | null;
     const target = wc[axis.target] as number | null;
@@ -146,23 +166,36 @@ async function reportPosition(context: FamilyContext, axis: Axis, value: number)
         return;
     }
     if (state.inFlight) {
-        if (state.awaitingFirstReport && echoFilter && previous !== null && value === previous && target !== value) {
-            // the FYRTUR echo: the old position repeated right after the command; wait for a second opinion
-            state.held = value;
-            state.awaitingFirstReport = false;
-            armTimeout(context, axis, state, async () => {
-                await stopAxis(context, axis, state, value);
-            });
-            return;
+        if (echoFilter && previous !== null && target !== null) {
+            if (state.awaitingFirstReport && value === previous && target !== value) {
+                // the old position repeated right after the command; wait for a second opinion
+                state.awaitingFirstReport = false;
+                armTimeout(context, axis, state, reportTimeout, async () => {
+                    await stopAxis(context, axis, state, value);
+                });
+                return;
+            }
+            if (Math.abs(value - target) <= tolerance && Math.abs(value - previous) > ECHO_JUMP) {
+                // the commanded target echoed before the cover moved: hold it back (repeats too) until the travel
+                // is reported; if nothing follows, it was the only report and the movement ended there
+                state.awaitingFirstReport = false;
+                if (state.candidate === undefined) {
+                    state.candidate = value;
+                    armTimeout(context, axis, state, gapSeconds(context), async () => {
+                        await stopAxis(context, axis, state, value);
+                    });
+                }
+                return;
+            }
         }
         state.awaitingFirstReport = false;
-        state.held = undefined;
+        state.candidate = undefined;
         if (target !== null && Math.abs(value - target) <= tolerance) {
             await stopAxis(context, axis, state, value);
             return;
         }
         await setWc(context, {[axis.current]: value});
-        armTimeout(context, axis, state, async () => {
+        armTimeout(context, axis, state, gapSeconds(context), async () => {
             await stopAxis(context, axis, state);
         });
         return;
@@ -188,7 +221,7 @@ async function reportPosition(context: FamilyContext, axis: Axis, value: number)
         return;
     }
     await setWc(context, {[axis.current]: value});
-    armTimeout(context, axis, state, async () => {
+    armTimeout(context, axis, state, gapSeconds(context), async () => {
         await stopAxis(context, axis, state);
     });
 }
@@ -211,7 +244,7 @@ async function reportMotion(context: FamilyContext, value: Decoded): Promise<voi
                 liftState.external = true;
             }
             await setWc(context, patch);
-            armTimeout(context, LIFT, liftState, async () => {
+            armTimeout(context, LIFT, liftState, context.options.cover.reportTimeout, async () => {
                 await stopAxis(context, LIFT, liftState);
             });
             return;
@@ -338,8 +371,8 @@ export class WindowCoveringServer extends BaseWindowCoveringServer {
         state.inFlight = true;
         state.external = false;
         state.awaitingFirstReport = true;
-        state.held = undefined;
-        armTimeout(context, axis, state, async () => {
+        state.candidate = undefined;
+        armTimeout(context, axis, state, context.options.cover.reportTimeout, async () => {
             context.log.info(`cover ${axis.name}: no position report within the timeout, movement counts as ended`);
             await stopAxis(context, axis, state);
         });
@@ -357,13 +390,13 @@ export class WindowCoveringServer extends BaseWindowCoveringServer {
             clearTimer(state);
             state.inFlight = false;
             state.external = false;
-            state.held = undefined;
+            state.candidate = undefined;
             if (applied || !hasFeature(context, 'WindowCovering', axis.positionAware)) {
                 await stopAxis(context, axis, state);
             } else {
                 // the device reports where it stopped; until then (or the timeout) the movement goes on
                 state.stopping = true;
-                armTimeout(context, axis, state, async () => {
+                armTimeout(context, axis, state, context.options.cover.reportTimeout, async () => {
                     await stopAxis(context, axis, state);
                 });
             }
