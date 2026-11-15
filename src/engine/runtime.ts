@@ -366,6 +366,9 @@ export class MappingRuntime {
             if (!result.ok) {
                 if (result.absent === true) {
                     this.log.debug(`${where}: ${topic} carries no value, ${result.reason}`);
+                } else if (result.unmapped === true && event !== undefined) {
+                    // several events share one property (a z2m action): the others' values are not this one's
+                    this.log.debug(`${where}: ${topic} not this event, ${result.reason}`);
                 } else {
                     this.log.warn(`${where}: ${topic} ignored, ${result.reason}`);
                 }

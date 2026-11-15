@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Fixed: an error of the broker connection ended the process.** A refused or unreachable broker or a keepalive
+  timeout was re-raised as an `error` event nobody listened to, and Node exited: a broker restart brought the
+  bridge down and every controller lost its sessions. The connection now just reconnects. A start while the
+  broker is away no longer exits after the first refusal either: mqtt2matter waits for the broker (the UI is up
+  meanwhile) and starts the bridges once it is reached.
+- **Connection errors are logged with a backoff**: the first one at once, the next after 10 s, 20 s, 40 s … at
+  most every 10 minutes, with the number of errors in between; "connection closed" is logged once when a
+  connection is lost, not after every failed attempt.
+- **Less noise in the log:** a JSON `null` that neither the map nor the type takes (a Zigbee2MQTT device before its
+  first report, `"water_leak": null`) counts as "no value" and is logged at debug, as is a value that is not in an
+  event mapping's map — several buttons on one Zigbee2MQTT `action` each saw the others' actions as an error.
 - **Colour x/y use Matter's scale.** `CurrentX`/`CurrentY` and `MoveToColor` carry x and y multiplied by 65536
   (at most 65279), as the Matter ColorControl cluster defines them; the light family used 65535, so every xy
   colour was off by one part in 65536 against a controller and against other bridges that follow the spec.

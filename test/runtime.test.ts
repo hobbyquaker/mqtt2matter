@@ -5,7 +5,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import type {Decoded} from '../src/engine/payload.ts';
 import {type CommandHandler, type EndpointTarget, MappingRuntime, evaluateAvailability} from '../src/engine/runtime.ts';
-import {silentLogger} from '../src/log.ts';
+import {createLogger, type Logger, silentLogger} from '../src/log.ts';
 import type {AttributeRef} from '../src/model/attribute.ts';
 import {DeviceSchema} from '../src/model/schema.ts';
 
@@ -51,7 +51,7 @@ class FakeTarget implements EndpointTarget {
     }
 }
 
-function setup(deviceRaw: Record<string, unknown>) {
+function setup(deviceRaw: Record<string, unknown>, log: Logger = silentLogger) {
     const published: {topic: string; payload: string; retain: boolean; qos: number}[] = [];
     const runtime = new MappingRuntime(
         {
@@ -60,7 +60,7 @@ function setup(deviceRaw: Record<string, unknown>) {
                 return Promise.resolve();
             },
         },
-        silentLogger,
+        log,
     );
     const device = DeviceSchema.parse(deviceRaw);
     const targets = new Map<string, FakeTarget>();
@@ -119,6 +119,43 @@ describe('MappingRuntime: status in', () => {
         await runtime.handleMessage('b', Buffer.from('{"action":"double","state_l1":"ON"}'));
         expect(targets.get('main')!.events).toEqual([{channel: 'Switch', value: 'double'}]);
         expect(targets.get('l1')!.sets).toEqual([{key: 'OnOff.onOff', value: true}]);
+    });
+
+    it("logs another event's value on a shared property and a null at debug, a wrong value at warn", async () => {
+        const lines: string[] = [];
+        const button = (id: string | undefined, value: string) => ({
+            ...(id === undefined ? {} : {id}),
+            deviceTypes: ['GenericSwitch'],
+            mappings: [{event: 'Switch', status: {topic: 's', extract: 'action', map: {[value]: 'press'}}}],
+        });
+        const {runtime, targets} = setup(
+            {
+                name: 'd',
+                endpoints: [
+                    button(undefined, 'vibration'),
+                    button('tilt', 'tilt'),
+                    {
+                        id: 'leak',
+                        deviceTypes: ['WaterLeakDetector'],
+                        mappings: [
+                            {
+                                attribute: 'BooleanState.stateValue',
+                                status: {topic: 's', extract: 'water_leak', map: {true: true, false: false}},
+                            },
+                        ],
+                    },
+                ],
+            },
+            createLogger('debug', (line) => lines.push(line)),
+        );
+        await runtime.handleMessage('s', Buffer.from('{"action":"tilt","water_leak":null}'));
+        expect(targets.get('tilt')!.events).toEqual([{channel: 'Switch', value: 'press'}]);
+        expect(targets.get('main')!.events).toEqual([]);
+        expect(lines.filter((line) => line.includes('WARN'))).toEqual([]);
+        await runtime.handleMessage('s', Buffer.from('{"water_leak":"wet"}'));
+        expect(lines.filter((line) => line.includes('WARN'))).toEqual([
+            expect.stringContaining('value "wet" is not in the map'),
+        ]);
     });
 
     it('applies the messages of one topic in arrival order, even when they arrive back to back', async () => {
