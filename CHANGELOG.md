@@ -6,6 +6,13 @@
   (at most 65279), as the Matter ColorControl cluster defines them; the light family used 65535, so every xy
   colour was off by one part in 65536 against a controller and against other bridges that follow the spec.
 
+- **The Home Assistant parts are the mqtt-ha-entities library now**: discovery parsing, the template engine
+  and its check, the colour conversions and the area tags, shared with she's home model. The engine renders
+  two things it refused before, so the Home Assistant importer adopts three more mappings of the corpus:
+  `int(base=16)` (AWTRIX's RGB state) and dictionaries with number keys (the STARKVIND fan's percentage
+  command, a Z-Wave thermostat's mode state). A discovery payload that is not JSON is now reported as a
+  `DiscoveryError`.
+
 ## 0.3.2
 
 - **A device key or endpoint id with a `.` is refused** with a validation error that names it and says why:

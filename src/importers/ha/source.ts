@@ -1,19 +1,16 @@
 /* The MQTT side of the Home Assistant discovery importer: every retained `<prefix>/…/config` kept as the
    entity it describes (both discovery forms), an empty payload removing it, and the discovery they yield.
-   Feed it messages (`handle`) or the topic cache (`load`); the caller subscribes `<prefix>/#`. */
+   Feed it messages (`handle`) or the topic cache (`load`); the caller subscribes `<prefix>/#`. Parsing and
+   keeping the configs is mqtt-ha-entities' `DiscoveryStore`; what is mqtt2matter's is `seen`, the cache
+   and the discovery for the generator. */
+
+import {DEFAULT_PREFIX, DiscoveryStore, parseDiscoveryTopic} from 'mqtt-ha-entities';
 
 import type {TopicCache} from '../../mqtt/index.ts';
 import {type Discovery, discover} from './sync.ts';
-import {
-    type DeviceInfo,
-    type EntityConfig,
-    expandDevicePayload,
-    expandEntity,
-    type Origin,
-    parseDiscoveryTopic,
-} from './types.ts';
+import type {DeviceInfo, EntityConfig, Origin} from './types.ts';
 
-export const DEFAULT_PREFIX = 'homeassistant';
+export {DEFAULT_PREFIX};
 
 /** one discovered entity: a per-entity config, or one component of a device-based config */
 export interface Entity {
@@ -30,79 +27,37 @@ export interface Entity {
 }
 
 export class HaSource {
-    readonly prefix: string;
-    /** entities by id */
-    readonly entities = new Map<string, Entity>();
-    /** the device-based configs by topic, with their component ids, so a new payload replaces all of them */
-    private readonly deviceConfigs = new Map<string, string[]>();
+    private readonly store: DiscoveryStore;
     /** a config message (or a removal) was seen: devices missing from the view are orphaned */
     seen = false;
 
     constructor(prefix: string = DEFAULT_PREFIX) {
-        this.prefix = prefix;
+        this.store = new DiscoveryStore({prefix});
+    }
+
+    get prefix(): string {
+        return this.store.prefix;
+    }
+
+    /** entities by id */
+    get entities(): ReadonlyMap<string, Entity> {
+        return this.store.entities;
     }
 
     /** the topics to subscribe */
     get topics(): string[] {
-        return [`${this.prefix}/#`];
+        return this.store.subscriptions;
     }
 
-    /** take a message when its topic is a discovery config; `'entity'`, `'device'` or `'removed'`; throws on bad JSON */
+    /**
+     * take a message when its topic is a discovery config; `'entity'`, `'device'` or `'removed'`; throws a
+     * `DiscoveryError` on a payload that is not a JSON object (what the topic announced before stays)
+     */
     handle(topic: string, payload: string | Buffer): 'entity' | 'device' | 'removed' | undefined {
-        const parsed = parseDiscoveryTopic(this.prefix, topic);
-        if (parsed === undefined) {
-            return undefined;
+        if (parseDiscoveryTopic(this.prefix, topic) !== undefined) {
+            this.seen = true;
         }
-        const text = typeof payload === 'string' ? payload : payload.toString('utf8');
-        this.seen = true;
-        if (text.trim() === '') {
-            this.remove(topic);
-            return 'removed';
-        }
-        const json: unknown = JSON.parse(text);
-        if (typeof json !== 'object' || json === null || Array.isArray(json)) {
-            throw new Error(`${topic}: the discovery payload is not an object`);
-        }
-        const raw = json as Record<string, unknown>;
-        if (parsed.component === 'device') {
-            this.remove(topic);
-            const {components} = expandDevicePayload(raw);
-            const ids: string[] = [];
-            for (const [key, config] of Object.entries(components)) {
-                if (typeof config.platform !== 'string' || config.platform === '') {
-                    continue;
-                }
-                const id = `${topic}#${key}`;
-                ids.push(id);
-                this.entities.set(id, {
-                    id,
-                    topic,
-                    component: config.platform,
-                    objectId: key,
-                    ...(parsed.nodeId === undefined ? {} : {nodeId: parsed.nodeId}),
-                    config,
-                });
-            }
-            this.deviceConfigs.set(topic, ids);
-            return 'device';
-        }
-        this.entities.set(topic, {
-            id: topic,
-            topic,
-            component: parsed.component,
-            objectId: parsed.objectId,
-            ...(parsed.nodeId === undefined ? {} : {nodeId: parsed.nodeId}),
-            config: expandEntity(raw),
-        });
-        return 'entity';
-    }
-
-    private remove(topic: string): void {
-        this.entities.delete(topic);
-        for (const id of this.deviceConfigs.get(topic) ?? []) {
-            this.entities.delete(id);
-        }
-        this.deviceConfigs.delete(topic);
+        return this.store.handle(topic, payload);
     }
 
     /** take what the cache holds under the prefix; a payload that does not parse is skipped */

@@ -56,10 +56,15 @@ describe('rejected templates name the reason', () => {
         expect(reason('{{ entity_id }}')).toContain('"entity_id" is not available');
     });
 
-    it('what the library parses but renders wrong', () => {
-        expect(reason('{{ value[1:3] | int(base=16) }}')).toContain('"int(base=…)"');
-        expect(reason("{{ {0:'off', 1:'on'}[value] }}")).toContain('non-string keys');
+    it('macros are refused', () => {
         expect(reason('{% macro m() %}x{% endmacro %}{{ m() }}')).toContain('macros');
+    });
+
+    it('int(base=…) and dictionaries with number keys are rendered as Home Assistant renders them', () => {
+        expect(ok('{{ value[1:3] | int(base=16) }}')).toBe(true);
+        expect(renderTemplate('{{ value[1:3] | int(base=16) }}', {value: '#ff8000'})).toEqual({ok: true, text: '255'});
+        expect(ok("{{ {0:'off', 1:'on'}[value] }}")).toBe(true);
+        expect(renderTemplate("{{ {0:'off', 1:'on'}[value] }}", {value: 1})).toEqual({ok: true, text: 'on'});
     });
 
     it('a template that does not parse', () => {

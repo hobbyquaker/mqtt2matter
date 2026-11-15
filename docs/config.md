@@ -259,7 +259,7 @@ Without `format`, `payload` and `template` the payload is the value as text (an 
 
 ### Templates
 
-Jinja through `@huggingface/jinja`, Home Assistant style. Available: expressions, `if … else …`, loops, the
+Jinja through `@huggingface/jinja`, Home Assistant style (the engine of mqtt-ha-entities). Available: expressions, `if … else …`, dictionaries with any keys (`{0: 'off', 1: 'on'}[value]`), loops, the
 filters `int` (Home Assistant's `int(default, base)`: `'ff' | int(0, 16)`), `float`, `string`, `bool`, `lower`, `upper`, `trim`, `abs`, `default`, `length`, `join`,
 `replace`, `tojson`, `round(precision, method, default)`, `is_defined`, `iif`, `multiply`, `is_number`, `max`,
 `min`; the tests `defined`, `none`, `number`, `string`; the functions `iif`, `float`, `int`, `max`, `min`.

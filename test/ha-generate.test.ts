@@ -303,21 +303,25 @@ describe("zigbee2mqtt's own discovery (native preferred)", () => {
         expect(device.endpoints[0]!.mappings?.map(target)).not.toContain('WindowCovering.upOrOpen');
     });
 
-    it('a fan: the percentage over the speed range, a command template with integer dictionary keys left out', () => {
+    it('a fan: the percentage over the speed range, the command through its dictionary template', () => {
         const device = baseline('ha:zigbee2mqtt_0x00124b0000000003');
         expect(types(device)).toEqual({main: ['Fan'], pm25: ['AirQualitySensor']});
         const percent = mapping(device, 'FanControl.percentSetting');
         expect(percent.status).toMatchObject({scale: {from: [0, 9], to: [0, 100]}, type: 'number'});
-        expect(percent.command).toBeUndefined();
+        expect(percent.command).toMatchObject({
+            topic: 'zigbee2mqtt/starkvind/set/fan_mode',
+            scale: {from: [0, 9], to: [0, 100]},
+            round: 0,
+            template:
+                "{{ {0:'off', 1:'1', 2:'2', 3:'3', 4:'4', 5:'5', 6:'6', 7:'7', 8:'8', 9:'9'}[value] | default('') }}",
+        });
         expect(mapping(device, 'FanControl.fanMode')).toMatchObject({
             status: {map: {auto: 'Auto'}},
             command: {format: {Auto: 'auto'}},
         });
         expect(device.endpoints[0]!.features).toEqual({FanControl: ['Auto']});
         const unmapped = item('ha:zigbee2mqtt_0x00124b0000000003').unmapped;
-        expect(unmapped.some((u) => u.includes('percentage_command_template a dictionary with non-string keys'))).toBe(
-            true,
-        );
+        expect(unmapped.some((u) => u.includes('percentage_command_template'))).toBe(false);
     });
 
     it('device triggers: one button per subtype, continuous actions listed', () => {
@@ -433,11 +437,13 @@ describe('the device-based form', () => {
             topic: 'awtrix/cmd/settings',
             template: '{"textColor":[{{ red }},{{ green }},{{ blue }}]}',
         });
-        // the rgb state template uses int(base=16), which the engine cannot do: status half left out, listed
-        expect(mapping(device, 'ColorControl.colorRgb', 'mat').status).toBeUndefined();
-        expect(item('ha:aa0000000008').unmapped.some((u) => u.includes('rgb_value_template "int(base=\u2026)"'))).toBe(
-            true,
-        );
+        // the rgb state template parses the hex colour with int(base=16)
+        expect(mapping(device, 'ColorControl.colorRgb', 'mat').status).toEqual({
+            topic: 'awtrix/state/settings',
+            template:
+                '{{ value_json.textColor[1:3]|int(base=16) }},{{ value_json.textColor[3:5]|int(base=16) }},{{ value_json.textColor[5:7]|int(base=16) }}',
+        });
+        expect(item('ha:aa0000000008').unmapped.some((u) => u.includes('rgb_value_template'))).toBe(false);
         expect(mapping(device, 'OnOff.onOff', 'mat')).toMatchObject({
             status: {map: {'{"power":true}': true, '{"power":false}': false}},
             command: {format: {true: '{"power":true}', false: '{"power":false}'}},
@@ -621,12 +627,14 @@ describe('Z-Wave JS UI (hand-written)', () => {
             round: 1,
             template: '{{ value }}',
         });
-        // the state template uses integer dictionary keys the engine cannot render: listed, no status half
+        // the state template looks the mode up in a dictionary with number keys
         const mode = mapping(device, 'Thermostat.systemMode');
-        expect(mode.status).toBeUndefined();
-        expect(item('ha:zwavejs2mqtt_0xd1e5f8a1_node11').unmapped).toEqual([
-            "climate \"nodeID_11_climate\": mode_state_template a dictionary with non-string keys is not available: {{ {0:'off', 1:'heat', 2:'cool', 3:'auto'}[value_json.value] | default('off') }}",
-        ]);
+        expect(mode.status).toEqual({
+            topic: 'zwave/11/64/0/mode',
+            map: {auto: 'Auto', cool: 'Cool', heat: 'Heat', off: 'Off'},
+            template: "{{ {0:'off', 1:'heat', 2:'cool', 3:'auto'}[value_json.value] | default('off') }}",
+        });
+        expect(item('ha:zwavejs2mqtt_0xd1e5f8a1_node11').unmapped).toEqual([]);
         expect(mode.command?.template).toBe(
             '{% set value = "off" if name == "Off" else "heat" if name == "Heat" else "cool" if name == "Cool" else "auto" if name == "Auto" else name | lower %}' +
                 "{{ {'off':0, 'heat':1, 'cool':2, 'auto':3}[value] }}",

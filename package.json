@@ -63,9 +63,9 @@
     "deploy": "bash deploy.sh"
   },
   "dependencies": {
-    "@huggingface/jinja": "0.5.10",
     "@matter/main": "0.18.0",
     "mqtt": "^5.16.1",
+    "mqtt-ha-entities": "file:../mqtt-ha-entities",
     "ws": "^8.22.0",
     "zod": "^4.6.7"
   },

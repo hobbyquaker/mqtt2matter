@@ -207,8 +207,8 @@ merged over every entity (each repeats it, often only with its identifiers).
 
 **Templates** go to the payload engine when it can run them: the importer parses every `*_template` with the
 same library and checks the filters, tests, functions and free names against what the engine provides
-([config.md](config.md), "Templates"; `src/importers/ha/templates.ts`). A template it cannot run — `states()`,
-`now()`, `this`, the time and regex helpers, `int(base=16)`, a dictionary with integer keys, macros — leaves
+([config.md](config.md), "Templates"; the check is mqtt-ha-entities'). A template it cannot run — `states()`,
+`now()`, `this`, the time and regex helpers, macros — leaves
 that half of the mapping out and is listed under `unmapped` with the template text, so the user sees what to
 write by hand. Where Home Assistant's command template sees a value the engine names differently, a `{% set …
 %}` prelude gives it Home Assistant's meaning: `value` is `ON` / `OFF` (`payload_on` / `payload_off`) for a
