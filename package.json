@@ -65,7 +65,7 @@
   "dependencies": {
     "@matter/main": "0.18.0",
     "mqtt": "^5.16.1",
-    "mqtt-ha-entities": "file:../mqtt-ha-entities",
+    "mqtt-ha-entities": "^0.1.0",
     "ws": "^8.22.0",
     "zod": "^4.6.7"
   },
