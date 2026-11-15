@@ -481,8 +481,8 @@ describe('light', () => {
         });
         await publish('z/light', JSON.stringify({color: {x: 0.3, y: 0.6}}));
         await settled(() => {
-            expect(light.state.colorControl!.currentX).toBe(Math.round(0.3 * 65535));
-            expect(light.state.colorControl!.currentY).toBe(Math.round(0.6 * 65535));
+            expect(light.state.colorControl!.currentX).toBe(Math.round(0.3 * 65536));
+            expect(light.state.colorControl!.currentY).toBe(Math.round(0.6 * 65536));
             expect(light.state.colorControl!.colorMode).toBe(1);
         });
     });

@@ -1,5 +1,5 @@
 /* Colour conversions for the light family: hue/saturation (0–360°, 0–100 %), CIE xy (0–1) and RGB (0–255)
-   into one another, plus the Matter scalings (hue and saturation 0–254, x and y 0–65535). sRGB with its
+   into one another, plus the Matter scalings (hue and saturation 0–254, x and y × 65536 up to 65279). sRGB with its
    gamma on the RGB side, D65 white; good enough for lights, not for colorimetry. */
 
 export interface Hs {
@@ -131,9 +131,9 @@ export const hueFromMatter = (v: number): number => Math.round((v / 254) * 360 *
 /** Matter saturation 0–254 ↔ percent */
 export const saturationToMatter = (pct: number): number => Math.round(clamp(pct, 0, 100) * 2.54);
 export const saturationFromMatter = (v: number): number => Math.round((v / 254) * 100 * 100) / 100;
-/** Matter x/y 0–65535 ↔ 0–1 */
-export const xyToMatter = (v: number): number => Math.round(clamp(v, 0, 1) * 65535);
-export const xyFromMatter = (v: number): number => Math.round((v / 65535) * 10000) / 10000;
+/** CurrentX/CurrentY = x/y × 65536, at most 65279 (0xFEFF): Matter 1.4 ColorControl, CurrentX/CurrentY */
+export const xyToMatter = (v: number): number => Math.min(0xfeff, Math.round(clamp(v, 0, 1) * 65536));
+export const xyFromMatter = (v: number): number => Math.round((v / 65536) * 10000) / 10000;
 
 /** parse a colour object, array or `"a,b(,c)"` into named fields */
 export function parseColor(

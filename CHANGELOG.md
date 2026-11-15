@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **Colour x/y use Matter's scale.** `CurrentX`/`CurrentY` and `MoveToColor` carry x and y multiplied by 65536
+  (at most 65279), as the Matter ColorControl cluster defines them; the light family used 65535, so every xy
+  colour was off by one part in 65536 against a controller and against other bridges that follow the spec.
+
 ## 0.3.2
 
 - **A device key or endpoint id with a `.` is refused** with a validation error that names it and says why:

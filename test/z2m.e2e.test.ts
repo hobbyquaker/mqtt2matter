@@ -146,7 +146,7 @@ describe('light', () => {
             JSON.stringify({color_mode: 'xy', color: {x: 0.5, y: 0.4}}),
         );
         await settled(() => {
-            expect(light.state.colorControl!.currentX).toBe(Math.round(0.5 * 65535));
+            expect(light.state.colorControl!.currentX).toBe(Math.round(0.5 * 65536));
             expect(light.state.colorControl!.colorMode).toBe(1);
         });
     });
