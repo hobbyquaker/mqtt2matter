@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 - **Fixed: an error of the broker connection ended the process.** A refused or unreachable broker or a keepalive
   timeout was re-raised as an `error` event nobody listened to, and Node exited: a broker restart brought the
