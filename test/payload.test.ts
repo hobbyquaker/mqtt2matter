@@ -91,7 +91,27 @@ describe('decodeStatus: extract, map, type', () => {
         const half = status({map: {ON: true, OFF: false}});
         expect(decodeStatus(half, Buffer.from('ON'))).toEqual({ok: true, value: true});
         expect(decodeStatus(half, 'OFF')).toEqual({ok: true, value: false});
-        expect(decodeStatus(half, 'TOGGLE')).toEqual({ok: false, reason: expect.stringContaining('not in the map')});
+        expect(decodeStatus(half, 'TOGGLE')).toEqual({
+            ok: false,
+            reason: expect.stringContaining('not in the map'),
+            unmapped: true,
+        });
+    });
+
+    it('reads a JSON null that neither the map nor the type takes as no value (z2m before the first report)', () => {
+        const mapped = status({extract: '$.water_leak', map: {true: true, false: false}});
+        expect(decodeStatus(mapped, '{"water_leak":null}')).toEqual({
+            ok: false,
+            reason: 'the value is null',
+            absent: true,
+        });
+        const typed = status({extract: '$.battery', type: 'number'});
+        expect(decodeStatus(typed, '{"battery":null}')).toEqual({ok: false, reason: 'the value is null', absent: true});
+        // a default still wins
+        expect(decodeStatus(status({extract: '$.x', map: {a: 1}, default: 0}), '{"x":null}')).toEqual({
+            ok: true,
+            value: 0,
+        });
     });
 
     it("maps to null, and reads a template's None as null: a value only for a nullable attribute", () => {

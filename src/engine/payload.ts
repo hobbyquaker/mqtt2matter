@@ -145,11 +145,13 @@ export interface TargetShape {
 export type Decoded = Scalar | null | Record<string, unknown> | unknown[];
 
 /**
- * `absent`: the message carries no value for this half — the extract path is missing or the template rendered
- * nothing. Normal on a topic several mappings share (Tasmota's `RESULT`, a partial JSON report), so the runtime
- * logs it at debug rather than as a failure.
+ * `absent`: the message carries no value for this half — the extract path is missing, the template rendered
+ * nothing, or the value is a JSON null that neither the map nor the type takes. Normal on a topic several mappings
+ * share (Tasmota's `RESULT`, a partial JSON report) and for a z2m device before its first report, so the runtime
+ * logs it at debug rather than as a failure. `unmapped`: the value is not in the map — expected for an event
+ * mapping that shares its property with others (one z2m `action`, one button per value).
  */
-export type DecodeResult = {ok: true; value: Decoded} | {ok: false; reason: string; absent?: true};
+export type DecodeResult = {ok: true; value: Decoded} | {ok: false; reason: string; absent?: true; unmapped?: true};
 
 export type Decoder = (payload: string, context: {topic: string; options: unknown}) => unknown;
 export type Encoder = (
@@ -416,7 +418,11 @@ export function decodeStatus(
             if (half.default !== undefined) {
                 return finish(half.default);
             }
-            return {ok: false, reason: `value ${JSON.stringify(value)} is not in the map`};
+            if (value === null) {
+                // a JSON null is "no value yet" (z2m before a device's first report), not a wrong one
+                return {ok: false, reason: 'the value is null', absent: true};
+            }
+            return {ok: false, reason: `value ${JSON.stringify(value)} is not in the map`, unmapped: true};
         }
         return finish(mapped);
     }
@@ -425,6 +431,9 @@ export function decodeStatus(
         if (coerced === undefined) {
             if (half.default !== undefined) {
                 return finish(half.default);
+            }
+            if (value === null) {
+                return {ok: false, reason: 'the value is null', absent: true};
             }
             return {ok: false, reason: `value ${JSON.stringify(value)} is not a ${half.type}`};
         }
