@@ -11,7 +11,7 @@ import {Minutes, type ServerNode} from '@matter/main';
 import {DeviceCommissioner, FabricManager} from '@matter/main/protocol';
 
 import type {App} from '../app.ts';
-import type {Logger} from '../log.ts';
+import {describeError, type Logger} from '../log.ts';
 import type {DeviceHandle} from '../matter/bridge.ts';
 import {checkConfig} from '../matter/check.ts';
 import {migrateDevices} from '../model/migrate.ts';
@@ -445,7 +445,23 @@ export class Server {
             this.observe(key, handle);
         }
         this.hub.broadcast({type: 'devices'});
-        return this.deviceJson(key);
+        const json = this.deviceJson(key) as {issues: Issue[]};
+        json.issues = mergeIssues(json.issues, await this.strictIssues(key, device));
+        return json;
+    }
+
+    /**
+     * The strict dry run for one device (about 40 ms): what matter.js refuses under strict validation, which the
+     * live bridge builds leniently — so the editor shows it at the save, not only as a missing device later.
+     */
+    private async strictIssues(key: string, device: DeviceConfig): Promise<Issue[]> {
+        try {
+            const result = await checkConfig({...this.app.config, devices: {[key]: device}});
+            return result.devices.get(key) ?? [];
+        } catch (error) {
+            this.log.warn(`the strict check of ${key} failed: ${describeError(error)}`);
+            return [];
+        }
     }
 
     private async removeDevice(key: string): Promise<void> {
@@ -1077,4 +1093,21 @@ export class Server {
             );
         });
     }
+}
+
+/**
+ * The live issues plus the strict check's, once each: the check repeats the static validation, and a conformance
+ * violation the live bridge reports as a warning comes back from the strict build as an error — that one is kept.
+ */
+export function mergeIssues(live: readonly Issue[], strict: readonly Issue[]): Issue[] {
+    const out = [...live];
+    for (const issue of strict) {
+        const same = out.findIndex((other) => other.path === issue.path && other.message === issue.message);
+        if (same === -1) {
+            out.push(issue);
+        } else if (issue.level === 'error') {
+            out[same] = issue;
+        }
+    }
+    return out;
 }

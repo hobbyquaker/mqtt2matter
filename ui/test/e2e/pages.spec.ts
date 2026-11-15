@@ -1,11 +1,5 @@
 import {expect, test} from './fixtures.ts';
 
-test('the check page runs the strict dry run over every device', async ({page}) => {
-    await page.goto('/#/check');
-    await page.getByTestId('run-check').click();
-    await expect(page.getByTestId('check-verdict')).toContainText('Every device conforms.');
-});
-
 test('the bridges page shows the pairing codes and opens a commissioning window', async ({page}) => {
     await page.goto('/#/bridges');
     const bridge = page.locator('[data-testid=bridge][data-id=default]');

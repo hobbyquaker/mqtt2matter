@@ -354,6 +354,18 @@ describe('the web server', () => {
         expect(Object.keys(checkOne.json.devices)).toEqual(['odd']);
     }, 30_000);
 
+    it('runs the strict check at a save: the device is stored, what strict matter.js refuses comes back as an error', async () => {
+        const saved = await api('PUT', '/api/devices/strict', {
+            name: 'Strict',
+            endpoints: [{deviceTypes: ['OnOffLight'], attributes: {OnOff: {startUpOnOff: 99}}}],
+        });
+        expect(saved.status).toBe(200);
+        const errors = (saved.json.issues as {level: string; message: string}[]).filter((i) => i.level === 'error');
+        expect(errors.map((i) => i.message).join(' ')).toMatch(/startUpOnOff|99/);
+        expect((await api('GET', '/api/devices/strict')).status).toBe(200);
+        expect((await api('DELETE', '/api/devices/strict')).status).toBe(204);
+    }, 30_000);
+
     it('previews both directions step by step', async () => {
         const status = await api('POST', '/api/preview', {
             direction: 'status',

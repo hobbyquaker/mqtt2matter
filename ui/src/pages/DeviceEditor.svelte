@@ -157,7 +157,9 @@
             const saved = await api.saveDevice(key, cleanDevice(device));
             detail = saved;
             device = JSON.parse(JSON.stringify(saved.device)) as Device;
+            // the save ran the strict dry run too; its findings are in saved.issues
             issues = saved.issues;
+            checkIssues = undefined;
             liveState = saved.state;
             dirty = false;
             jsonText = pretty(device);

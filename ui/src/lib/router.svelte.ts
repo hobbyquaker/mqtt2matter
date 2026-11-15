@@ -1,9 +1,9 @@
 /* The hash router: `#/<page>[/<rest>]`. The page is one of the shell's tabs, the rest belongs to the
    page (the device key on the editor). */
 
-export type Page = 'devices' | 'presets' | 'adopt' | 'bridges' | 'mqtt' | 'log' | 'check' | 'config';
+export type Page = 'devices' | 'presets' | 'adopt' | 'bridges' | 'mqtt' | 'log' | 'config';
 
-export const PAGES: readonly Page[] = ['devices', 'presets', 'adopt', 'bridges', 'mqtt', 'log', 'check', 'config'];
+export const PAGES: readonly Page[] = ['devices', 'presets', 'adopt', 'bridges', 'mqtt', 'log', 'config'];
 
 export interface Route {
     page: Page;

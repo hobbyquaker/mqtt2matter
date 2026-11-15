@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **Saving a device runs the strict check.** What matter.js refuses under strict validation — a value a
+  device type's conformance does not allow, a missing mandatory part — came to light only when the bridge built
+  the device (an error in the log, the device missing in the controller) or when "Check" was pressed. The save now
+  runs the same dry run (about 40 ms a device) and shows its findings with the validation issues in the editor;
+  the device is stored either way. The editor's "Check" button still checks unsaved edits, and
+  `mqtt2matter --check` checks the whole file.
+- **The "Check" tab is gone**: the strict check runs at every save, and the whole configuration is checked with
+  `mqtt2matter --check` or `POST /api/check`.
+
 ## 0.4.0
 
 - **Fixed: an error of the broker connection ended the process.** A refused or unreachable broker or a keepalive

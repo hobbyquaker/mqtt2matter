@@ -431,15 +431,6 @@ export const MESSAGES: Record<string, Message> = {
     follow: m('folgen', 'follow'),
     '{count} lines': m('{count} Zeilen', '{count} lines'),
 
-    // check
-    'Check every device': m('Jedes Gerät prüfen', 'Check every device'),
-    'The strict dry run: every device is built in a throw-away Matter node, nothing goes online.': m(
-        'Der strenge Probelauf: jedes Gerät wird in einem Wegwerf-Matter-Node gebaut, nichts geht online.',
-        'The strict dry run: every device is built in a throw-away Matter node, nothing goes online.',
-    ),
-    'Every device conforms.': m('Jedes Gerät ist konform.', 'Every device conforms.'),
-    'Some devices do not conform.': m('Manche Geräte sind nicht konform.', 'Some devices do not conform.'),
-
     // configuration
     Settings: m('Einstellungen', 'Settings'),
     'The top level of the configuration file without the devices: mqtt, storage, log, vendorId, productId, bridges, server, presets. Changes apply at the next start.':

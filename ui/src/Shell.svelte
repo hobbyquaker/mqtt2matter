@@ -15,7 +15,6 @@
     import {session} from './lib/session.svelte.ts';
     import Adopt from './pages/Adopt.svelte';
     import Bridges from './pages/Bridges.svelte';
-    import Check from './pages/Check.svelte';
     import Config from './pages/Config.svelte';
     import Devices from './pages/Devices.svelte';
     import Log from './pages/Log.svelte';
@@ -40,7 +39,6 @@
         {id: 'bridges', label: t('Bridges'), dot: commissioned ? ('ok' as const) : ('warn' as const)},
         {id: 'mqtt', label: 'MQTT', dot: mqttUp ? ('ok' as const) : ('error' as const)},
         {id: 'log', label: t('Log'), dot: logLevel === 'none' ? ('none' as const) : logLevel},
-        {id: 'check', label: t('Check')},
     ]);
 
     const REPOSITORY = 'https://github.com/hobbyquaker/mqtt2matter';
@@ -180,8 +178,6 @@
             <Mqtt />
         {:else if page === 'log'}
             <Log />
-        {:else if page === 'check'}
-            <Check />
         {:else if page === 'config'}
             <Config />
         {/if}

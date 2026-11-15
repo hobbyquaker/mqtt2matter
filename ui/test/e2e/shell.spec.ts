@@ -4,7 +4,7 @@ test('every page renders, in the browser language and in both themes', async ({p
     await page.goto('/#/devices');
     await expect(page.getByTestId('devices-page')).toBeVisible();
     await expect(page.getByTestId('device-row').first()).toBeVisible();
-    for (const id of ['presets', 'adopt', 'bridges', 'mqtt', 'log', 'check']) {
+    for (const id of ['presets', 'adopt', 'bridges', 'mqtt', 'log']) {
         await page.getByTestId(`tab-${id}`).click();
         await expect(page.getByTestId(`${id}-page`)).toBeVisible();
         expect(page.url()).toContain(`#/${id}`);
