@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
 - **Saving a device runs the strict check.** What matter.js refuses under strict validation — a value a
   device type's conformance does not allow, a missing mandatory part — came to light only when the bridge built
